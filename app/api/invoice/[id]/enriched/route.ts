@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 // ---------------------------------------------------------------------------
 // GET  — Read enriched rows from invoice_rows_enriched (post-enrich reload)
@@ -13,11 +13,13 @@ export async function GET(
   try {
     const { id } = await params
 
-    const { data, error } = await supabaseServer
-      .from("invoice_rows_enriched")
-      .select("*")
-      .eq("invoice_id", id)
-      .order("id")
+const supabase = getSupabaseServer()
+
+const { data, error } = await supabase
+  .from("invoice_rows_enriched")
+  .select("*")
+  .eq("invoice_id", id)
+  .order("id")
 
     if (error) {
       console.error("[enriched GET] Supabase error:", error)
