@@ -175,6 +175,7 @@ export default function InvoiceDashboard() {
     setScenarioData(null)
     setIsScenarioActive(false)
     try {
+      console.log("SELECTED INVOICE ID:", invoiceId)
       const url = source === "enriched"
         ? `/api/invoice/${invoiceId}/enriched`
         : `/api/invoice/${invoiceId}`
