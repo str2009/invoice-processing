@@ -5,9 +5,17 @@ import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const { id } = params
+  const id = context?.params?.id
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Missing invoice id" },
+      { status: 400 }
+    )
+  }
+
   const decodedId = decodeURIComponent(id)
 
   const supabase = getSupabaseServer()
@@ -21,9 +29,7 @@ export async function GET(
   return NextResponse.json({
     rawId: id,
     decodedId,
-    length: id.length,
     rowsFound: data?.length ?? 0,
-    sampleRow: data?.[0] ?? null,
     error: error?.message ?? null,
   })
 }
