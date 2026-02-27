@@ -5,9 +5,16 @@ import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
+  context: { params?: { id?: string } }
 ) {
-  const id = context?.params?.id
+  // 1. пробуем взять из сегмента
+  let id = context?.params?.id
+
+  // 2. если нет — пробуем взять из query (?nxtPid=...)
+  if (!id) {
+    const url = new URL(request.url)
+    id = url.searchParams.get("nxtPid") ?? undefined
+  }
 
   if (!id) {
     return NextResponse.json(
