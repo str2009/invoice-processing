@@ -1,22 +1,14 @@
 export const runtime = "nodejs"
 
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseServer } from "@/lib/supabase-server"
 
-export async function GET(
-  request: Request,
-  context: { params?: { id?: string } }
-) {
-  // 1. пробуем взять из сегмента
-  let id = context?.params?.id
+export async function GET(request: NextRequest) {
+  // Берём id из пути вручную
+  const segments = request.nextUrl.pathname.split("/")
+  const id = segments[segments.length - 1]
 
-  // 2. если нет — пробуем взять из query (?nxtPid=...)
-  if (!id) {
-    const url = new URL(request.url)
-    id = url.searchParams.get("nxtPid") ?? undefined
-  }
-
-  if (!id) {
+  if (!id || id === "invoice") {
     return NextResponse.json(
       { error: "Missing invoice id" },
       { status: 400 }
@@ -33,10 +25,12 @@ export async function GET(
     .eq("invoice_id", decodedId)
     .order("id")
 
-  return NextResponse.json({
-    rawId: id,
-    decodedId,
-    rowsFound: data?.length ?? 0,
-    error: error?.message ?? null,
-  })
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json(data ?? [])
 }
