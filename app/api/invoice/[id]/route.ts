@@ -1,22 +1,24 @@
+export const runtime = "nodejs"
+
 import { NextResponse } from "next/server"
 import { getSupabaseServer } from "@/lib/supabase-server"
 
-export const dynamic = "force-dynamic"
-
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params
+  const { id } = params
+  const supabase = getSupabaseServer()
 
-  const { data, error } = await supabaseServer
+  const { data, error } = await supabase
     .from("invoice_rows")
     .select("*")
     .eq("invoice_id", id)
     .order("id")
 
   if (error) {
-    return NextResponse.json({ error }, { status: 500 })
+    console.error(error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json(data)
