@@ -18,7 +18,11 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json(data ?? [])
+    // Жёсткая сериализация
+    const safeData = JSON.parse(JSON.stringify(data ?? []))
+
+    return NextResponse.json(safeData)
+
   } catch (err) {
     console.error("Unhandled error:", err)
     return NextResponse.json(
