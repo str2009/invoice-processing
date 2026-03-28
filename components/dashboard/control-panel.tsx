@@ -65,6 +65,7 @@ interface ControlPanelProps {
   onInvoiceChange: (invoiceId: string) => void
   isLoadingInvoice: boolean
   isEnriching: boolean
+  onDeleteInvoice?: (id: string) => void
   contextMeta?: {
     totalRows: number
     avgMargin: number
@@ -76,6 +77,10 @@ interface ControlPanelProps {
   onRecalculate?: (ids: string[]) => void
   /** Saved mode: update market data for selected invoices */
   onUpdateMarket?: (ids: string[]) => void
+  onEnrichSelected?: (ids: string[]) => void
+onResetEnrich?: (ids: string[]) => void
+onSimulate?: (ids: string[]) => void
+onExportSelected?: (ids: string[]) => void
 }
 
 export function ControlPanel({
@@ -102,6 +107,10 @@ export function ControlPanel({
   onWorkWithSelected,
   onRecalculate,
   onUpdateMarket,
+  onEnrichSelected,
+onResetEnrich,
+onDeleteInvoice,
+onExportSelected,
 }: ControlPanelProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -169,8 +178,36 @@ export function ControlPanel({
       ),
     }
   }, [invoiceList, selectedIds])
+  const selectedInvoicesData = useMemo(() => {
+    return invoiceList.filter((inv) => selectedIds.has(inv.invoice_id))
+  }, [invoiceList, selectedIds])
+  
+  const selectedSummary = useMemo(() => {
+    return {
+      count: selectedInvoicesData.length,
+      totalAmount: selectedInvoicesData.reduce(
+        (sum, inv) => sum + (inv.total_amount_document ?? 0),
+        0
+      ),
+      totalRows: selectedInvoicesData.reduce(
+        (sum, inv) => sum + ((inv as any).total_rows ?? 0),
+        0
+      ),
+    }
+  }, [selectedInvoicesData])
+  useEffect(() => {
+    console.log("selectedIds:", Array.from(selectedIds))
+    console.log("selectedInvoicesData:", selectedInvoicesData)
+    console.log("selectedSummary:", selectedSummary)
+  }, [selectedIds, selectedInvoicesData, selectedSummary])
 
   const hasSelection = selectedIds.size > 0
+  useEffect(() => {
+    if (!hasSelection) return
+  
+    // вызываем загрузку как раньше по кнопке Apply
+    onWorkWithSelected?.(Array.from(selectedIds))
+  }, [selectedIds])
 
   const formatTotal = (val: number | null) =>
     val != null
@@ -251,13 +288,10 @@ export function ControlPanel({
                 )}
               </div>
               <InvoiceSearchDropdown
-                invoiceList={invoiceList}
-                selectedInvoice={selectedInvoice}
-                onInvoiceChange={onInvoiceChange}
-                currentInvoice={currentInvoice}
-                mode={mode}
-                contextMeta={contextMeta}
-              />
+  invoiceList={invoiceList}
+  selectedInvoices={Array.from(selectedIds)}
+  onInvoiceToggle={toggleId}
+/>
             </section>
 
             <div className="my-3 border-b border-border" />
@@ -331,19 +365,25 @@ export function ControlPanel({
                     {isUploading ? "Processing..." : "Process"}
                   </Button>
                 )}
-                <Button
-                  size="sm"
-                  onClick={onEnrich}
-                  disabled={isEnriching || !hasData}
-                  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
-                >
-                  {isEnriching ? (
-                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3 w-3 shrink-0" />
-                  )}
-                  {isEnriching ? "Enriching..." : "Enrich"}
-                </Button>
+<Button
+  size="sm"
+  onClick={() => {
+    if (selectedIds.size > 0) {
+      onEnrichSelected?.(Array.from(selectedIds))
+    } else if (selectedInvoice) {
+      onEnrich?.()
+    }
+  }}
+  disabled={isEnriching || (!hasData && selectedIds.size === 0)}
+  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
+>
+  {isEnriching ? (
+    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+  ) : (
+    <Sparkles className="h-3 w-3 shrink-0" />
+  )}
+  {isEnriching ? "Enriching..." : "Enrich"}
+</Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -375,14 +415,15 @@ export function ControlPanel({
                   Export
                 </Button>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
-                >
-                  <SlidersHorizontal className="h-3 w-3 shrink-0" />
-                  Simulate
-                </Button>
+  variant="outline"
+  size="sm"
+  disabled={!selectedInvoice}
+  onClick={() => onDeleteInvoice?.(selectedInvoice!)}
+  className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive hover:bg-destructive/10"
+>
+  <Trash2 className="h-3 w-3 shrink-0" />
+  Delete
+</Button>
               </div>
             </section>
 
@@ -478,6 +519,7 @@ export function ControlPanel({
                     />
                   </div>
                 </section>
+                
               </>
             )}
 
@@ -530,15 +572,13 @@ export function ControlPanel({
             ) : (
               invoiceList.map((inv) => {
                 const isChecked = selectedIds.has(inv.invoice_id)
+              
                 return (
-                  <button
+                  <div
                     key={inv.invoice_id}
-                    type="button"
                     onClick={() => toggleId(inv.invoice_id)}
-                    className={`flex w-full items-start gap-2.5 border-b border-border/40 px-4 py-2 text-left transition-colors ${
-                      isChecked
-                        ? "bg-accent/30"
-                        : "hover:bg-muted/30"
+                    className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-4 py-2 text-left transition-colors ${
+                      isChecked ? "bg-accent/30" : "hover:bg-muted/30"
                     }`}
                   >
                     {/* Checkbox */}
@@ -549,106 +589,187 @@ export function ControlPanel({
                         className="h-3.5 w-3.5 rounded-[3px] border-muted-foreground/30"
                       />
                     </div>
+              
                     {/* Info */}
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <div className="flex items-center gap-2">
                         <span className="min-w-0 truncate font-mono text-[11px] font-medium leading-tight text-foreground">
                           {inv.invoice_id}
                         </span>
-                        {/* Status — text only */}
+              
                         <span className="shrink-0 text-[9px] font-medium uppercase tracking-wider text-zinc-400">
                           raw
                         </span>
                       </div>
+              
                       <span className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground/70">
                         {inv.supplier ?? "No supplier"}
                       </span>
                     </div>
+              
                     {/* Amount */}
                     <span className="shrink-0 pt-0.5 font-mono text-[10px] tabular-nums leading-tight text-muted-foreground/60">
                       {formatTotal(inv.total_amount_document)}
                     </span>
-                  </button>
+                  </div>
                 )
               })
             )}
           </div>
 
           {/* Sticky summary + actions footer */}
-          <div className="shrink-0 border-t border-border bg-card px-4 py-3">
-            {/* Dynamic summary */}
-            <div className="mb-3">
-              {hasSelection ? (
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Selected
-                    </span>
-                    <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                      {selectionSummary.count}{" "}
-                      <span className="font-normal text-muted-foreground">
-                        invoice{selectionSummary.count !== 1 ? "s" : ""}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-[10px] text-muted-foreground/60">
-                      Total amount
-                    </span>
-                    <span className="font-mono text-[11px] tabular-nums text-foreground">
-                      {formatTotal(selectionSummary.totalAmount)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-[10px] italic text-muted-foreground/40">
-                  No invoices selected
-                </p>
-              )}
-            </div>
+       {/* Sticky summary + actions footer */}
+<div className="shrink-0 border-t border-border bg-card px-4 py-3">
 
-            {/* Action buttons */}
-            <div className="flex flex-col gap-1.5">
-              <Button
-                size="sm"
-                disabled={!hasSelection}
-                onClick={() =>
-                  onWorkWithSelected?.(Array.from(selectedIds))
-                }
-                className="h-8 w-full gap-1.5 text-[11px]"
-              >
-                <SquareStack className="h-3 w-3 shrink-0" />
-                Work With Selected
-              </Button>
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!hasSelection}
-                  onClick={() =>
-                    onRecalculate?.(Array.from(selectedIds))
-                  }
-                  className="h-7 gap-1.5 text-[10px]"
-                >
-                  <Calculator className="h-3 w-3 shrink-0" />
-                  Recalculate
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!hasSelection}
-                  onClick={() =>
-                    onUpdateMarket?.(Array.from(selectedIds))
-                  }
-                  className="h-7 gap-1.5 text-[10px]"
-                >
-                  <TrendingUp className="h-3 w-3 shrink-0" />
-                  Update Market
-                </Button>
-              </div>
+{/* Dynamic summary */}
+<div className="mb-3">
+  {hasSelection ? (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Selected
+        </span>
+        <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+          {selectedSummary.count}{" "}
+          <span className="font-normal text-muted-foreground">
+            invoice{selectedSummary.count !== 1 ? "s" : ""}
+          </span>
+        </span>
+      </div>
+
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] text-muted-foreground/60">
+          Total rows
+        </span>
+        <span className="font-mono text-[11px] tabular-nums text-foreground">
+          {selectedSummary.totalRows}
+        </span>
+      </div>
+
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] text-muted-foreground/60">
+          Total amount
+        </span>
+        <span className="font-mono text-[11px] tabular-nums text-foreground">
+          {formatTotal(selectedSummary.totalAmount)}
+        </span>
+      </div>
+    </div>
+  ) : (
+    <p className="text-center text-[10px] italic text-muted-foreground/40">
+      No invoices selected
+    </p>
+  )}
+</div>
+
+{/* Action buttons */}
+
+
+  {/* MAIN */}
+  <Button
+    size="sm"
+    disabled={!hasSelection}
+    onClick={() =>
+      onWorkWithSelected?.(Array.from(selectedIds))
+    }
+    className="h-8 w-full gap-1.5 text-[11px]"
+  >
+    <SquareStack className="h-3 w-3 shrink-0" />
+    Work With Selected
+  </Button>
+
+  {/* PRIMARY */}
+  <div className="grid grid-cols-2 gap-1.5">
+
+    <Button
+      size="sm"
+      disabled={!hasSelection}
+      onClick={() =>
+        onEnrichSelected?.(Array.from(selectedIds))
+      }
+      className="h-7 gap-1.5 text-[10px]"
+    >
+      ⚡ Enrich
+    </Button>
+
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={!hasSelection}
+      onClick={() =>
+        onResetEnrich?.(Array.from(selectedIds))
+      }
+      className="h-7 gap-1.5 text-[10px]"
+    >
+      Reset
+    </Button>
+
+  </div>
+
+  {/* SECONDARY */}
+  <div className="grid grid-cols-2 gap-1.5">
+
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={!hasSelection}
+      onClick={() =>
+        onSimulate?.(Array.from(selectedIds))
+      }
+      className="h-7 gap-1.5 text-[10px]"
+    >
+      Simulate
+    </Button>
+
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={!hasSelection}
+      onClick={() =>
+        onExportSelected?.(Array.from(selectedIds)) // ✅ исправлено
+      }
+      className="h-7 gap-1.5 text-[10px]"
+    >
+      Export
+    </Button>
+
+  </div>
+
+  {/* EXISTING */}
+  <div className="grid grid-cols-2 gap-1.5">
+
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={!hasSelection}
+      onClick={() =>
+        onRecalculate?.(Array.from(selectedIds))
+      }
+      className="h-7 gap-1.5 text-[10px]"
+    >
+      <Calculator className="h-3 w-3 shrink-0" />
+      Recalculate
+    </Button>
+
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={!hasSelection}
+      onClick={() =>
+        onUpdateMarket?.(Array.from(selectedIds))
+      }
+      className="h-7 gap-1.5 text-[10px]"
+    >
+      <TrendingUp className="h-3 w-3 shrink-0" />
+      Update Market
+    </Button>
+
+  </div>
+
+</div>
             </div>
-          </div>
-        </div>
+          
+        
       )}
     </aside>
   )
@@ -916,56 +1037,41 @@ function RadioOption({ value, label }: { value: string; label: string }) {
 
 function InvoiceSearchDropdown({
   invoiceList,
-  selectedInvoice,
-  onInvoiceChange,
-  currentInvoice,
-  mode = "invoice",
-  contextMeta,
+  selectedInvoices,
+  onInvoiceToggle,
 }: {
   invoiceList: InvoiceListItem[]
-  selectedInvoice: string | null
-  onInvoiceChange: (id: string) => void
-  currentInvoice: InvoiceListItem | undefined
-  mode?: "invoice" | "analytics"
-  contextMeta?: { totalRows: number; avgMargin: number; dateRange: string }
+  selectedInvoices: string[]
+  onInvoiceToggle: (id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [query, setQuery] = useState("")
   const [highlightIdx, setHighlightIdx] = useState(0)
+
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const [contentHeight, setContentHeight] = useState(0)
+
+  const selectedSet = useMemo(
+    () => new Set(selectedInvoices),
+    [selectedInvoices]
+  )
 
   const filtered = useMemo(() => {
     if (!query.trim()) return invoiceList
     const q = query.toLowerCase()
+
     return invoiceList.filter((inv) => {
-      const id = inv.invoice_id.toLowerCase()
-      const supplier = (inv.supplier ?? "").toLowerCase()
-      const total = inv.total_amount_document != null ? String(inv.total_amount_document) : ""
-      const date = inv.created_at.toLowerCase()
-      return id.includes(q) || supplier.includes(q) || total.includes(q) || date.includes(q)
+      return (
+        inv.invoice_id.toLowerCase().includes(q) ||
+        (inv.supplier ?? "").toLowerCase().includes(q) ||
+        String(inv.total_amount_document ?? "").includes(q)
+      )
     })
   }, [invoiceList, query])
 
   useEffect(() => {
-    if (expanded && contentRef.current) {
-      const measure = () => {
-        if (contentRef.current) setContentHeight(contentRef.current.scrollHeight)
-      }
-      measure()
-      const raf = requestAnimationFrame(measure)
-      return () => cancelAnimationFrame(raf)
-    }
-  }, [expanded, filtered.length])
-
-  useEffect(() => { setHighlightIdx(0) }, [filtered.length, query])
-
-  useEffect(() => {
     if (expanded) {
-      const t = setTimeout(() => inputRef.current?.focus(), 80)
-      return () => clearTimeout(t)
+      setTimeout(() => inputRef.current?.focus(), 50)
     } else {
       setQuery("")
       setHighlightIdx(0)
@@ -974,177 +1080,127 @@ function InvoiceSearchDropdown({
 
   useEffect(() => {
     if (!listRef.current) return
-    const item = listRef.current.querySelector(`[data-idx="${highlightIdx}"]`)
-    if (item) item.scrollIntoView({ block: "nearest" })
+    const el = listRef.current.querySelector(`[data-idx="${highlightIdx}"]`)
+    if (el) el.scrollIntoView({ block: "nearest" })
   }, [highlightIdx])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault()
-        setHighlightIdx((i) => Math.min(i + 1, filtered.length - 1))
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault()
-        setHighlightIdx((i) => Math.max(i - 1, 0))
-      } else if (e.key === "Enter") {
-        e.preventDefault()
-        const item = filtered[highlightIdx]
-        if (item) {
-          onInvoiceChange(item.invoice_id)
-          setExpanded(false)
-        }
-      } else if (e.key === "Escape") {
-        setExpanded(false)
-      }
-    },
-    [filtered, highlightIdx, onInvoiceChange]
-  )
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setHighlightIdx((i) => Math.min(i + 1, filtered.length - 1))
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setHighlightIdx((i) => Math.max(i - 1, 0))
+    }
+    if (e.key === "Enter") {
+      e.preventDefault()
+      const item = filtered[highlightIdx]
+      if (item) onInvoiceToggle(item.invoice_id)
+    }
+    if (e.key === "Escape") {
+      setExpanded(false)
+    }
+  }
 
   const formatTotal = (val: number | null) =>
     val != null
-      ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      ? Number(val).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
       : "\u2014"
-
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-
-  if (invoiceList.length === 0) {
-    return <p className="py-2 text-[11px] italic text-muted-foreground/40">No saved invoices found</p>
-  }
-
-  const maxExpandedHeight = 280
-  const animatedHeight = Math.min(contentHeight, maxExpandedHeight)
 
   return (
     <div className="flex flex-col">
+      {/* Trigger */}
       <button
         type="button"
         onClick={() => setExpanded((p) => !p)}
-        className={`flex w-full items-start justify-between rounded-md border px-3 py-2 text-left transition-colors ${
-          expanded
-            ? "rounded-b-none border-border bg-muted/20"
-            : "border-input bg-transparent hover:border-muted-foreground/40 hover:bg-muted/10"
-        }`}
-        aria-expanded={expanded}
+        className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left hover:bg-muted/10"
       >
-        {currentInvoice ? (
-          <div className="flex min-w-0 flex-col gap-0.5 pr-2">
-            <span className="truncate font-mono text-[11px] font-semibold leading-tight text-foreground">
-              {currentInvoice.invoice_id}
-              {mode === "analytics" && currentInvoice.supplier ? ` / ${currentInvoice.supplier}` : ""}
-            </span>
-            <span className="truncate text-[11px] leading-tight text-muted-foreground">
-              {currentInvoice.supplier ?? "No supplier"}
-            </span>
-            {mode === "analytics" && contextMeta ? (
-              <>
-                <span className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
-                  {formatTotal(currentInvoice.total_amount_document)}
-                  {" \u00b7 "}
-                  {contextMeta.totalRows} rows
-                  {" \u00b7 "}
-                  {contextMeta.avgMargin.toFixed(1)}% margin
-                </span>
-                <span className="text-[10px] leading-tight text-muted-foreground/50">
-                  {contextMeta.dateRange}
-                </span>
-              </>
-            ) : (
-              <span className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
-                {formatTotal(currentInvoice.total_amount_document)}
-                {" \u00b7 "}
-                {formatDate(currentInvoice.created_at)}
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-[11px] text-muted-foreground/50">
-            {mode === "analytics" ? "Select context..." : "Select invoice..."}
-          </span>
-        )}
+        <span className="text-[11px] text-muted-foreground">
+          {selectedInvoices.length > 0
+            ? `${selectedInvoices.length} selected`
+            : "Select invoices..."}
+        </span>
+
         <ChevronDown
-          className={`mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 text-muted-foreground/40 transition ${
             expanded ? "rotate-180" : ""
           }`}
         />
       </button>
 
-      <div
-        className="overflow-hidden transition-[height] duration-200 ease-in-out"
-        style={{ height: expanded ? `${animatedHeight}px` : "0px" }}
-      >
-        <div ref={contentRef} className="rounded-b-md border border-t-0 border-border bg-card">
-          <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
-            <Search className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+      {/* Dropdown */}
+      {expanded && (
+        <div className="mt-1 rounded-md border bg-card">
+          {/* Search */}
+          <div className="flex items-center gap-2 border-b px-3 py-1.5">
+            <Search className="h-3 w-3 text-muted-foreground/50" />
             <input
               ref={inputRef}
-              type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search..."
-              className="h-5 w-full bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground/40"
+              className="w-full bg-transparent text-[11px] outline-none placeholder:text-muted-foreground/40"
             />
-            {query && (
-              <button
-                type="button"
-                onClick={() => { setQuery(""); inputRef.current?.focus() }}
-                className="shrink-0 rounded-sm p-0.5 text-muted-foreground/40 hover:text-foreground"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
           </div>
+
+          {/* List */}
           <div
             ref={listRef}
-            role="listbox"
-            className="overflow-y-auto overscroll-contain py-0.5"
-            style={{ maxHeight: `${maxExpandedHeight - 34}px` }}
+            className="max-h-[220px] overflow-y-auto"
           >
             {filtered.length === 0 ? (
-              <p className="px-3 py-3 text-center text-[11px] italic text-muted-foreground/40">No invoices match</p>
+              <p className="p-3 text-center text-[11px] text-muted-foreground/40">
+                No results
+              </p>
             ) : (
               filtered.map((inv, idx) => {
-                const isSelected = inv.invoice_id === selectedInvoice
+                const isSelected = selectedSet.has(inv.invoice_id)
                 const isHighlighted = idx === highlightIdx
+
                 return (
-                  <button
+                  <div
                     key={inv.invoice_id}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
                     data-idx={idx}
-                    className={`flex w-full items-start gap-2 px-3 py-1.5 text-left transition-colors ${
-                      isHighlighted ? "bg-accent text-accent-foreground" : "hover:bg-muted/50"
-                    }`}
-                    onClick={() => { onInvoiceChange(inv.invoice_id); setExpanded(false) }}
+                    onClick={() => onInvoiceToggle(inv.invoice_id)}
                     onMouseEnter={() => setHighlightIdx(idx)}
+                    className={`flex cursor-pointer items-start gap-2 px-3 py-1.5 ${
+                      isHighlighted
+                        ? "bg-accent"
+                        : "hover:bg-muted/50"
+                    }`}
                   >
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate font-mono text-[11px] font-semibold leading-tight text-foreground">
+                    <Checkbox
+                      checked={isSelected}
+                      className="mt-0.5 h-3.5 w-3.5"
+                    />
+
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate font-mono text-[11px]">
                         {inv.invoice_id}
                       </span>
-                      <span className="truncate text-[11px] leading-tight text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground">
                         {inv.supplier ?? "No supplier"}
                       </span>
-                      <span className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
-                        {formatTotal(inv.total_amount_document)}
-                        {" \u00b7 "}
-                        {formatDate(inv.created_at)}
-                      </span>
                     </div>
-                    {isSelected && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />}
-                  </button>
+
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {formatTotal(inv.total_amount_document)}
+                    </span>
+                  </div>
                 )
               })
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
-
 function StatItem({
   label,
   value,
@@ -1164,7 +1220,9 @@ function StatItem({
   return (
     <div className="flex items-baseline justify-between py-0.5">
       <span className="text-[10px] text-muted-foreground/60">{label}</span>
-      <span className={`font-mono text-[11px] font-semibold tabular-nums ${valueColors[variant]}`}>
+      <span
+        className={`font-mono text-[11px] font-semibold tabular-nums ${valueColors[variant]}`}
+      >
         {value}
       </span>
     </div>

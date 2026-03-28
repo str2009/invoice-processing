@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -80,6 +80,7 @@ function rulesEqual(a: PricingRule[], b: PricingRule[]): boolean {
 // ─── Component ───────────────────────────────────────────────────────────────
 interface SimulationPanelProps {
   data: InvoiceRow[]
+  invoiceIds: string[]
   onApplyScenario: (rows: InvoiceRow[]) => void
   onResetScenario: () => void
   isScenarioActive: boolean
@@ -87,15 +88,41 @@ interface SimulationPanelProps {
 
 export function SimulationPanel({
   data,
+  invoiceIds,
   onApplyScenario,
   onResetScenario,
   isScenarioActive,
 }: SimulationPanelProps) {
-  const [activeTab, setActiveTab] = useState("pricing")
+  
+  const [activeTab, setActiveTab] = useState("shipping")
+  const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
+const [normalPrice, setNormalPrice] = useState("115")
+const weightStats = useMemo(() => {
+  let totalWeight = 0
+  let missingWeight = false
+
+  data.forEach((row) => {
+    const weight = Number(row.weight ?? 0)
+    const qty = Number(row.qty ?? 0)
+
+    if (!weight) {
+      missingWeight = true
+      return
+    }
+
+    totalWeight += weight * qty
+  })
+
+  return {
+    totalWeight,
+    missingWeight,
+  }
+}, [data])
+
 
   // Default vs Scenario pricing rules
-  const [defaultRules, setDefaultRules] = useState<PricingRule[]>(DEFAULT_RULES)
-  const [scenarioRules, setScenarioRules] = useState<PricingRule[]>(DEFAULT_RULES)
+  const [defaultRules, setDefaultRules] = useState<PricingRule[]>([])
+  const [scenarioRules, setScenarioRules] = useState<PricingRule[]>([])
 
   // Confirmation dialog for save
   const [showSaveDialog, setShowSaveDialog] = useState(false)
@@ -107,76 +134,440 @@ export function SimulationPanel({
   const [totalDeliveryCost, setTotalDeliveryCost] = useState("450.00")
   const [distributionMethod, setDistributionMethod] = useState("weight")
 
-  // Whether scenario differs from default
-  const isModified = useMemo(
-    () => !rulesEqual(scenarioRules, defaultRules),
-    [scenarioRules, defaultRules]
-  )
+ // -------------------- Shipping form types --------------------
 
-  // Live preview: recalculated data
-  const previewData = useMemo(
-    () => applyPricingRules(data, scenarioRules),
-    [data, scenarioRules]
-  )
+type ShippingForm = {
+  company: string
+  type: string
+  invoiceNumber: string
+  reference: string
+  transportDate: string
+  receivedDate: string
+  totalCost: string
+  packages: string
+  weight: string
+  volume: string
+  density: string
+  goodsTotalValue: string
+  goodsValuePerKg: string
+  comment: string
+  manager: string
+  warehouse: string
+}
 
-  // Summary metrics
-  const summary = useMemo(() => {
-    const origTotal = data.reduce((s, r) => s + r.now * r.qty, 0)
-    const origCostTotal = data.reduce((s, r) => s + r.cost * r.qty, 0)
-    const newTotal = previewData.reduce((s, r) => s + r.now * r.qty, 0)
-    const origMargin = origCostTotal > 0 ? ((origTotal - origCostTotal) / origTotal) * 100 : 0
-    const newMargin = origCostTotal > 0 ? ((newTotal - origCostTotal) / newTotal) * 100 : 0
-    const diff = newTotal - origTotal
-    return { origTotal, newTotal, origMargin, newMargin, diff }
-  }, [data, previewData])
+const EMPTY_SHIPPING: ShippingForm = {
+  company: "",
+  type: "",
+  invoiceNumber: "",
+  reference: "",
+  transportDate: "",
+  receivedDate: "",
+  totalCost: "",
+  packages: "",
+  weight: "",
+  volume: "",
+  density: "",
+  goodsTotalValue: "",
+  goodsValuePerKg: "",
+  comment: "",
+  manager: "",
+  warehouse: "",
+}
 
-  // Rule CRUD
-  const addRule = useCallback(() => {
-    setScenarioRules((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        fromPrice: "",
-        toPrice: "",
-        markupPct: "",
-        pricingGroup: "Standard",
+// -------------------- Shipping UI state --------------------
+
+const [shippingForm, setShippingForm] = useState<ShippingForm>(EMPTY_SHIPPING)
+const [savedShipping, setSavedShipping] = useState<ShippingForm | null>(null)
+// -------------------- Invoice vs Goods check --------------------
+
+const invoiceTotal = data.reduce(
+  (sum, row) => sum + Number(row.cost || 0) * Number(row.qty || 0),
+  0
+)
+
+const goodsTotal = Number(shippingForm.goodsTotalValue || 0)
+
+const isMismatch =
+  Math.abs(invoiceTotal - goodsTotal) > 0.01
+
+const normalCargoPrice = Number(normalPrice) || 0
+
+const model = useMemo(() => {
+  let normalWeight = 0
+  let bulkyWeight = 0
+  let missingWeight = false
+
+  const totalCost = Number(shippingForm.totalCost) || 0
+
+  data.forEach((row) => {
+    const weight = Number(row.weight ?? 0)
+    const qty = Number(row.qty ?? 0)
+
+    if (!weight) {
+      missingWeight = true
+      return
+    }
+
+    if (row.isBulky) {
+      bulkyWeight += weight * qty
+    } else {
+      normalWeight += weight * qty
+    }
+  })
+
+  const normalShipping = normalWeight * normalCargoPrice
+  const bulkyShipping = totalCost - normalShipping
+
+  const bulkyPrice =
+    bulkyWeight > 0
+      ? bulkyShipping / bulkyWeight
+      : 0
+
+  return {
+    normalWeight,
+    bulkyWeight,
+    normalShipping,
+    bulkyShipping,
+    bulkyPrice,
+    missingWeight,
+  }
+}, [data, shippingForm.totalCost, normalCargoPrice])
+
+const hasBulky = model.bulkyWeight > 0
+
+const [isSavingShipping, setIsSavingShipping] = useState(false)
+const [isLoadingShipping, setIsLoadingShipping] = useState(false)
+
+// -------------------- Validation --------------------
+
+const requiredFields: (keyof ShippingForm)[] = [
+  "company",
+  "type",
+  "invoiceNumber",
+  "transportDate",
+  "receivedDate",
+  "totalCost",
+  "packages",
+  "weight",
+  "volume",
+  "density",
+  "goodsTotalValue",
+]
+
+const validationErrors = useMemo(() => {
+  return requiredFields
+  .filter((key) => {
+    const value = shippingForm[key]
+  
+    if (value === null || value === undefined) return true
+  
+    if (typeof value === "string") return value.trim() === ""
+  
+    return false
+  })
+    .map((key) => `${key} is required`)
+}, [shippingForm])
+
+const isFormValid = validationErrors.length === 0
+
+const isShippingModified = useMemo(() => {
+  if (!savedShipping) {
+    return Object.values(shippingForm).some(
+      (v) => String(v ?? "").trim() !== ""
+    )
+  }
+
+  return JSON.stringify(shippingForm) !== JSON.stringify(savedShipping)
+}, [shippingForm, savedShipping])
+// -------------------- Load shipping --------------------
+useEffect(() => {
+  let cancelled = false
+
+  async function loadPricingRules() {
+    try {
+      const res = await fetch("/api/pricing-rules")
+
+      if (!res.ok) {
+        throw new Error("Failed to load pricing rules")
+      }
+
+      const data = await res.json()
+
+      const formatted: PricingRule[] = data.map((r: any) => ({
+        id: r.id,
+        fromPrice: String(r.from_price),
+        toPrice: String(r.to_price),
+        markupPct: String(r.markup_pct),
+        pricingGroup: r.pricing_group,
+      }))
+
+      if (!cancelled) {
+        setDefaultRules(formatted)
+        setScenarioRules(formatted)
+      }
+    } catch (err) {
+      console.error("Pricing rules load error:", err)
+    }
+  }
+
+  loadPricingRules()
+
+  return () => {
+    cancelled = true
+  }
+}, [])
+
+useEffect(() => {
+  if (!invoiceIds.length) return
+
+  let cancelled = false
+
+  const load = async () => {
+    setIsLoadingShipping(true)
+
+    try {
+      const res = await fetch(`/api/invoice/${invoiceIds[0]}/shipping`)
+
+      if (!res.ok) return
+
+      const json = await res.json()
+
+      const s = json?.shipping ?? null
+
+      if (cancelled) return
+
+      if (s) {
+        setShippingForm(s)
+        setSavedShipping(s)
+      } else {
+        setShippingForm(EMPTY_SHIPPING)
+        setSavedShipping(null)
+      }
+    } catch {
+      // ignore
+    } finally {
+      if (!cancelled) setIsLoadingShipping(false)
+    }
+  }
+
+  load()
+
+  return () => {
+    cancelled = true
+  }
+}, [invoiceIds])
+
+// -------------------- Reset --------------------
+const isModified = useMemo(
+  () => !rulesEqual(scenarioRules, defaultRules),
+  [scenarioRules, defaultRules]
+)
+
+const handleResetShipping = useCallback(() => {
+  setShippingForm(savedShipping ?? EMPTY_SHIPPING)
+}, [savedShipping])
+
+// -------------------- Save --------------------
+
+const handleSaveShipping = useCallback(async () => {
+  if (!invoiceIds?.length) return
+  if (!isFormValid) return
+
+  // если один выбран — оставляем защиту
+  
+
+  const prevSaved = savedShipping
+  setSavedShipping(shippingForm)
+
+  setIsSavingShipping(true)
+
+  try {
+    const res = await fetch("/api/shipment/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    ])
-  }, [])
+      body: JSON.stringify({
+        invoiceIds,
+        shippingData: {
+          transport_company: shippingForm.transport_company,
+          transport_type: shippingForm.transport_type,
+          transport_invoice_number: shippingForm.transport_invoice_number,
+          transport_date: shippingForm.transport_date,
+          received_date: shippingForm.received_date,
 
-  const removeRule = useCallback((id: string) => {
-    setScenarioRules((prev) => prev.filter((r) => r.id !== id))
-  }, [])
+          total_shipping_cost: Number(shippingForm.total_shipping_cost || 0),
+          total_weight: Number(shippingForm.total_weight || 0),
+          total_volume: Number(shippingForm.total_volume || 0),
+          density: Number(shippingForm.density || 0),
 
-  const updateRule = useCallback(
-    (id: string, field: keyof PricingRule, value: string) => {
-      setScenarioRules((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-      )
+          goods_total_value: Number(shippingForm.goods_total_value || 0),
+          goods_value_per_kg:
+            shippingForm.goodsValuePerKg === ""
+              ? null
+              : Number(shippingForm.goodsValuePerKg),
+
+          normal_weight: Number(shippingForm.normal_weight || 0),
+          bulky_weight: Number(shippingForm.bulky_weight || 0),
+
+          normal_shipping: Number(shippingForm.normal_shipping || 0),
+          bulky_shipping: Number(shippingForm.bulky_shipping || 0),
+
+          catalog_weight: Number(shippingForm.catalog_weight || 0),
+          bulky_price: Number(shippingForm.bulky_price || 0),
+        },
+      }),
+    })
+
+    const json = await res.json().catch(() => ({}))
+
+    if (!res.ok || !json?.success) {
+      console.error("SHIPMENT ERROR:", json)
+      throw new Error(json?.error || JSON.stringify(json) || "Failed to save shipment")
+    }
+
+    console.log("Shipment saved for invoices:", invoiceIds)
+    // ✅ ВАЖНО — сброс состояния
+
+
+    // можно сбросить флаг изменений
+    
+
+  } catch (err) {
+    console.error("Save shipping error:", err)
+
+    // откат если ошибка
+    setSavedShipping(prevSaved)
+  } finally {
+    setIsSavingShipping(false)
+  }
+}, [
+  invoiceIds,
+  isFormValid,
+  savedShipping,
+  shippingForm,
+  isShippingModified,
+])
+// ─── Pricing rules actions & calculations ──────────────────────────────────
+
+// добавить новое правило
+const addRule = useCallback(() => {
+  setScenarioRules((prev) => [
+    ...prev,
+    {
+      id: String(Date.now()),
+      fromPrice: "",
+      toPrice: "",
+      markupPct: "",
+      pricingGroup: "Standard",
     },
-    []
-  )
+  ])
+}, [])
 
-  // Actions
-  const handleApply = useCallback(() => {
-    onApplyScenario(previewData)
-  }, [onApplyScenario, previewData])
+// удалить правило
+const removeRule = useCallback((id: string) => {
+  setScenarioRules((prev) => prev.filter((r) => r.id !== id))
+}, [])
 
-  const handleReset = useCallback(() => {
-    setScenarioRules([...defaultRules])
-    onResetScenario()
-  }, [defaultRules, onResetScenario])
+// обновить поле правила
+const updateRule = useCallback(
+  (id: string, field: keyof PricingRule, value: string) => {
+    setScenarioRules((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    )
+  },
+  []
+)
 
-  const handleSaveGlobal = useCallback(() => {
-    // Save scenario as new defaults
+// расчет общего веса по каталогу (weight * qty)
+const catalogWeight = useMemo(() => {
+  if (!data || !data.length) return 0
+
+  return data.reduce((sum, row) => {
+    const weight = Number(row.weight ?? 0)
+    const qty = Number(row.qty ?? row.quantity ?? 0)
+
+    return sum + weight * qty
+  }, 0)
+}, [data])
+
+// проверка отсутствующего веса
+const missingCatalogWeight = useMemo(() => {
+  return data.some((row) => !Number(row.weight))
+}, [data])
+
+const goodsValuePerKg = useMemo(() => {
+  const total = Number(shippingForm.goodsTotalValue || 0)
+  const weight = Number(shippingForm.weight || 0)
+
+  if (!weight) return ""
+
+  return (total / weight).toFixed(2)
+}, [shippingForm.goodsTotalValue, shippingForm.weight])
+
+// перерасчёт строк по правилам
+const previewData = useMemo(
+  () => applyPricingRules(data, scenarioRules),
+  [data, scenarioRules]
+)
+
+// агрегированная сводка
+const summary = useMemo(() => {
+  const origTotal = data.reduce((s, r) => s + r.now * r.qty, 0)
+  const origCostTotal = data.reduce((s, r) => s + r.cost * r.qty, 0)
+  const newTotal = previewData.reduce((s, r) => s + r.now * r.qty, 0)
+
+  const origMargin =
+    origCostTotal > 0 ? ((origTotal - origCostTotal) / origTotal) * 100 : 0
+
+  const newMargin =
+    origCostTotal > 0 ? ((newTotal - origCostTotal) / newTotal) * 100 : 0
+
+  const diff = newTotal - origTotal
+
+  return { origTotal, newTotal, origMargin, newMargin, diff }
+}, [data, previewData])
+
+// применить сценарий
+const handleApply = useCallback(() => {
+  onApplyScenario(previewData)
+}, [onApplyScenario, previewData])
+
+// сбросить pricing rules
+const handleResetPricing = useCallback(() => {
+  setScenarioRules([...defaultRules])
+  onResetScenario()
+}, [defaultRules, onResetScenario])
+
+// сохранить правила как глобальные
+const handleSaveGlobal = useCallback(async () => {
+  try {
+    const res = await fetch("/api/pricing-rules", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        rules: scenarioRules,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error("Failed to save pricing rules")
+    }
+
     setDefaultRules([...scenarioRules])
     setShowSaveDialog(false)
-    // Show success toast
     setShowSaveSuccess(true)
+
     setTimeout(() => setShowSaveSuccess(false), 3000)
-    // Apply as current view
+
     onApplyScenario(previewData)
-  }, [scenarioRules, previewData, onApplyScenario])
+
+  } catch (err) {
+    console.error("Save pricing rules error:", err)
+  }
+}, [scenarioRules, previewData, onApplyScenario])
 
   // Row highlight: check if rule changed for a given cost value
   const isRowModified = useCallback(
@@ -287,10 +678,10 @@ export function SimulationPanel({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Standard" className="text-xs">Standard</SelectItem>
-                        <SelectItem value="Premium" className="text-xs">Premium</SelectItem>
-                        <SelectItem value="Economy" className="text-xs">Economy</SelectItem>
-                        <SelectItem value="Bulk" className="text-xs">Bulk</SelectItem>
+                      <SelectItem value="Запчасти">Запчасти</SelectItem>
+<SelectItem value="Масло">Масло</SelectItem>
+<SelectItem value="Economy">Economy</SelectItem>
+<SelectItem value="Bulk">Bulk</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -330,7 +721,7 @@ export function SimulationPanel({
                   variant="outline"
                   size="sm"
                   className="h-7 gap-1.5 text-xs"
-                  onClick={handleReset}
+                  onClick={handleResetPricing}
                   disabled={!isModified && !isScenarioActive}
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -373,60 +764,335 @@ export function SimulationPanel({
             )}
           </div>
         </TabsContent>
+{/* ─── Shipping Model Tab ─── */}
+<TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
 
-        {/* ─── Shipping Model Tab ─── */}
-        <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-4">
-          <div className="grid max-w-xl grid-cols-2 gap-x-6 gap-y-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Cost per kg (Normal)
-              </label>
-              <Input
-                value={costPerKgNormal}
-                onChange={(e) => setCostPerKgNormal(e.target.value)}
-                className="h-8 font-mono text-xs"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Cost per kg (Bulky)
-              </label>
-              <Input
-                value={costPerKgBulky}
-                onChange={(e) => setCostPerKgBulky(e.target.value)}
-                className="h-8 font-mono text-xs"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Total Delivery Cost
-              </label>
-              <Input
-                value={totalDeliveryCost}
-                onChange={(e) => setTotalDeliveryCost(e.target.value)}
-                className="h-8 font-mono text-xs"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Distribution Method
-              </label>
-              <Select value={distributionMethod} onValueChange={setDistributionMethod}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weight" className="text-xs">By Weight</SelectItem>
-                  <SelectItem value="quantity" className="text-xs">By Quantity</SelectItem>
-                  <SelectItem value="value" className="text-xs">By Value</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+  <div className="grid grid-cols-4 gap-8">
+
+    {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
+    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+
+      <div className="grid grid-cols-2 gap-6">
+
+        <Field label="Company">
+          <Select
+            value={shippingForm.company}
+            onValueChange={(v) =>
+              setShippingForm((p) => ({ ...p, company: v }))
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select company" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="aviamir">Aviamir</SelectItem>
+              <SelectItem value="greenline">Green Line</SelectItem>
+              <SelectItem value="transriver">Trans River</SelectItem>
+              <SelectItem value="northcargo">North Cargo</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Type">
+          <Select
+            value={shippingForm.type}
+            onValueChange={(v) =>
+              setShippingForm((p) => ({ ...p, type: v }))
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="air">Air</SelectItem>
+              <SelectItem value="sea">Sea</SelectItem>
+              <SelectItem value="river">River</SelectItem>
+              <SelectItem value="winter">Winter Road</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Invoice №">
+          <Input
+            value={shippingForm.invoiceNumber}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                invoiceNumber: e.target.value,
+              }))
+            }
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+        <Field label="Reference">
+          <Input
+            value={shippingForm.reference}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                reference: e.target.value,
+              }))
+            }
+            className="h-8 text-xs"
+          />
+        </Field>
+
+        <Field label="Transport Date">
+          <Input
+            type="date"
+            value={shippingForm.transportDate}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                transportDate: e.target.value,
+              }))
+            }
+            className="h-8 text-xs"
+          />
+        </Field>
+
+        <Field label="Received Date">
+          <Input
+            type="date"
+            value={shippingForm.receivedDate}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                receivedDate: e.target.value,
+              }))
+            }
+            className="h-8 text-xs"
+          />
+        </Field>
+
+      </div>
+
+      <Field label="Comment">
+        <textarea
+          value={shippingForm.comment}
+          onChange={(e) =>
+            setShippingForm((p) => ({
+              ...p,
+              comment: e.target.value,
+            }))
+          }
+          className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-xs resize-none"
+        />
+      </Field>
+
+    </div>
+
+    {/* ───────────── COLUMN 2 — CARGO ───────────── */}
+    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+
+      <div className="grid grid-cols-2 gap-6">
+
+        <Field label="Total Cost">
+          <Input
+            value={shippingForm.totalCost}
+            onChange={(e) => {
+              setShippingForm((p) => ({
+                ...p,
+                totalCost: e.target.value,
+              }))
+              
+            }}
+            
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+        <Field label="Packages">
+          <Input
+            type="number"
+            value={shippingForm.packages}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                packages: e.target.value,
+              }))
+            }
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+        <Field label="Weight (kg)">
+          <Input
+            value={shippingForm.weight}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                weight: e.target.value,
+              }))
+            }
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+        <Field label="Volume (m³)">
+          <Input
+            value={shippingForm.volume}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                volume: e.target.value,
+              }))
+            }
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+        <Field label="Density">
+          <Input
+            value={shippingForm.density}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                density: e.target.value,
+              }))
+            }
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+        <Field label="Goods Total Value">
+          <Input
+            value={shippingForm.goodsTotalValue}
+            onChange={(e) =>
+              setShippingForm((p) => ({
+                ...p,
+                goodsTotalValue: e.target.value,
+              }))
+            }
+            className={`h-8 text-xs font-mono ${
+              isMismatch ? "border-red-500 text-red-600" : "border-border"
+            }`}
+          />
+        </Field>
+
+        <Field label="Goods Value per kg">
+          <Input
+            value={goodsValuePerKg}
+            readOnly
+            className="h-8 text-xs font-mono"
+          />
+        </Field>
+
+      </div>
+
+    </div>
+
+    {/* ───────────── COLUMN 3 — MODEL ───────────── */}
+    <div className="bg-card border border-border rounded-xl p-6">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+            className="w-full border rounded-md px-2 py-1 text-xs"
+          >
+            <option value="normal">Normal</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Normal cargo price
           </div>
-        </TabsContent>
+          <Input
+            value={normalPrice}
+            onChange={(e) => setNormalPrice(e.target.value)}
+            className="h-8 font-mono text-xs"
+          />
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Normal weight
+          </div>
+          <div className="text-sm font-medium">
+            {model.normalWeight.toFixed(2)} kg
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Bulky weight
+          </div>
+          <div className="text-sm">
+            {model.bulkyWeight.toFixed(2)} kg
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Normal shipping
+          </div>
+          <div className="text-sm font-medium">
+            {model.normalShipping.toLocaleString("ru-RU")} ₽
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Bulky shipping
+          </div>
+          <div className="text-sm">
+            {Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Catalog weight
+          </div>
+          <div className="text-sm font-semibold">
+            {weightStats.totalWeight.toFixed(2)} kg
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] text-muted-foreground mb-1">
+            Bulky price
+          </div>
+          <div className="text-sm">
+            {Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    {/* ───────────── COLUMN 4 — CONTROL ───────────── */}
+    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+
+      <Button
+        className="w-full h-8 text-xs"
+        disabled={!isFormValid || !invoiceIds.length}
+        onClick={handleSaveShipping}
+      >
+        {invoiceIds.length <= 1
+          ? "Save Shipping"
+          : `Save Shipping (${invoiceIds.length})`}
+      </Button>
+
+      {!isFormValid && (
+        <div className="text-xs text-red-500 space-y-1">
+          {validationErrors.map((e) => (
+            <div key={e}>• {e}</div>
+          ))}
+        </div>
+      )}
+
+    </div>
+
+  </div>
+
+</TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
         <TabsContent value="summary" className="mt-0 flex-1 overflow-auto p-4">
@@ -572,6 +1238,22 @@ function SummaryCard({
           <span className="text-[10px] text-muted-foreground">{unit}</span>
         )}
       </div>
+    </div>
+  )
+}
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      {children}
     </div>
   )
 }

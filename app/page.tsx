@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useMemo, useEffect, useRef } from "react"
+import { Columns } from "lucide-react"
 import { ControlPanel } from "@/components/dashboard/control-panel"
 import { InvoiceTable } from "@/components/dashboard/invoice-table"
 import { AnalyticsPanel } from "@/components/dashboard/analytics-panel"
@@ -45,6 +46,11 @@ const statusConfig: Record<Status, { label: string; className: string }> = {
 export default function InvoiceDashboard() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+useEffect(() => {
+  setMounted(true)
+}, [])
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "invoiceRightPanelWidth",
     defaultWidth: 420,
@@ -64,6 +70,14 @@ export default function InvoiceDashboard() {
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
+  const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
+  const toggleInvoice = (id: string) => {
+    setSelectedInvoices((prev) =>
+      prev.includes(id)
+        ? prev.filter((i) => i !== id)
+        : [...prev, id]
+    )
+  }
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
@@ -71,18 +85,23 @@ export default function InvoiceDashboard() {
   const [dataVersion, setDataVersion] = useState(0)
 
   // Bottom simulation panel state
-  const [simPanelOpen, setSimPanelOpen] = useState(false)
-  const [simPanelHeight, setSimPanelHeight] = useState(() => {
-    if (typeof window === "undefined") return 40
-    try {
-      const saved = localStorage.getItem("invoiceBottomPanelHeight")
-      if (saved) {
-        const parsed = Number(saved)
-        if (!Number.isNaN(parsed) && parsed >= 35 && parsed <= 65) return parsed
+const [simPanelOpen, setSimPanelOpen] = useState(false)
+const [simPanelHeight, setSimPanelHeight] = useState(40)
+
+// Load saved height AFTER mount (avoids hydration mismatch)
+useEffect(() => {
+  try {
+    const saved = localStorage.getItem("invoiceBottomPanelHeight")
+    if (saved) {
+      const parsed = Number(saved)
+      if (!Number.isNaN(parsed) && parsed >= 35 && parsed <= 65) {
+        setSimPanelHeight(parsed)
       }
-    } catch { /* ignore */ }
-    return 40
-  })
+    }
+  } catch {
+    // ignore
+  }
+}, [])
   const simDragStartY = useRef<number | null>(null)
   const simDragStartH = useRef<number>(40)
   const simIsResizing = useRef(false)
@@ -163,6 +182,7 @@ export default function InvoiceDashboard() {
     deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
     stock: Number(r.stock ?? 0),
     weight: Number(r.weight ?? 0),
+    isBulky: Boolean(r.isBulky),
     productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
     sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
   }), [])
@@ -253,6 +273,41 @@ export default function InvoiceDashboard() {
     })
   }, [])
 
+  const handleDeleteInvoice = useCallback(async (id: string) => {
+    if (!id) return
+  
+    const ok = confirm(`Delete invoice ${id}?`)
+    if (!ok) return
+  
+    const ts = () => new Date().toLocaleTimeString()
+  
+    setLogs(prev => [...prev, `[${ts()}] Deleting invoice ${id}...`])
+  
+    try {
+      const res = await fetch(`/api/invoice/${id}`, {
+        method: "DELETE",
+      })
+  
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  
+      // очистка UI
+      setRows([])
+      setSelectedInvoice(null)
+      setIsEnriched(false)
+  
+      // обновить список
+      const listRes = await fetch("/api/invoice/list")
+      if (listRes.ok) {
+        const data = await listRes.json()
+        setInvoiceList(data)
+      }
+  
+      setLogs(prev => [...prev, `[${ts()}] Invoice ${id} deleted.`])
+    } catch (e) {
+      setLogs(prev => [...prev, `[${ts()}] Error deleting invoice ${id}`])
+    }
+  }, [])
+
   const handleUploadFile = useCallback(async (file: File) => {
     setIsUploading(true)
     setLogs((prev) => [
@@ -295,31 +350,22 @@ export default function InvoiceDashboard() {
         (Array.isArray(result) && result[0]?.invoice_id as string) ??
         null
 
-      if (returnedId) {
-        setSelectedInvoice(returnedId)
-        await loadInvoice(returnedId)
-        // Refresh the invoice list so the new entry appears in the dropdown
-        try {
-          const listRes = await fetch("/api/invoice/list")
-          if (listRes.ok) {
-            const listData: InvoiceListItem[] = await listRes.json()
-            setInvoiceList(listData)
-          }
-        } catch {
-          // Non-critical: list will refresh on next page load
-        }
-        setLogs((prev) => [
-          ...prev,
-          `[${new Date().toLocaleTimeString()}] Loaded invoice ${returnedId} — ${rows.length} rows.`,
-        ])
-      } else {
-        setLogs((prev) => [
-          ...prev,
-          `[${new Date().toLocaleTimeString()}] Warning: No invoice_id in response. Refresh the invoice list manually.`,
-        ])
-      }
 
-      setStatus("completed")
+
+        setStatus("completed")
+
+        if (returnedId) {
+          setSelectedInvoice(returnedId) // 🔥 ВАЖНО
+          await handleRefresh(returnedId)
+        } else {
+          try {
+            const listRes = await fetch("/api/invoice/list")
+            if (listRes.ok) {
+              const listData = await listRes.json()
+              setInvoiceList(listData)
+            }
+          } catch {}
+        }
     } catch (err) {
       setLogs((prev) => [
         ...prev,
@@ -331,26 +377,47 @@ export default function InvoiceDashboard() {
     }
   }, [loadInvoice])
 
-  const handleRefresh = useCallback(async () => {
-    const ts = () => {
-      const d = new Date()
-      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+  const handleRefresh = useCallback(async (invoiceId?: string) => {
+  const ts = () => {
+    const d = new Date()
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+  }
+
+  const source = isEnriched ? "enriched" : "raw"
+  const id = invoiceId ?? selectedInvoice
+
+  if (!id) return
+
+  setLogs(prev => [
+    ...prev,
+    `[${ts()}] Refreshing from ${source === "enriched" ? "invoice_rows_enriched" : "invoice_rows"}...`
+  ])
+
+  setScenarioData(null)
+  setIsScenarioActive(false)
+
+  // 👇 ВАЖНО: обновить список
+  try {
+    const listRes = await fetch("/api/invoice/list")
+    if (listRes.ok) {
+      const listData = await listRes.json()
+      setInvoiceList(listData)
     }
-    const source = isEnriched ? "enriched" : "raw"
-    setLogs((prev) => [...prev, `[${ts()}] Refreshing from ${source === "enriched" ? "invoice_rows_enriched" : "invoice_rows"}...`])
-    setScenarioData(null)
-    setIsScenarioActive(false)
-    if (selectedInvoice) {
-      await loadInvoice(selectedInvoice, source)
-    }
-    // Reset processing state
-    setStatus("idle")
-    setProgress(0)
-    setIsProcessing(false)
-    // Bump version to trigger table re-render with fresh base data
-    setDataVersion((v) => v + 1)
-    setLogs((prev) => [...prev, `[${ts()}] Refresh complete — all values recalculated from source.`])
-  }, [isEnriched, selectedInvoice, loadInvoice])
+  } catch {}
+
+  // 👇 загрузить конкретный invoice
+  await loadInvoice(id, source)
+
+  setStatus("idle")
+  setProgress(0)
+  setIsProcessing(false)
+  setDataVersion(v => v + 1)
+
+  setLogs(prev => [
+    ...prev,
+    `[${ts()}] Refresh complete — invoice ${id} loaded.`,
+  ])
+}, [isEnriched, selectedInvoice, loadInvoice])
 
   const handleEnrich = useCallback(async () => {
     if (!selectedInvoice) return
@@ -397,47 +464,179 @@ export default function InvoiceDashboard() {
     }
   }, [selectedInvoice, mapRow])
 
+  const handleEnrichSelected = useCallback(async (ids: string[]) => {
+    if (!ids.length) return
+  
+    setIsEnriching(true)
+    const ts = () => new Date().toLocaleTimeString()
+  
+    setLogs((prev) => [
+      ...prev,
+      `[${ts()}] Running batch enrichment for ${ids.length} invoice(s)...`,
+    ])
+  
+    try {
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          const response = await fetch(`/api/invoice/${id}/enriched`, {
+            method: "POST",
+          })
+  
+          const result = await response.json().catch(() => ({}))
+  
+          if (!response.ok || !result?.success) {
+            throw new Error(
+              `Enrichment failed for ${id}: ${result?.error ?? response.status}`
+            )
+          }
+  
+          const enrichedRows: Record<string, unknown>[] = result.rows ?? []
+  
+          setLogs((prev) => [
+            ...prev,
+            `[${ts()}] Enrichment complete for ${id}. ${enrichedRows.length} rows received.`,
+          ])
+  
+          return enrichedRows.map(mapRow)
+        })
+      )
+  
+      // 🔥 1. Собрали все строки
+      const allRowsRaw = results.flat()
+  
+      // 🔥 2. УБРАЛИ ДУБЛИКАТЫ ПО id
+      const uniqueMap = new Map<string, InvoiceRow>()
+  
+      for (const r of allRowsRaw) {
+        uniqueMap.set(r.id, r)
+      }
+  
+      const allRows = Array.from(uniqueMap.values())
+  
+      // 🔍 ЛОГИ (оставь, они полезны)
+      console.log("ENRICH selected ids:", ids)
+      console.log("ENRICH final rows count:", allRows.length)
+      console.log(
+        "ENRICH final grouped:",
+        allRows.reduce((acc: Record<string, number>, row: any) => {
+          const key = row._debugInvoiceId || "unknown"
+          acc[key] = (acc[key] || 0) + 1
+          return acc
+        }, {})
+      )
+      console.log(
+        "ENRICH final total:",
+        allRows.reduce(
+          (sum, r) => sum + Number(r.cost || 0) * Number(r.qty || 0),
+          0
+        )
+      )
+  
+      // 🔥 3. Обновляем UI
+      setScenarioData(null)
+      setIsScenarioActive(false)
+      setRows([...allRows])
+      setIsEnriched(true)
+      setDataVersion((v) => v + 1)
+  
+      if (ids.length === 1) {
+        setSelectedInvoice(ids[0])
+      } else {
+        setSelectedInvoice(null)
+      }
+  
+      setLogs((prev) => [
+        ...prev,
+        `[${ts()}] Batch enrichment complete — ${allRows.length} rows from ${ids.length} invoice(s).`,
+      ])
+    } catch (err) {
+      setLogs((prev) => [
+        ...prev,
+        `[${ts()}] Error: Batch enrichment failed. ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`,
+      ])
+    } finally {
+      setIsEnriching(false)
+    }
+  }, [mapRow])
+ 
+
   const handleExport = useCallback(() => {
-    if (data.length === 0) return
+    if (rows.length === 0) return
+  
     const ts = () => {
       const d = new Date()
       return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
     }
-    setLogs((prev) => [...prev, `[${ts()}] Exporting ${data.length} rows to Excel...`])
-    // Build CSV content
-    const headers = ["Part Number", "Description", "Cost", "Now", "Ship", "QTY", "Unit", "Total Purchase"]
+  
+    setLogs((prev) => [
+      ...prev,
+      `[${ts()}] Exporting ${rows.length} rows to Excel...`,
+    ])
+  
+    const headers = [
+      "Part Code",
+      "Manufacturer",
+      "Part Name",
+      "Qty",
+      "Cost",
+      "Now",
+      "Ship",
+      "Weight",
+      "Total Purchase",
+    ]
+  
     const csvRows = [
-      headers.join(","),
-      ...data.map((r) =>
+      headers.join(";"),
+      ...rows.map((r) =>
         [
-          `"${r.partNumber}"`,
-          `"${(r.description ?? "").replace(/"/g, '""')}"`,
-          r.cost,
-          r.now,
-          r.ship,
-          r.qty,
-          `"${r.unit}"`,
-          r.totalPurchase,
-        ].join(",")
+          r.partCode,
+          r.manufacturer,
+          (r.partName ?? "").replace(/;/g, ","),
+          Number(r.qty || 0),
+          Number(r.cost || 0),
+          Number(r.now || 0),
+          Number(r.ship || 0),
+          r.weight,
+          Number(r.cost || 0) * Number(r.qty || 0),
+        ].join(";")
       ),
     ]
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" })
+  
+    // 🔥 BOM для Excel (очень важно)
+    const blob = new Blob(
+      ["\uFEFF" + csvRows.join("\n")],
+      { type: "text/csv;charset=utf-8;" }
+    )
+  
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `invoice-${selectedInvoice ?? "export"}-${new Date().toISOString().slice(0, 10)}.csv`
+  
+    // 👇 сохраняем как .xlsx (Excel откроет нормально)
+    a.download = `invoice-${selectedInvoice ?? "export"}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`
+  
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    setLogs((prev) => [...prev, `[${ts()}] Export complete — ${data.length} rows saved.`])
-  }, [data, selectedInvoice])
+  
+    setLogs((prev) => [
+      ...prev,
+      `[${ts()}] Export complete — ${rows.length} rows saved.`,
+    ])
+  }, [rows, selectedInvoice])
 
   const handleClear = useCallback(() => {
     const ts = () => {
       const d = new Date()
       return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
     }
+
+    
     // Reset everything to empty state
     setRows([])
     setScenarioData(null)
@@ -447,7 +646,6 @@ export default function InvoiceDashboard() {
     setStatus("idle")
     setProgress(0)
     setIsProcessing(false)
-    setAnalytics({ totalRows: 0, parsedRows: 0, errors: 0, newItems: 0, updatedItems: 0 })
     setSelectedRow(null)
     setLogs([])
     setDataVersion((v) => v + 1)
@@ -520,6 +718,11 @@ export default function InvoiceDashboard() {
   }, [])
 
   const { label, className } = statusConfig[status]
+  // 🔍 DEBUG
+console.log("rows sum:", rows.reduce((s,r)=>s+r.cost*r.qty,0))
+console.log("data sum:", data.reduce((s,r)=>s+r.cost*r.qty,0))
+console.log("scenario active:", isScenarioActive)
+
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -547,6 +750,8 @@ export default function InvoiceDashboard() {
         onWorkWithSelected={handleWorkWithSelected}
         onRecalculate={handleRecalculate}
         onUpdateMarket={handleUpdateMarket}
+        onEnrichSelected={handleEnrichSelected}
+        onDeleteInvoice={handleDeleteInvoice}
       />
 
       {/* Main Content - shifts right when panel is open */}
@@ -646,24 +851,30 @@ export default function InvoiceDashboard() {
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 className="h-7 pl-7 text-xs"
               />
+          
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+
+<span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 shrink-0 p-0"
                   aria-label="Change theme"
                 >
-              {theme === "light" ? (
-                <Sun className="h-3.5 w-3.5" />
+              {mounted && (
+               theme === "light" ? (
+              <Sun className="h-3.5 w-3.5" />
               ) : theme === "graphite" ? (
-                <Monitor className="h-3.5 w-3.5" />
-              ) : theme === "warm-dark" ? (
-                <Moon className="h-3.5 w-3.5 text-amber-500" />
-              ) : (
-                <Moon className="h-3.5 w-3.5" />
-              )}
+             <Monitor className="h-3.5 w-3.5" />
+           ) : theme === "warm-dark" ? (
+    <Moon className="h-3.5 w-3.5 text-amber-500" />
+  ) : (
+    <Moon className="h-3.5 w-3.5" />
+  )
+)}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[140px]">
@@ -790,12 +1001,19 @@ export default function InvoiceDashboard() {
             {/* Panel content */}
             {simPanelOpen && (
               <div className="h-[calc(100%-28px)] overflow-hidden">
-                <SimulationPanel
-                  data={baseData}
-                  onApplyScenario={handleApplyScenario}
-                  onResetScenario={handleResetScenario}
-                  isScenarioActive={isScenarioActive}
-                />
+<SimulationPanel
+  data={baseData}
+  invoiceIds={
+    selectedInvoices.length
+      ? selectedInvoices
+      : selectedInvoice
+        ? [selectedInvoice]
+        : []
+  }
+  onApplyScenario={handleApplyScenario}
+  onResetScenario={handleResetScenario}
+  isScenarioActive={isScenarioActive}
+/>
               </div>
             )}
           </div>

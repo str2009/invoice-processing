@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import {
   ArrowLeft,
   Plus,
@@ -40,25 +39,56 @@ const quickActions = [
   { label: "Invoices", icon: FileSpreadsheet },
 ]
 
-  function useGreeting(): string {
+function useGreeting(): string {
   const [greeting, setGreeting] = useState("Hello")
+
   useEffect(() => {
     const hour = new Date().getHours()
     if (hour < 12) setGreeting("Good morning")
     else if (hour < 18) setGreeting("Good afternoon")
     else setGreeting("Good evening")
   }, [])
+
   return greeting
+}
+
+const THREAD_ID_KEY = "thread_id"
+
+function getOrCreateThreadId(): string {
+  if (typeof window === "undefined") return ""
+
+  let existingThreadId = localStorage.getItem(THREAD_ID_KEY)
+
+  if (!existingThreadId) {
+    existingThreadId = crypto.randomUUID()
+    localStorage.setItem(THREAD_ID_KEY, existingThreadId)
   }
+
+  return existingThreadId
+}
+
+function createNewThreadId(): string {
+  const newThreadId = crypto.randomUUID()
+  localStorage.setItem(THREAD_ID_KEY, newThreadId)
+  return newThreadId
+}
 
 export default function ChatPage() {
   const router = useRouter()
   const greeting = useGreeting()
+
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isConversation, setIsConversation] = useState(false)
+  const [threadId, setThreadId] = useState("")
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const id = getOrCreateThreadId()
+    setThreadId(id)
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -66,7 +96,6 @@ export default function ChatPage() {
     }
   }, [messages])
 
-  // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current
     if (el) {
@@ -75,28 +104,69 @@ export default function ChatPage() {
     }
   }, [input])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return
+
+    const userText = input.trim()
+    const currentThreadId = getOrCreateThreadId()
+
+    if (!threadId) {
+      setThreadId(currentThreadId)
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input.trim(),
+      content: userText,
     }
 
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsConversation(true)
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(
+        "https://max24vin.ru/webhook/chat-vercel78639b96-4a15-491f-8dcd-2cbc04a8ca31",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            thread_id: currentThreadId,
+            message: userText,
+          }),
+        }
+      )
+
+      if (!res.ok) {
+        throw new Error("Webhook error")
+      }
+
+      const data = await res.json()
+
+      const assistantText =
+        data.reply ||
+        data.message ||
+        data.output ||
+        JSON.stringify(data)
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content:
-          "This is a placeholder response. Connect an AI backend to enable real conversations about your invoice data.",
+        content: assistantText,
       }
+
       setMessages((prev) => [...prev, assistantMessage])
-    }, 800)
+    } catch {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Error connecting to AI backend.",
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -107,6 +177,8 @@ export default function ChatPage() {
   }
 
   const handleNewChat = () => {
+    const newThreadId = createNewThreadId()
+    setThreadId(newThreadId)
     setMessages([])
     setInput("")
     setIsConversation(false)
@@ -114,9 +186,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
       <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-card">
-        {/* Back to Invoice */}
         <div className="px-3 pt-3 pb-1">
           <button
             onClick={() => router.push("/")}
@@ -127,7 +197,6 @@ export default function ChatPage() {
           </button>
         </div>
 
-        {/* Sidebar top nav */}
         <div className="flex flex-col gap-1 px-3 pt-1 pb-2">
           <button
             onClick={handleNewChat}
@@ -142,7 +211,6 @@ export default function ChatPage() {
           </button>
         </div>
 
-        {/* Sidebar sections */}
         <div className="flex flex-col gap-1 px-3 py-2">
           <button className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
             <MessageCircle className="h-4 w-4" />
@@ -164,7 +232,6 @@ export default function ChatPage() {
           </button>
         </div>
 
-        {/* Recents */}
         <div className="flex flex-col px-3 py-3">
           <span className="mb-2 px-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
             Recents
@@ -181,10 +248,8 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* User profile */}
         <div className="border-t border-border px-3 py-3">
           <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -203,19 +268,15 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      {/* Main area */}
       <main className="flex flex-1 flex-col overflow-hidden">
         {!isConversation ? (
-          /* Welcome state */
           <div className="flex flex-1 flex-col items-center justify-center px-4">
             <div className="flex w-full max-w-xl flex-col items-center">
-              {/* Greeting */}
               <h1 className="mb-8 text-center font-sans text-4xl font-light tracking-tight text-foreground">
                 <span className="mr-2 inline-block text-primary">*</span>
                 {greeting}
               </h1>
 
-              {/* Input box */}
               <div className="w-full rounded-2xl border border-border bg-card p-1">
                 <textarea
                   ref={textareaRef}
@@ -250,7 +311,6 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              {/* Quick actions */}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {quickActions.map(({ label, icon: Icon }) => (
                   <button
@@ -269,18 +329,15 @@ export default function ChatPage() {
             </div>
           </div>
         ) : (
-          /* Conversation state */
           <>
-            {/* Header bar */}
             <header className="flex shrink-0 items-center justify-center border-b border-border px-4 py-2">
               <span className="text-sm font-medium text-foreground">
                 AI Assistant
               </span>
             </header>
 
-            {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto">
-              <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
+              <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -288,20 +345,18 @@ export default function ChatPage() {
                       message.role === "user" ? "flex-row-reverse" : "flex-row"
                     }`}
                   >
-                    {/* Avatar */}
                     <div
                       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                         message.role === "assistant"
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-blue-500 text-primary-foreground"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {message.role === "assistant" ? "*" : "U"}
+                      {message.role === "assistant" ? "✨" : "👤"}
                     </div>
 
-                    {/* Bubble */}
                     <div
-                      className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-base leading-relaxed ${
                         message.role === "user"
                           ? "bg-secondary text-secondary-foreground"
                           : "text-foreground"
@@ -314,7 +369,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Input bar */}
             <div className="shrink-0 border-t border-border px-4 py-3">
               <div className="mx-auto max-w-2xl">
                 <div className="rounded-2xl border border-border bg-card p-1">

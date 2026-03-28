@@ -190,6 +190,28 @@ function SortHeader({
     </Button>
   )
 }
+function MootEditor({ row, setMootChanges }: any) {
+  const initial = row.original.moot ?? ""
+  const [value, setValue] = useState(initial)
+
+  return (
+    <input
+      type="number"
+      step="0.1"
+      value={value}
+      onChange={(e) => {
+        const val = e.target.value
+        setValue(val)
+
+        setMootChanges((prev: any) => ({
+          ...prev,
+          [row.original.id]: Number(val),
+        }))
+      }}
+      className="w-[70px] h-7 border rounded px-2 text-xs font-mono"
+    />
+  )
+}
 
 // --- Draggable header cell ---
 function DraggableHeaderCell({ header }: { header: Header<AnalyticsRow, unknown> }) {
@@ -292,7 +314,8 @@ const columnLabels: Record<string, string> = {
 }
 
 // --- Column definitions (23 columns) ---
-const columns: ColumnDef<AnalyticsRow>[] = [
+function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
+  return [
   {
     id: "partCode",
     accessorKey: "partCode",
@@ -418,6 +441,14 @@ const columns: ColumnDef<AnalyticsRow>[] = [
     cell: ({ row }) => <span className="text-[11px]">{row.getValue("pricingGroup")}</span>,
   },
   {
+    id: "moot",
+    accessorKey: "moot",
+    header: ({ column }) => <SortHeader column={column} label="MOOT" />,
+    cell: ({ row }) => (
+      <MootEditor row={row} setMootChanges={setMootChanges} />
+    ),
+  },
+  {
     id: "weight",
     accessorKey: "weight",
     header: ({ column }) => <SortHeader column={column} label="Weight" />,
@@ -484,9 +515,9 @@ const columns: ColumnDef<AnalyticsRow>[] = [
       )
     },
   },
-]
+]}
 
-const allColumnIds = columns.map((c) => c.id!)
+
 
 // Default visible columns (hide some less important ones by default)
 const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", "competitorStock", "lastSaleDate"]
@@ -502,6 +533,16 @@ export default function AnalyticsPage() {
   })
   const [globalFilter, setGlobalFilter] = useState("")
   const [sorting, setSorting] = useState<SortingState>([])
+  const [mootChanges, setMootChanges] = useState<Record<string, number>>({})
+
+const columns = useMemo(() => getColumns(setMootChanges), [setMootChanges])
+
+const allColumnIds = useMemo(
+  () => columns.map((c) => c.id!),
+  [columns]
+)
+
+const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined)
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
@@ -530,7 +571,12 @@ export default function AnalyticsPage() {
   const onDragEnd = useCallback(() => {
     dragStartY.current = null
   }, [])
-  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(allColumnIds)
+
+useEffect(() => {
+  setColumnOrder(allColumnIds)
+}, [allColumnIds])
+
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     const vis: VisibilityState = {}
     defaultHidden.forEach((id) => { vis[id] = false })
@@ -574,7 +620,13 @@ export default function AnalyticsPage() {
             const res = await fetch(`/api/invoice/${inv.invoice_id}`)
             if (!res.ok) return []
             const data = await res.json()
-            return (data || []).map((r: Record<string, unknown>, idx: number) => ({
+
+            console.log("invoice rows from API:", data)
+            console.log("FIRST ROW:", data?.rows?.[0])
+            
+            const rows = data.rows ?? []
+            
+            return rows.map((r: Record<string, unknown>, idx: number) => ({
               id: String(r.id ?? idx + 1),
               partCode: (r.part_code as string) ?? (r.partCode as string) ?? "",
               manufacturer: (r.manufacturer as string) ?? "",
@@ -586,6 +638,7 @@ export default function AnalyticsPage() {
               deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
               stock: Number(r.stock ?? 0),
               weight: Number(r.weight ?? 0),
+              isBulky: Boolean(r.isBulky),
               productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
               sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
             })) as InvoiceRow[]
@@ -596,6 +649,7 @@ export default function AnalyticsPage() {
         const results = await Promise.all(fetches)
         results.forEach((rows) => allRows.push(...rows))
         setRawInvoiceRows(allRows)
+        console.log("ROWS", allRows)
       } catch {
         setRawInvoiceRows([])
       } finally {
@@ -644,6 +698,8 @@ export default function AnalyticsPage() {
     onGlobalFilterChange: setGlobalFilter,
     onColumnOrderChange: setColumnOrder,
     onColumnVisibilityChange: setColumnVisibility,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -812,6 +868,7 @@ export default function AnalyticsPage() {
         isLoadingInvoice={isLoadingInvoice}
         isEnriching={panelIsEnriching}
         contextMeta={contextMeta}
+        onDeleteInvoice={handleDeleteInvoice}
       />
 
       {/* Main content - shifts right when panel is open */}
