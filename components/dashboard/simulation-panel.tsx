@@ -265,13 +265,27 @@ useEffect(() => {
 
       // Load linked invoices
       const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
+      console.log("[v0] selectedShipmentId:", selectedShipmentId)
+      console.log("[v0] invoicesRes.ok:", invoicesRes.ok)
+      
       if (invoicesRes.ok) {
-        const invoices = await invoicesRes.json()
+        const rawData = await invoicesRes.json()
+        console.log("[v0] LOADED LINKED INVOICES:", rawData)
+        
+        // Always force array to handle edge cases
+        const invoices = Array.isArray(rawData) ? rawData : []
+        console.log("[v0] Parsed invoices array:", invoices)
+        
         setShipmentInvoices(invoices)
+        
         // Update selected invoices in parent
         if (onSetSelectedInvoices && invoices.length > 0) {
           onSetSelectedInvoices(invoices.map((inv: ShipmentInvoice) => inv.invoice_id))
         }
+      } else {
+        const errText = await invoicesRes.text()
+        console.log("[v0] invoices fetch error:", errText)
+        setShipmentInvoices([])
       }
     } catch (e) {
       console.error("Failed to load shipment data:", e)
@@ -311,7 +325,9 @@ const handleAttachInvoices = useCallback(async () => {
     // Reload shipment invoices
     const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
     if (invoicesRes.ok) {
-      const invoices = await invoicesRes.json()
+      const rawData = await invoicesRes.json()
+      console.log("[v0] After attach, reloaded invoices:", rawData)
+      const invoices = Array.isArray(rawData) ? rawData : []
       setShipmentInvoices(invoices)
     }
   } catch {

@@ -12,6 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    console.log("[v0] Fetching invoices for shipment_id:", id)
 
     // Get invoice IDs linked to this shipment
     const { data: links, error: linksError } = await supabase
@@ -19,11 +20,15 @@ export async function GET(
       .select("invoice_id")
       .eq("shipment_id", id)
 
+    console.log("[v0] shipment_invoices query result:", { links, linksError })
+
     if (linksError) throw linksError
 
     const invoiceIds = (links ?? []).map((r: any) => r.invoice_id)
+    console.log("[v0] invoiceIds extracted:", invoiceIds)
 
     if (invoiceIds.length === 0) {
+      console.log("[v0] No invoices found, returning empty array")
       return NextResponse.json([])
     }
 
@@ -43,6 +48,7 @@ export async function GET(
       number: inv.invoice_number ?? null,
     }))
 
+    console.log("[v0] Returning invoices:", invoices)
     return NextResponse.json(invoices)
   } catch (e: any) {
     console.error("SHIPMENT INVOICES ERROR:", e)
