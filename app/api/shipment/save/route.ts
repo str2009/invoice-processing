@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing shippingData" }, { status: 400 })
     }
 
-    // 1. создаём shipment - only include columns that exist in the table
+    // 1. создаём shipment - include all columns
     const insertData = {
       transport_company: shippingData.transport_company ?? null,
       transport_type: shippingData.transport_type ?? null,
@@ -37,11 +37,19 @@ export async function POST(req: Request) {
       transport_date: shippingData.transport_date ?? null,
       received_date: shippingData.received_date ?? null,
       total_shipping_cost: shippingData.total_shipping_cost ?? 0,
-      total_weight: shippingData.shipping_total_weight ?? shippingData.total_weight ?? 0,
-      total_volume: shippingData.shipping_total_volume ?? shippingData.total_volume ?? 0,
-      density: shippingData.shipping_density ?? shippingData.density ?? 0,
+      total_weight: shippingData.total_weight ?? 0,
+      total_volume: shippingData.total_volume ?? 0,
+      density: shippingData.density ?? 0,
+      packages_count: shippingData.packages_count ?? 0,
+      comment: shippingData.comment ?? null,
       goods_total_value: shippingData.goods_total_value ?? 0,
-      goods_value_per_kg: shippingData.goods_value_per_kg ?? 0,
+      goods_value_per_kg: shippingData.goods_value_per_kg ?? null,
+      normal_weight: shippingData.normal_weight ?? null,
+      bulky_weight: shippingData.bulky_weight ?? null,
+      normal_shipping: shippingData.normal_shipping ?? null,
+      bulky_shipping: shippingData.bulky_shipping ?? null,
+      catalog_weight: shippingData.catalog_weight ?? null,
+      bulky_price: shippingData.bulky_price ?? null,
     }
 
     console.log("INSERTING INTO SHIPMENT:", insertData)

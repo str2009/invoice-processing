@@ -411,13 +411,19 @@ const handleSaveShipping = useCallback(async () => {
           transport_date: shippingForm.transportDate ?? null,
           received_date: shippingForm.receivedDate ?? null,
           total_shipping_cost: Number(shippingForm.totalCost || 0),
-          shipping_total_weight: Number(shippingForm.weight || 0),
-          shipping_total_volume: Number(shippingForm.volume || 0),
-          shipping_density: Number(shippingForm.density || 0),
+          total_weight: Number(shippingForm.weight || 0),
+          total_volume: Number(shippingForm.volume || 0),
+          density: Number(shippingForm.density || 0),
           packages_count: Number(shippingForm.packages || 0),
-          shipping_comment: shippingForm.comment ?? null,
+          comment: shippingForm.comment ?? null,
           goods_total_value: Number(shippingForm.goodsTotalValue || 0),
-          goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? 0 : Number(shippingForm.goodsValuePerKg),
+          goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+          normal_weight: Number(model.normalWeight || 0),
+          bulky_weight: Number(model.bulkyWeight || 0),
+          normal_shipping: Number(model.normalShipping || 0),
+          bulky_shipping: Number(model.bulkyShipping || 0),
+          catalog_weight: Number(weightStats.totalWeight || 0),
+          bulky_price: Number(model.bulkyPrice || 0),
         },
       }),
     })
@@ -450,6 +456,8 @@ const handleSaveShipping = useCallback(async () => {
   savedShipping,
   shippingForm,
   isShippingModified,
+  model,
+  weightStats,
 ])
 // ─── Pricing rules actions & calculations ──────────────────────────────────
 
@@ -986,7 +994,7 @@ const handleSaveGlobal = useCallback(async () => {
 
     </div>
 
-    {/* ───────────── COLUMN 3 — MODEL ───────────── */}
+    {/* ───────────── COLUMN 3 — MODEL ──────────���── */}
     <div className="bg-card border border-border rounded-xl p-6">
       <div className="grid grid-cols-2 gap-x-6 gap-y-5">
 
