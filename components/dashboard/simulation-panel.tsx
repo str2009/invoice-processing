@@ -206,6 +206,7 @@ const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false
 
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
 const [isAttaching, setIsAttaching] = useState(false)
+const [isCreatingShipment, setIsCreatingShipment] = useState(false)
 
 // Load shipments when shipping tab is active
 const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" = "all") => {
@@ -338,8 +339,6 @@ const handleNewShipment = useCallback(() => {
 }, [])
 
 // Create shipment WITHOUT attaching invoices
-const [isCreatingShipment, setIsCreatingShipment] = useState(false)
-
 const handleCreateShipment = useCallback(async () => {
   if (!isFormValid) return
   
