@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       if (linkedIds.length > 0) {
         const result = await supabase
           .from("shipment")
-          .select("shipment_id, transport_company, transport_invoice_number, transport_date")
+          .select("shipment_id, transport_company, transport_invoice_number, transport_date, transport_type")
           .not("shipment_id", "in", `(${linkedIds.join(",")})`)
           .order("transport_date", { ascending: false })
         data = result.data ?? []
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
         // No linked shipments, return all
         const result = await supabase
           .from("shipment")
-          .select("shipment_id, transport_company, transport_invoice_number, transport_date")
+          .select("shipment_id, transport_company, transport_invoice_number, transport_date, transport_type")
           .order("transport_date", { ascending: false })
         data = result.data ?? []
         error = result.error
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
     } else if (filter === "recent") {
       const result = await supabase
         .from("shipment")
-        .select("shipment_id, transport_company, transport_invoice_number, transport_date")
+        .select("shipment_id, transport_company, transport_invoice_number, transport_date, transport_type")
         .order("created_at", { ascending: false })
         .limit(20)
       data = result.data ?? []
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       // "all" - default
       const result = await supabase
         .from("shipment")
-        .select("shipment_id, transport_company, transport_invoice_number, transport_date")
+        .select("shipment_id, transport_company, transport_invoice_number, transport_date, transport_type")
         .order("transport_date", { ascending: false })
       data = result.data ?? []
       error = result.error

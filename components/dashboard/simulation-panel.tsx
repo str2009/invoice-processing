@@ -188,6 +188,7 @@ type ShipmentListItem = {
   transport_company: string | null
   transport_invoice_number: string | null
   transport_date: string | null
+  transport_type: string | null
 }
 
 type ShipmentInvoice = {
@@ -207,6 +208,18 @@ const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
 const [isAttaching, setIsAttaching] = useState(false)
 const [isCreatingShipment, setIsCreatingShipment] = useState(false)
+const [shipmentSearch, setShipmentSearch] = useState("")
+
+// Filter shipments by search query
+const filteredShipments = useMemo(() => {
+  if (!shipmentSearch.trim()) return shipments
+  const q = shipmentSearch.toLowerCase()
+  return shipments.filter(s =>
+    s.transport_company?.toLowerCase().includes(q) ||
+    s.transport_invoice_number?.toString().toLowerCase().includes(q) ||
+    s.transport_type?.toLowerCase().includes(q)
+  )
+}, [shipments, shipmentSearch])
 
 // Load shipments when shipping tab is active
 const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" = "all") => {
@@ -1029,20 +1042,31 @@ const handleSaveGlobal = useCallback(async () => {
       ))}
     </div>
 
-    {/* Shipment list */}
-    <div className="flex-1 overflow-y-auto overscroll-contain">
-      {shipments.length === 0 && !isLoadingShipments ? (
+    {/* Search input */}
+    <div className="shrink-0 px-3 py-2 border-b border-border">
+      <input
+        type="text"
+        placeholder="Search company, number, type..."
+        value={shipmentSearch}
+        onChange={(e) => setShipmentSearch(e.target.value)}
+        className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    </div>
+
+    {/* Shipment list - fixed height ~4 rows */}
+    <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
+      {filteredShipments.length === 0 && !isLoadingShipments ? (
         <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-          No shipments found
+          {shipmentSearch ? "No matching shipments" : "No shipments found"}
         </p>
       ) : (
-        shipments.map((ship) => {
+        filteredShipments.map((ship) => {
           const isSelected = selectedShipmentId === ship.shipment_id
           return (
             <div
               key={ship.shipment_id}
               onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-              className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-3 py-2.5 text-left transition-colors ${
+              className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-3 py-2 text-left transition-colors ${
                 isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
               }`}
             >
@@ -1052,12 +1076,23 @@ const handleSaveGlobal = useCallback(async () => {
                   {ship.transport_company || "Unknown carrier"}
                 </span>
                 <span className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground/70">
-                  {ship.transport_invoice_number || "No invoice #"}
+                  {ship.transport_invoice_number || "No invoice #"} {ship.transport_type && `• ${ship.transport_type}`}
                 </span>
               </div>
-              <span className="shrink-0 pt-0.5 text-[10px] tabular-nums leading-tight text-muted-foreground/60">
-                {ship.transport_date || "—"}
-              </span>
+              <div className="shrink-0 flex flex-col items-end gap-0.5">
+                <span className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
+                  {ship.transport_date || "—"}
+                </span>
+                {ship.transport_type && (
+                  <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded ${
+                    ship.transport_type.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                    ship.transport_type.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                    "bg-amber-500/20 text-amber-400"
+                  }`}>
+                    {ship.transport_type}
+                  </span>
+                )}
+              </div>
             </div>
           )
         })
