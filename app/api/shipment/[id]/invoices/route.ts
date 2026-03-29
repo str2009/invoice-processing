@@ -13,26 +13,34 @@ export async function GET(
   try {
     const { id } = await params
 
-    const { data, error } = await supabase
+    // Get invoice IDs linked to this shipment
+    const { data: links, error: linksError } = await supabase
       .from("shipment_invoices")
-      .select(`
-        invoice_id,
-        invoice:invoice_id (
-          supplier,
-          invoice_date,
-          invoice_number
-        )
-      `)
+      .select("invoice_id")
       .eq("shipment_id", id)
 
-    if (error) throw error
+    if (linksError) throw linksError
 
-    // Flatten the response
-    const invoices = (data ?? []).map((row: any) => ({
-      invoice_id: row.invoice_id,
-      supplier: row.invoice?.supplier ?? null,
-      date: row.invoice?.invoice_date ?? null,
-      number: row.invoice?.invoice_number ?? null,
+    const invoiceIds = (links ?? []).map((r: any) => r.invoice_id)
+
+    if (invoiceIds.length === 0) {
+      return NextResponse.json([])
+    }
+
+    // Fetch invoice details separately
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from("invoice")
+      .select("invoice_id, supplier, invoice_date, invoice_number")
+      .in("invoice_id", invoiceIds)
+
+    if (invoicesError) throw invoicesError
+
+    // Format response
+    const invoices = (invoicesData ?? []).map((inv: any) => ({
+      invoice_id: inv.invoice_id,
+      supplier: inv.supplier ?? null,
+      date: inv.invoice_date ?? null,
+      number: inv.invoice_number ?? null,
     }))
 
     return NextResponse.json(invoices)

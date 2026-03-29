@@ -25,26 +25,42 @@ export async function POST(req: Request) {
       )
     }
 
-    // Create shipment_invoices records
-    const records = invoice_ids.map((invoice_id: string) => ({
+    // First, check which invoices are already linked
+    const { data: existing } = await supabase
+      .from("shipment_invoices")
+      .select("invoice_id")
+      .eq("shipment_id", shipment_id)
+      .in("invoice_id", invoice_ids)
+
+    const existingIds = new Set((existing ?? []).map((r: any) => r.invoice_id))
+    
+    // Filter out already-linked invoices
+    const newInvoiceIds = invoice_ids.filter((id: string) => !existingIds.has(id))
+
+    if (newInvoiceIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        attached: 0,
+        message: "All invoices were already linked",
+      })
+    }
+
+    // Create new shipment_invoices records
+    const records = newInvoiceIds.map((invoice_id: string) => ({
       shipment_id,
       invoice_id,
     }))
 
-    // Upsert to handle duplicates gracefully
     const { data, error } = await supabase
       .from("shipment_invoices")
-      .upsert(records, { 
-        onConflict: "shipment_id,invoice_id",
-        ignoreDuplicates: true 
-      })
+      .insert(records)
       .select()
 
     if (error) throw error
 
     return NextResponse.json({
       success: true,
-      attached: invoice_ids.length,
+      attached: newInvoiceIds.length,
       data,
     })
   } catch (err: any) {
