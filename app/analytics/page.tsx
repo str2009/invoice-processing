@@ -842,6 +842,20 @@ useEffect(() => {
   const visibleColumnIds = useMemo(() => {
     return columnOrder.filter((id) => columnVisibility[id] !== false)
   }, [columnOrder, columnVisibility])
+  const handleDeleteInvoice = async (invoiceId: string) => {
+  try {
+    console.log("delete invoice:", invoiceId)
+
+    await fetch(`/api/invoice/${invoiceId}`, {
+      method: "DELETE",
+    })
+
+    // можно обновить список
+    // handlePanelRefresh() если есть
+  } catch (e) {
+    console.error("Delete failed:", e)
+  }
+}
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
