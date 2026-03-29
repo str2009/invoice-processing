@@ -370,11 +370,20 @@ const handleResetShipping = useCallback(() => {
 // -------------------- Save --------------------
 
 const handleSaveShipping = useCallback(async () => {
-  if (!invoiceIds?.length) return
+  // Normalize invoiceIds to always be an array of strings
+  const normalizedInvoiceIds = Array.isArray(invoiceIds)
+    ? invoiceIds.map(i => typeof i === "string" ? i : (i as any).invoice_id)
+    : []
+
+  // Block submit if no invoices selected
+  if (normalizedInvoiceIds.length === 0) {
+    console.error("SHIPMENT ERROR: No invoices selected")
+    return
+  }
+
   if (!isFormValid) return
 
-  // если один выбран — оставляем защиту
-  
+  console.log("SENDING invoiceIds:", normalizedInvoiceIds)
 
   const prevSaved = savedShipping
   setSavedShipping(shippingForm)
@@ -388,7 +397,7 @@ const handleSaveShipping = useCallback(async () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        invoiceIds,
+        invoiceIds: normalizedInvoiceIds,
         shippingData: {
           transport_company: shippingForm.transport_company,
           transport_type: shippingForm.transport_type,

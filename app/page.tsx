@@ -1004,11 +1004,9 @@ console.log("scenario active:", isScenarioActive)
 <SimulationPanel
   data={baseData}
   invoiceIds={
-    selectedInvoices.length
-      ? selectedInvoices
-      : selectedInvoice
-        ? [selectedInvoice]
-        : []
+    Array.isArray(selectedInvoices)
+      ? selectedInvoices.map(i => typeof i === "string" ? i : (i as any).invoice_id)
+      : []
   }
   onApplyScenario={handleApplyScenario}
   onResetScenario={handleResetScenario}
