@@ -203,17 +203,15 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
 const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
-// Debug logs as requested
-console.log("selectedShipmentId:", selectedShipmentId)
-console.log("linkedInvoices:", shipmentInvoices)
+
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
 const [isAttaching, setIsAttaching] = useState(false)
 
 // Load shipments when shipping tab is active
-const loadShipments = useCallback(async () => {
+const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" = "all") => {
   setIsLoadingShipments(true)
   try {
-    const res = await fetch("/api/shipment/list")
+    const res = await fetch(`/api/shipment/list?filter=${filter}`)
     if (res.ok) {
       const data = await res.json()
       setShipments(data)
@@ -225,12 +223,12 @@ const loadShipments = useCallback(async () => {
   }
 }, [])
 
-// Load shipments on tab change
+// Load shipments on tab change or filter change
 useEffect(() => {
   if (activeTab === "shipping") {
-    loadShipments()
+    loadShipments(shipmentFilter)
   }
-}, [activeTab, loadShipments])
+}, [activeTab, shipmentFilter, loadShipments])
 
 // Load shipment details when selected
 useEffect(() => {
@@ -269,16 +267,10 @@ useEffect(() => {
 
       // Load linked invoices
       const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
-      console.log("[v0] selectedShipmentId:", selectedShipmentId)
-      console.log("[v0] invoicesRes.ok:", invoicesRes.ok)
       
       if (invoicesRes.ok) {
         const rawData = await invoicesRes.json()
-        console.log("[v0] LOADED LINKED INVOICES:", rawData)
-        
-        // Always force array to handle edge cases
         const invoices = Array.isArray(rawData) ? rawData : []
-        console.log("[v0] Parsed invoices array:", invoices)
         
         setShipmentInvoices(invoices)
         
@@ -287,8 +279,6 @@ useEffect(() => {
           onSetSelectedInvoices(invoices.map((inv: ShipmentInvoice) => inv.invoice_id))
         }
       } else {
-        const errText = await invoicesRes.text()
-        console.log("[v0] invoices fetch error:", errText)
         setShipmentInvoices([])
       }
     } catch (e) {
@@ -330,7 +320,6 @@ const handleAttachInvoices = useCallback(async () => {
     const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
     if (invoicesRes.ok) {
       const rawData = await invoicesRes.json()
-      console.log("[v0] After attach, reloaded invoices:", rawData)
       const invoices = Array.isArray(rawData) ? rawData : []
       setShipmentInvoices(invoices)
     }
@@ -341,12 +330,73 @@ const handleAttachInvoices = useCallback(async () => {
   }
 }, [selectedShipmentId, invoiceIds])
 
-// Create new shipment (clear selection and form)
+// Clear form for new shipment entry
 const handleNewShipment = useCallback(() => {
   setSelectedShipmentId(null)
   setShippingForm(EMPTY_SHIPPING)
   setShipmentInvoices([])
 }, [])
+
+// Create shipment WITHOUT attaching invoices
+const [isCreatingShipment, setIsCreatingShipment] = useState(false)
+
+const handleCreateShipment = useCallback(async () => {
+  if (!isFormValid) return
+  
+  setIsCreatingShipment(true)
+  const toastId = toast.loading("Creating shipment...")
+  
+  try {
+    const res = await fetch("/api/shipment/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transport_company: shippingForm.company ?? null,
+        transport_type: shippingForm.type ?? null,
+        transport_invoice_number: shippingForm.invoiceNumber ?? null,
+        transport_date: shippingForm.transportDate ?? null,
+        received_date: shippingForm.receivedDate ?? null,
+        total_shipping_cost: Number(shippingForm.totalCost || 0),
+        total_weight: Number(shippingForm.weight || 0),
+        total_volume: Number(shippingForm.volume || 0),
+        density: Number(shippingForm.density || 0),
+        packages_count: Number(shippingForm.packages || 0),
+        comment: shippingForm.comment ?? null,
+        goods_total_value: Number(shippingForm.goodsTotalValue || 0),
+        goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+        normal_weight: Number(model.normalWeight || 0),
+        bulky_weight: Number(model.bulkyWeight || 0),
+        normal_shipping: Number(model.normalShipping || 0),
+        bulky_shipping: Number(model.bulkyShipping || 0),
+        catalog_weight: Number(weightStats.totalWeight || 0),
+        bulky_price: Number(model.bulkyPrice || 0),
+      }),
+    })
+    
+    const json = await res.json()
+    
+    if (!res.ok || !json?.success) {
+      toast.error(json?.error || "Failed to create shipment", { id: toastId })
+      return
+    }
+    
+    toast.success("Shipment created (no invoices attached)", { id: toastId })
+    
+    // Reload shipment list and switch to ALL tab
+    setShipmentFilter("all")
+    await loadShipments("all")
+    
+    // Select the newly created shipment
+    if (json.shipment?.shipment_id) {
+      setSelectedShipmentId(json.shipment.shipment_id)
+    }
+    
+  } catch {
+    toast.error("Failed to create shipment", { id: toastId })
+  } finally {
+    setIsCreatingShipment(false)
+  }
+}, [isFormValid, shippingForm, model, weightStats, loadShipments])
 // -------------------- Invoice vs Goods check --------------------
 
 const invoiceTotal = data.reduce(
@@ -1385,28 +1435,62 @@ const handleSaveGlobal = useCallback(async () => {
     {/* ───────────── COLUMN 4 — CONTROL ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
 
-<Button
-  className="w-full h-8 text-xs"
-  disabled={isSavingShipping || !isFormValid || !invoiceIds.length}
-  onClick={handleSaveShipping}
-  >
-  {isSavingShipping ? (
-    <>
-      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-      Saving...
-    </>
-  ) : invoiceIds.length <= 1 ? (
-    "Save Shipping"
-  ) : (
-    `Save Shipping (${invoiceIds.length})`
-  )}
-  </Button>
+      {/* Create Shipment Button - does NOT attach invoices */}
+      <Button
+        className="w-full h-8 text-xs"
+        disabled={isCreatingShipment || !isFormValid}
+        onClick={handleCreateShipment}
+      >
+        {isCreatingShipment ? (
+          <>
+            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+            Creating...
+          </>
+        ) : (
+          <>
+            <Plus className="mr-2 h-3 w-3" />
+            Create Shipment
+          </>
+        )}
+      </Button>
+
+      {/* Attach Invoices Button - separate action */}
+      {selectedShipmentId && invoiceIds.length > 0 && (
+        <Button
+          variant="outline"
+          className="w-full h-8 text-xs"
+          disabled={isAttaching}
+          onClick={handleAttachInvoices}
+        >
+          {isAttaching ? (
+            <>
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              Attaching...
+            </>
+          ) : (
+            <>
+              <Link2 className="mr-2 h-3 w-3" />
+              Attach {invoiceIds.length} Invoice(s)
+            </>
+          )}
+        </Button>
+      )}
 
       {!isFormValid && (
         <div className="text-xs text-red-500 space-y-1">
           {validationErrors.map((e) => (
             <div key={e}>• {e}</div>
           ))}
+        </div>
+      )}
+
+      {/* Status indicator */}
+      {selectedShipmentId && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className={`h-2 w-2 rounded-full ${shipmentInvoices.length > 0 ? "bg-green-500" : "bg-amber-500"}`} />
+          {shipmentInvoices.length > 0 
+            ? `${shipmentInvoices.length} invoice(s) linked`
+            : "No invoices linked"}
         </div>
       )}
 
