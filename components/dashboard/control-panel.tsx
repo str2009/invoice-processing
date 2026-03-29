@@ -81,6 +81,10 @@ interface ControlPanelProps {
 onResetEnrich?: (ids: string[]) => void
 onSimulate?: (ids: string[]) => void
 onExportSelected?: (ids: string[]) => void
+/** External multi-select state from parent */
+selectedInvoices?: string[]
+/** Callback to toggle invoice selection */
+onToggleInvoice?: (id: string) => void
 }
 
 export function ControlPanel({
@@ -111,14 +115,24 @@ export function ControlPanel({
 onResetEnrich,
 onDeleteInvoice,
 onExportSelected,
+selectedInvoices: externalSelectedInvoices,
+onToggleInvoice,
 }: ControlPanelProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState(false)
   // Panel tab: "upload" or "saved" (invoice mode only)
   const [panelTab, setPanelTab] = useState<"upload" | "saved">("upload")
-  // Multi-select state for Saved Invoices mode
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // Multi-select state - use external state if provided, otherwise internal
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set())
+  
+  // Derive selectedIds from external prop if provided
+  const selectedIds = useMemo(() => {
+    if (externalSelectedInvoices) {
+      return new Set(externalSelectedInvoices)
+    }
+    return internalSelectedIds
+  }, [externalSelectedInvoices, internalSelectedIds])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -151,7 +165,13 @@ onExportSelected,
 
   // Multi-select helpers
   const toggleId = useCallback((id: string) => {
-    setSelectedIds((prev) => {
+    // Use external callback if provided
+    if (onToggleInvoice) {
+      onToggleInvoice(id)
+      return
+    }
+    // Fallback to internal state
+    setInternalSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)

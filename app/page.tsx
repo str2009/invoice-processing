@@ -72,11 +72,13 @@ useEffect(() => {
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
   const toggleInvoice = (id: string) => {
-    setSelectedInvoices((prev) =>
-      prev.includes(id)
+    setSelectedInvoices((prev) => {
+      const next = prev.includes(id)
         ? prev.filter((i) => i !== id)
         : [...prev, id]
-    )
+      console.log("[v0] selectedInvoices after toggle:", next)
+      return next
+    })
   }
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
@@ -752,6 +754,8 @@ console.log("scenario active:", isScenarioActive)
         onUpdateMarket={handleUpdateMarket}
         onEnrichSelected={handleEnrichSelected}
         onDeleteInvoice={handleDeleteInvoice}
+        selectedInvoices={selectedInvoices}
+        onToggleInvoice={toggleInvoice}
       />
 
       {/* Main Content - shifts right when panel is open */}

@@ -94,6 +94,11 @@ export function SimulationPanel({
   isScenarioActive,
 }: SimulationPanelProps) {
   
+  // Debug: log invoiceIds received
+  useEffect(() => {
+    console.log("[v0] SimulationPanel invoiceIds:", invoiceIds)
+  }, [invoiceIds])
+  
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
 const [normalPrice, setNormalPrice] = useState("115")
