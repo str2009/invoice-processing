@@ -21,7 +21,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2 } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor } from "lucide-react"
+
+// Helper to get transport type icon
+function getTransportIcon(type: string | null, isSelected: boolean) {
+  const className = `h-3.5 w-3.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`
+  const t = type?.toLowerCase()
+  
+  if (t === "air") return <Plane className={className} />
+  if (t === "sea") return <Ship className={className} />
+  if (t === "river") return <Anchor className={className} />
+  if (t === "road" || t === "winter road") return <Truck className={className} />
+  
+  return <Truck className={className} />
+}
 import { toast } from "sonner"
 import type { InvoiceRow } from "@/lib/mock-data"
 
@@ -1066,32 +1079,37 @@ const handleSaveGlobal = useCallback(async () => {
             <div
               key={ship.shipment_id}
               onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-              className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-3 py-2 text-left transition-colors ${
+              className={`flex items-center justify-between gap-3 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
                 isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
               }`}
             >
-              <Truck className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="min-w-0 truncate text-[11px] font-medium leading-tight text-foreground">
-                  {ship.transport_company || "Unknown carrier"}
-                </span>
-                <span className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground/70">
-                  {ship.transport_invoice_number || "No invoice #"} {ship.transport_type && `• ${ship.transport_type}`}
-                </span>
+              {/* LEFT: Icon + Company + Invoice # */}
+              <div className="flex items-center gap-2 min-w-0">
+                {getTransportIcon(ship.transport_type, isSelected)}
+                <div className="truncate">
+                  <span className="text-[11px] font-medium text-foreground">
+                    {ship.transport_company || "Unknown"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/70 ml-2">
+                    {ship.transport_invoice_number || "—"}
+                  </span>
+                </div>
               </div>
-              <div className="shrink-0 flex flex-col items-end gap-0.5">
-                <span className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
-                  {ship.transport_date || "—"}
-                </span>
+              {/* RIGHT: Badge + Date */}
+              <div className="flex items-center gap-2 shrink-0">
                 {ship.transport_type && (
                   <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded ${
                     ship.transport_type.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
                     ship.transport_type.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                    ship.transport_type.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
                     "bg-amber-500/20 text-amber-400"
                   }`}>
                     {ship.transport_type}
                   </span>
                 )}
+                <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                  {ship.transport_date || "—"}
+                </span>
               </div>
             </div>
           )
