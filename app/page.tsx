@@ -754,6 +754,7 @@ console.log("scenario active:", isScenarioActive)
         onDeleteInvoice={handleDeleteInvoice}
         selectedInvoices={selectedInvoices}
         onToggleInvoice={toggleInvoice}
+        onSetSelectedInvoices={setSelectedInvoices}
       />
 
       {/* Main Content - shifts right when panel is open */}

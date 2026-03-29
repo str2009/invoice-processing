@@ -33,6 +33,7 @@ import {
   SquareStack,
   Calculator,
   TrendingUp,
+  Truck,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -85,6 +86,8 @@ onExportSelected?: (ids: string[]) => void
 selectedInvoices?: string[]
 /** Callback to toggle invoice selection */
 onToggleInvoice?: (id: string) => void
+/** Callback to set all selected invoices at once (replaces current selection) */
+onSetSelectedInvoices?: (ids: string[]) => void
 }
 
 export function ControlPanel({
@@ -117,14 +120,32 @@ onDeleteInvoice,
 onExportSelected,
 selectedInvoices: externalSelectedInvoices,
 onToggleInvoice,
+onSetSelectedInvoices,
 }: ControlPanelProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState(false)
   // Panel tab: "upload" or "saved" (invoice mode only)
-  const [panelTab, setPanelTab] = useState<"upload" | "saved">("upload")
+  const [panelTab, setPanelTab] = useState<"upload" | "saved" | "shipments">("upload")
   // Multi-select state - use external state if provided, otherwise internal
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set())
+  
+  // Shipments state
+  const [shipments, setShipments] = useState<Array<{
+    shipment_id: string
+    transport_company: string | null
+    transport_invoice_number: string | null
+    transport_date: string | null
+  }>>([])
+  const [isLoadingShipments, setIsLoadingShipments] = useState(false)
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
+  const [shipmentInvoices, setShipmentInvoices] = useState<Array<{
+    invoice_id: string
+    supplier: string | null
+    date: string | null
+    number: string | null
+  }>>([])
+  const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
   
   // Derive selectedIds from external prop if provided
   const selectedIds = useMemo(() => {
@@ -221,12 +242,65 @@ onToggleInvoice,
     console.log("selectedSummary:", selectedSummary)
   }, [selectedIds, selectedInvoicesData, selectedSummary])
 
-  const hasSelection = selectedIds.size > 0
+const hasSelection = selectedIds.size > 0
+
+  // Load shipments when tab is switched to shipments
   useEffect(() => {
-    if (!hasSelection) return
+    if (panelTab !== "shipments") return
+    
+    const loadShipments = async () => {
+      setIsLoadingShipments(true)
+      try {
+        const res = await fetch("/api/shipment/list")
+        if (res.ok) {
+          const data = await res.json()
+          setShipments(data)
+        }
+      } catch (e) {
+        console.error("Failed to load shipments:", e)
+      } finally {
+        setIsLoadingShipments(false)
+      }
+    }
+    
+    loadShipments()
+  }, [panelTab])
+
+  // Load invoices when a shipment is selected
+  useEffect(() => {
+    if (!selectedShipmentId) {
+      setShipmentInvoices([])
+      return
+    }
+    
+    const loadShipmentInvoices = async () => {
+      setIsLoadingShipmentInvoices(true)
+      try {
+        const res = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
+        if (res.ok) {
+          const data = await res.json()
+          setShipmentInvoices(data)
+          // Replace selected invoices with shipment invoices
+          if (onSetSelectedInvoices) {
+            const newIds = data.map((inv: any) => inv.invoice_id)
+            onSetSelectedInvoices(newIds)
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load shipment invoices:", e)
+      } finally {
+        setIsLoadingShipmentInvoices(false)
+      }
+    }
+    
+    loadShipmentInvoices()
+  }, [selectedShipmentId, onSetSelectedInvoices])
+
+useEffect(() => {
+  if (!hasSelection) return
   
-    // вызываем загрузку как раньше по кнопке Apply
-    onWorkWithSelected?.(Array.from(selectedIds))
+  // вызываем загрузку как раньше по кнопке Apply
+  onWorkWithSelected?.(Array.from(selectedIds))
   }, [selectedIds])
 
   const formatTotal = (val: number | null) =>
@@ -285,7 +359,19 @@ onToggleInvoice,
               }`}
             >
               <FolderOpen className="h-3 w-3" />
-              Saved Invoices
+              Invoices
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanelTab("shipments")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[4px] text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                panelTab === "shipments"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground/60 hover:text-muted-foreground"
+              }`}
+            >
+              <Truck className="h-3 w-3" />
+              Shipments
             </button>
           </div>
         </div>
@@ -790,6 +876,126 @@ onToggleInvoice,
             </div>
           
         
+      )}
+
+      {/* ═══════════════════════════════════════════════ */}
+      {/* SHIPMENTS MODE                                  */}
+      {/* ═══════════════════════════════════════════════ */}
+      {mode === "invoice" && panelTab === "shipments" && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Header */}
+          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Shipments
+            </span>
+            {isLoadingShipments && (
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            )}
+            <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground/50">
+              {shipments.length} total
+            </span>
+          </div>
+
+          {/* Scrollable shipment list */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {shipments.length === 0 && !isLoadingShipments ? (
+              <p className="px-4 py-8 text-center text-[11px] italic text-muted-foreground/40">
+                No shipments found
+              </p>
+            ) : (
+              shipments.map((ship) => {
+                const isSelected = selectedShipmentId === ship.shipment_id
+                const displayText = [
+                  ship.transport_company,
+                  ship.transport_invoice_number,
+                  ship.transport_date
+                ].filter(Boolean).join(" | ") || ship.shipment_id
+
+                return (
+                  <div
+                    key={ship.shipment_id}
+                    onClick={() => setSelectedShipmentId(
+                      isSelected ? null : ship.shipment_id
+                    )}
+                    className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-4 py-2.5 text-left transition-colors ${
+                      isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                    }`}
+                  >
+                    <Truck className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="min-w-0 truncate text-[11px] font-medium leading-tight text-foreground">
+                        {ship.transport_company || "Unknown carrier"}
+                      </span>
+                      <span className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground/70">
+                        {ship.transport_invoice_number || "No invoice #"}
+                      </span>
+                    </div>
+                    <span className="shrink-0 pt-0.5 text-[10px] tabular-nums leading-tight text-muted-foreground/60">
+                      {ship.transport_date || "—"}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Shipment invoices section */}
+          {selectedShipmentId && (
+            <div className="shrink-0 border-t border-border bg-card">
+              <div className="flex items-center gap-2 border-b border-border/50 px-4 py-2">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Linked Invoices
+                </span>
+                {isLoadingShipmentInvoices && (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                )}
+                <span className="ml-auto font-mono text-[10px] tabular-nums text-primary">
+                  {shipmentInvoices.length} invoice{shipmentInvoices.length !== 1 ? "s" : ""} in shipment
+                </span>
+              </div>
+              
+              <div className="max-h-40 overflow-y-auto">
+                {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                  <p className="px-4 py-4 text-center text-[10px] italic text-muted-foreground/40">
+                    No invoices linked to this shipment
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/30">
+                    {shipmentInvoices.map((inv) => (
+                      <div
+                        key={inv.invoice_id}
+                        className="flex items-center gap-2 px-4 py-1.5"
+                      >
+                        <Check className="h-3 w-3 shrink-0 text-primary" />
+                        <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
+                          {inv.invoice_id}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-muted-foreground/60">
+                          {inv.supplier || "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="border-t border-border/50 px-4 py-3">
+                <Button
+                  size="sm"
+                  disabled={shipmentInvoices.length === 0}
+                  onClick={() => {
+                    onWorkWithSelected?.(shipmentInvoices.map(inv => inv.invoice_id))
+                  }}
+                  className="h-8 w-full gap-1.5 text-[11px]"
+                >
+                  <SquareStack className="h-3 w-3 shrink-0" />
+                  Work With Shipment ({shipmentInvoices.length})
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </aside>
   )
