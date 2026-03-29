@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2 } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2 } from "lucide-react"
 import { toast } from "sonner"
 import type { InvoiceRow } from "@/lib/mock-data"
 
@@ -85,6 +85,7 @@ interface SimulationPanelProps {
   onApplyScenario: (rows: InvoiceRow[]) => void
   onResetScenario: () => void
   isScenarioActive: boolean
+  onSetSelectedInvoices?: (ids: string[]) => void
 }
 
 export function SimulationPanel({
@@ -93,6 +94,7 @@ export function SimulationPanel({
   onApplyScenario,
   onResetScenario,
   isScenarioActive,
+  onSetSelectedInvoices,
 }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
@@ -179,6 +181,152 @@ const EMPTY_SHIPPING: ShippingForm = {
 
 const [shippingForm, setShippingForm] = useState<ShippingForm>(EMPTY_SHIPPING)
 const [savedShipping, setSavedShipping] = useState<ShippingForm | null>(null)
+
+// -------------------- Shipment management state --------------------
+type ShipmentListItem = {
+  shipment_id: string
+  transport_company: string | null
+  transport_invoice_number: string | null
+  transport_date: string | null
+}
+
+type ShipmentInvoice = {
+  invoice_id: string
+  supplier: string | null
+  date: string | null
+  number: string | null
+}
+
+const [shipments, setShipments] = useState<ShipmentListItem[]>([])
+const [isLoadingShipments, setIsLoadingShipments] = useState(false)
+const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
+const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
+const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
+const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
+const [isAttaching, setIsAttaching] = useState(false)
+
+// Load shipments when shipping tab is active
+const loadShipments = useCallback(async () => {
+  setIsLoadingShipments(true)
+  try {
+    const res = await fetch("/api/shipment/list")
+    if (res.ok) {
+      const data = await res.json()
+      setShipments(data)
+    }
+  } catch (e) {
+    console.error("Failed to load shipments:", e)
+  } finally {
+    setIsLoadingShipments(false)
+  }
+}, [])
+
+// Load shipments on tab change
+useEffect(() => {
+  if (activeTab === "shipping") {
+    loadShipments()
+  }
+}, [activeTab, loadShipments])
+
+// Load shipment details when selected
+useEffect(() => {
+  if (!selectedShipmentId) {
+    setShipmentInvoices([])
+    return
+  }
+  
+  const loadShipmentData = async () => {
+    setIsLoadingShipmentInvoices(true)
+    try {
+      // Load shipment details
+      const detailsRes = await fetch(`/api/shipment/${selectedShipmentId}`)
+      if (detailsRes.ok) {
+        const details = await detailsRes.json()
+        // Fill form with shipment data
+        setShippingForm({
+          company: details.transport_company || "",
+          type: details.transport_type || "",
+          invoiceNumber: details.transport_invoice_number || "",
+          reference: "",
+          transportDate: details.transport_date || "",
+          receivedDate: details.received_date || "",
+          totalCost: String(details.total_shipping_cost || ""),
+          packages: String(details.packages_count || ""),
+          weight: String(details.total_weight || ""),
+          volume: String(details.total_volume || ""),
+          density: String(details.density || ""),
+          goodsTotalValue: String(details.goods_total_value || ""),
+          goodsValuePerKg: String(details.goods_value_per_kg || ""),
+          comment: details.comment || "",
+          manager: "",
+          warehouse: "",
+        })
+      }
+
+      // Load linked invoices
+      const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
+      if (invoicesRes.ok) {
+        const invoices = await invoicesRes.json()
+        setShipmentInvoices(invoices)
+        // Update selected invoices in parent
+        if (onSetSelectedInvoices && invoices.length > 0) {
+          onSetSelectedInvoices(invoices.map((inv: ShipmentInvoice) => inv.invoice_id))
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load shipment data:", e)
+    } finally {
+      setIsLoadingShipmentInvoices(false)
+    }
+  }
+  
+  loadShipmentData()
+}, [selectedShipmentId, onSetSelectedInvoices])
+
+// Attach invoices to shipment
+const handleAttachInvoices = useCallback(async () => {
+  if (!selectedShipmentId || !invoiceIds.length) return
+  
+  setIsAttaching(true)
+  const toastId = toast.loading("Attaching invoices...")
+  
+  try {
+    const res = await fetch("/api/shipment/attach", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shipment_id: selectedShipmentId,
+        invoice_ids: invoiceIds,
+      }),
+    })
+    
+    if (!res.ok) {
+      const err = await res.json()
+      toast.error(err.error || "Failed to attach invoices", { id: toastId })
+      return
+    }
+    
+    toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
+    
+    // Reload shipment invoices
+    const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
+    if (invoicesRes.ok) {
+      const invoices = await invoicesRes.json()
+      setShipmentInvoices(invoices)
+    }
+  } catch {
+    toast.error("Failed to attach invoices", { id: toastId })
+  } finally {
+    setIsAttaching(false)
+  }
+}, [selectedShipmentId, invoiceIds])
+
+// Create new shipment (clear selection and form)
+const handleNewShipment = useCallback(() => {
+  setSelectedShipmentId(null)
+  setShippingForm(EMPTY_SHIPPING)
+  setShipmentInvoices([])
+}, [])
 // -------------------- Invoice vs Goods check --------------------
 
 const invoiceTotal = data.reduce(
@@ -768,7 +916,153 @@ const handleSaveGlobal = useCallback(async () => {
 {/* ─── Shipping Model Tab ─── */}
 <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
 
-  <div className="grid grid-cols-4 gap-8">
+  <div className="grid grid-cols-5 gap-6">
+
+  {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
+  <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+    {/* Header */}
+    <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Truck className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Shipments
+        </span>
+        {isLoadingShipments && (
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        )}
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleNewShipment}
+        className="h-6 px-2 text-[10px]"
+      >
+        <Plus className="h-3 w-3 mr-1" />
+        New
+      </Button>
+    </div>
+
+    {/* Filter tabs */}
+    <div className="shrink-0 flex border-b border-border">
+      {(["all", "unlinked", "recent"] as const).map((filter) => (
+        <button
+          key={filter}
+          onClick={() => setShipmentFilter(filter)}
+          className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+            shipmentFilter === filter
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground/60 hover:text-muted-foreground"
+          }`}
+        >
+          {filter}
+        </button>
+      ))}
+    </div>
+
+    {/* Shipment list */}
+    <div className="flex-1 overflow-y-auto overscroll-contain">
+      {shipments.length === 0 && !isLoadingShipments ? (
+        <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+          No shipments found
+        </p>
+      ) : (
+        shipments.map((ship) => {
+          const isSelected = selectedShipmentId === ship.shipment_id
+          return (
+            <div
+              key={ship.shipment_id}
+              onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+              className={`flex w-full cursor-pointer items-start gap-2.5 border-b border-border/40 px-3 py-2.5 text-left transition-colors ${
+                isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+              }`}
+            >
+              <Truck className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="min-w-0 truncate text-[11px] font-medium leading-tight text-foreground">
+                  {ship.transport_company || "Unknown carrier"}
+                </span>
+                <span className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground/70">
+                  {ship.transport_invoice_number || "No invoice #"}
+                </span>
+              </div>
+              <span className="shrink-0 pt-0.5 text-[10px] tabular-nums leading-tight text-muted-foreground/60">
+                {ship.transport_date || "—"}
+              </span>
+            </div>
+          )
+        })
+      )}
+    </div>
+
+    {/* Linked invoices section */}
+    {selectedShipmentId && (
+      <div className="shrink-0 border-t border-border bg-muted/30">
+        <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Linked Invoices
+          </span>
+          {isLoadingShipmentInvoices ? (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+          ) : (
+            <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+              {shipmentInvoices.length === 0 ? (
+                <span className="inline-flex items-center gap-1 text-amber-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Unlinked
+                </span>
+              ) : (
+                `${shipmentInvoices.length} linked`
+              )}
+            </span>
+          )}
+        </div>
+        
+        <div className="max-h-24 overflow-y-auto">
+          {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+            <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
+              No invoices linked
+            </p>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {shipmentInvoices.slice(0, 5).map((inv) => (
+                <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
+                  <Check className="h-3 w-3 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
+                    {inv.invoice_id}
+                  </span>
+                </div>
+              ))}
+              {shipmentInvoices.length > 5 && (
+                <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
+                  +{shipmentInvoices.length - 5} more
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Attach button */}
+        {invoiceIds.length > 0 && (
+          <div className="border-t border-border/50 px-3 py-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isAttaching}
+              onClick={handleAttachInvoices}
+              className="h-7 w-full gap-1.5 text-[10px]"
+            >
+              {isAttaching ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Link2 className="h-3 w-3" />
+              )}
+              Attach {invoiceIds.length} invoice(s)
+            </Button>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
 
     {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
@@ -984,7 +1278,7 @@ const handleSaveGlobal = useCallback(async () => {
 
     </div>
 
-    {/* ───────────── COLUMN 3 — MODEL ──────────���── */}
+    {/* ─���─────────── COLUMN 3 — MODEL ──────────���── */}
     <div className="bg-card border border-border rounded-xl p-6">
       <div className="grid grid-cols-2 gap-x-6 gap-y-5">
 
