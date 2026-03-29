@@ -378,13 +378,13 @@ const handleSaveShipping = useCallback(async () => {
 
   // Block submit if no invoices selected
   if (normalizedInvoiceIds.length === 0) {
-    console.error("SHIPMENT ERROR: No invoices selected")
+    toast.error("No invoices selected")
     return
   }
 
   if (!isFormValid) return
 
-  
+  const toastId = toast.loading("Saving shipment...")
 
   const prevSaved = savedShipping
   setSavedShipping(shippingForm)
@@ -426,15 +426,14 @@ const handleSaveShipping = useCallback(async () => {
     const json = await res.json().catch(() => ({}))
 
     if (!res.ok || !json?.success) {
-      console.error("SHIPMENT ERROR:", json)
-      toast.error("Failed to save shipment")
-      throw new Error(json?.error || JSON.stringify(json) || "Failed to save shipment")
+      toast.error(json?.error || "Failed to save shipment", { id: toastId })
+      throw new Error(json?.error || "Failed to save shipment")
     }
 
-    toast.success(`Shipment saved for ${normalizedInvoiceIds.length} invoice(s)`)
+    toast.success(`Shipment saved for ${normalizedInvoiceIds.length} invoice(s)`, { id: toastId })
 
   } catch {
-    toast.error("Error saving shipment")
+    toast.error("Error saving shipment", { id: toastId })
 
     // откат если ошибка
     setSavedShipping(prevSaved)
