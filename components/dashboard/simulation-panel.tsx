@@ -338,64 +338,6 @@ const handleNewShipment = useCallback(() => {
   setShipmentInvoices([])
 }, [])
 
-// Create shipment WITHOUT attaching invoices
-const handleCreateShipment = useCallback(async () => {
-  if (!isFormValid) return
-  
-  setIsCreatingShipment(true)
-  const toastId = toast.loading("Creating shipment...")
-  
-  try {
-    const res = await fetch("/api/shipment/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transport_company: shippingForm.company ?? null,
-        transport_type: shippingForm.type ?? null,
-        transport_invoice_number: shippingForm.invoiceNumber ?? null,
-        transport_date: shippingForm.transportDate ?? null,
-        received_date: shippingForm.receivedDate ?? null,
-        total_shipping_cost: Number(shippingForm.totalCost || 0),
-        total_weight: Number(shippingForm.weight || 0),
-        total_volume: Number(shippingForm.volume || 0),
-        density: Number(shippingForm.density || 0),
-        packages_count: Number(shippingForm.packages || 0),
-        comment: shippingForm.comment ?? null,
-        goods_total_value: Number(shippingForm.goodsTotalValue || 0),
-        goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
-        normal_weight: Number(model.normalWeight || 0),
-        bulky_weight: Number(model.bulkyWeight || 0),
-        normal_shipping: Number(model.normalShipping || 0),
-        bulky_shipping: Number(model.bulkyShipping || 0),
-        catalog_weight: Number(weightStats.totalWeight || 0),
-        bulky_price: Number(model.bulkyPrice || 0),
-      }),
-    })
-    
-    const json = await res.json()
-    
-    if (!res.ok || !json?.success) {
-      toast.error(json?.error || "Failed to create shipment", { id: toastId })
-      return
-    }
-    
-    toast.success("Shipment created (no invoices attached)", { id: toastId })
-    
-    // Reload shipment list and switch to ALL tab
-    setShipmentFilter("all")
-    await loadShipments("all")
-    
-    // Select the newly created shipment
-    if (json.shipment?.shipment_id) {
-      setSelectedShipmentId(json.shipment.shipment_id)
-    }
-    
-  } catch {
-    toast.error("Failed to create shipment", { id: toastId })
-  } finally {
-    setIsCreatingShipment(false)
-  }
-}, [isFormValid, shippingForm, model, weightStats, loadShipments])
 // -------------------- Invoice vs Goods check --------------------
 
 const invoiceTotal = data.reduce(
@@ -487,6 +429,65 @@ const validationErrors = useMemo(() => {
 }, [shippingForm])
 
 const isFormValid = validationErrors.length === 0
+
+// Create shipment WITHOUT attaching invoices (defined after model)
+const handleCreateShipment = useCallback(async () => {
+  if (!isFormValid) return
+  
+  setIsCreatingShipment(true)
+  const toastId = toast.loading("Creating shipment...")
+  
+  try {
+    const res = await fetch("/api/shipment/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transport_company: shippingForm.company ?? null,
+        transport_type: shippingForm.type ?? null,
+        transport_invoice_number: shippingForm.invoiceNumber ?? null,
+        transport_date: shippingForm.transportDate ?? null,
+        received_date: shippingForm.receivedDate ?? null,
+        total_shipping_cost: Number(shippingForm.totalCost || 0),
+        total_weight: Number(shippingForm.weight || 0),
+        total_volume: Number(shippingForm.volume || 0),
+        density: Number(shippingForm.density || 0),
+        packages_count: Number(shippingForm.packages || 0),
+        comment: shippingForm.comment ?? null,
+        goods_total_value: Number(shippingForm.goodsTotalValue || 0),
+        goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+        normal_weight: Number(model.normalWeight || 0),
+        bulky_weight: Number(model.bulkyWeight || 0),
+        normal_shipping: Number(model.normalShipping || 0),
+        bulky_shipping: Number(model.bulkyShipping || 0),
+        catalog_weight: Number(weightStats.totalWeight || 0),
+        bulky_price: Number(model.bulkyPrice || 0),
+      }),
+    })
+    
+    const json = await res.json()
+    
+    if (!res.ok || !json?.success) {
+      toast.error(json?.error || "Failed to create shipment", { id: toastId })
+      return
+    }
+    
+    toast.success("Shipment created (no invoices attached)", { id: toastId })
+    
+    // Reload shipment list and switch to ALL tab
+    setShipmentFilter("all")
+    await loadShipments("all")
+    
+    // Select the newly created shipment
+    if (json.shipment?.shipment_id) {
+      setSelectedShipmentId(json.shipment.shipment_id)
+    }
+    
+  } catch {
+    toast.error("Failed to create shipment", { id: toastId })
+  } finally {
+    setIsCreatingShipment(false)
+  }
+}, [isFormValid, shippingForm, model, weightStats, loadShipments])
 
 const isShippingModified = useMemo(() => {
   if (!savedShipping) {
