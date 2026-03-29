@@ -32,10 +32,10 @@ export async function GET(
       return NextResponse.json([])
     }
 
-    // Fetch invoice details separately
+    // Fetch invoice details separately - use correct column names
     const { data: invoicesData, error: invoicesError } = await supabase
       .from("invoice")
-      .select("invoice_id, supplier, invoice_date, invoice_number")
+      .select("invoice_id, supplier, created_at, total_amount_document")
       .in("invoice_id", invoiceIds)
 
     if (invoicesError) throw invoicesError
@@ -44,8 +44,8 @@ export async function GET(
     const invoices = (invoicesData ?? []).map((inv: any) => ({
       invoice_id: inv.invoice_id,
       supplier: inv.supplier ?? null,
-      date: inv.invoice_date ?? null,
-      number: inv.invoice_number ?? null,
+      date: inv.created_at ?? null,
+      amount: inv.total_amount_document ?? null,
     }))
 
     console.log("[v0] Returning invoices:", invoices)

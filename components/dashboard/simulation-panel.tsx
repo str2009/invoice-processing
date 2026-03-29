@@ -194,7 +194,7 @@ type ShipmentInvoice = {
   invoice_id: string
   supplier: string | null
   date: string | null
-  number: string | null
+  amount: number | null
 }
 
 const [shipments, setShipments] = useState<ShipmentListItem[]>([])
@@ -202,6 +202,10 @@ const [isLoadingShipments, setIsLoadingShipments] = useState(false)
 const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
 const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
+
+// Debug logs as requested
+console.log("selectedShipmentId:", selectedShipmentId)
+console.log("linkedInvoices:", shipmentInvoices)
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
 const [isAttaching, setIsAttaching] = useState(false)
 
