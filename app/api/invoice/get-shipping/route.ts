@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET(req: Request) {
   try {
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "invoice_id is required" }, { status: 400 })
     }
 
-    const { data, error } = await supabaseServer
+    const { data, error } = await supabase
       .from("invoice")
       .select(
         [
