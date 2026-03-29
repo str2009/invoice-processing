@@ -6,44 +6,61 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Helper to convert empty strings to null
+const safe = (v: any) => (v === "" || v === undefined ? null : v)
+const safeNum = (v: any) => {
+  if (v === "" || v === undefined || v === null) return null
+  const num = Number(v)
+  return isNaN(num) ? null : num
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
 
-    const {
-      invoiceIds,
-      shippingData
-    } = body
+    console.log("FULL BODY:", body)
 
-    // 1. создаём shipment
+    const { invoiceIds, shippingData } = body
+
+    console.log("shippingData:", shippingData)
+
+    // Validate input
+    if (!shippingData) {
+      return NextResponse.json({ error: "Missing shippingData" }, { status: 400 })
+    }
+
+    // 1. создаём shipment - include all columns
+    const insertData = {
+      transport_company: shippingData.transport_company ?? null,
+      transport_type: shippingData.transport_type ?? null,
+      transport_invoice_number: shippingData.transport_invoice_number ?? null,
+      transport_date: shippingData.transport_date ?? null,
+      received_date: shippingData.received_date ?? null,
+      total_shipping_cost: shippingData.total_shipping_cost ?? 0,
+      total_weight: shippingData.total_weight ?? 0,
+      total_volume: shippingData.total_volume ?? 0,
+      density: shippingData.density ?? 0,
+      packages_count: shippingData.packages_count ?? 0,
+      comment: shippingData.comment ?? null,
+      goods_total_value: shippingData.goods_total_value ?? 0,
+      goods_value_per_kg: shippingData.goods_value_per_kg ?? null,
+      normal_weight: shippingData.normal_weight ?? null,
+      bulky_weight: shippingData.bulky_weight ?? null,
+      normal_shipping: shippingData.normal_shipping ?? null,
+      bulky_shipping: shippingData.bulky_shipping ?? null,
+      catalog_weight: shippingData.catalog_weight ?? null,
+      bulky_price: shippingData.bulky_price ?? null,
+    }
+
+    console.log("INSERTING INTO SHIPMENT:", insertData)
+
     const { data: shipment, error: shipmentError } = await supabase
       .from("shipment")
-      .insert({
-        transport_company: shippingData.transport_company,
-        transport_type: shippingData.transport_type,
-        transport_invoice_number: shippingData.transport_invoice_number,
-        transport_date: shippingData.transport_date,
-        received_date: shippingData.received_date,
-
-        total_shipping_cost: shippingData.total_shipping_cost,
-        total_weight: shippingData.total_weight,
-        total_volume: shippingData.total_volume,
-        density: shippingData.density,
-
-        goods_total_value: shippingData.goods_total_value,
-        goods_value_per_kg: shippingData.goods_value_per_kg,
-
-        normal_weight: shippingData.normal_weight,
-        bulky_weight: shippingData.bulky_weight,
-
-        normal_shipping: shippingData.normal_shipping,
-        bulky_shipping: shippingData.bulky_shipping,
-
-        catalog_weight: shippingData.catalog_weight,
-        bulky_price: shippingData.bulky_price,
-      })
+      .insert(insertData)
       .select()
       .single()
+
+    console.log("INSERT RESULT:", shipment)
 
     if (shipmentError) throw shipmentError
 

@@ -752,6 +752,8 @@ console.log("scenario active:", isScenarioActive)
         onUpdateMarket={handleUpdateMarket}
         onEnrichSelected={handleEnrichSelected}
         onDeleteInvoice={handleDeleteInvoice}
+        selectedInvoices={selectedInvoices}
+        onToggleInvoice={toggleInvoice}
       />
 
       {/* Main Content - shifts right when panel is open */}
@@ -1004,15 +1006,14 @@ console.log("scenario active:", isScenarioActive)
 <SimulationPanel
   data={baseData}
   invoiceIds={
-    selectedInvoices.length
-      ? selectedInvoices
-      : selectedInvoice
-        ? [selectedInvoice]
-        : []
+    Array.isArray(selectedInvoices)
+      ? selectedInvoices.map(i => typeof i === "string" ? i : (i as any).invoice_id)
+      : []
   }
   onApplyScenario={handleApplyScenario}
   onResetScenario={handleResetScenario}
   isScenarioActive={isScenarioActive}
+  onSetSelectedInvoices={setSelectedInvoices}
 />
               </div>
             )}
