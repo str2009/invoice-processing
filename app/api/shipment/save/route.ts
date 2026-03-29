@@ -18,37 +18,32 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
 
-    const {
-      invoiceIds,
-      shippingData
-    } = body
+    console.log("FULL BODY:", body)
 
-    console.log("BACKEND RECEIVED shippingData:", shippingData)
+    const { invoiceIds, shippingData } = body
 
-    // 1. создаём shipment
+    console.log("shippingData:", shippingData)
+
+    // Validate input
+    if (!shippingData) {
+      return NextResponse.json({ error: "Missing shippingData" }, { status: 400 })
+    }
+
+    // 1. создаём shipment with correct database field names
     const insertData = {
-      transport_company: safe(shippingData.transport_company),
-      transport_type: safe(shippingData.transport_type),
-      transport_invoice_number: safe(shippingData.transport_invoice_number),
-      transport_date: safe(shippingData.transport_date),
-      received_date: safe(shippingData.received_date),
-
-      total_shipping_cost: safeNum(shippingData.total_shipping_cost),
-      total_weight: safeNum(shippingData.total_weight),
-      total_volume: safeNum(shippingData.total_volume),
-      density: safeNum(shippingData.density),
-
-      goods_total_value: safeNum(shippingData.goods_total_value),
-      goods_value_per_kg: safeNum(shippingData.goods_value_per_kg),
-
-      normal_weight: safeNum(shippingData.normal_weight),
-      bulky_weight: safeNum(shippingData.bulky_weight),
-
-      normal_shipping: safeNum(shippingData.normal_shipping),
-      bulky_shipping: safeNum(shippingData.bulky_shipping),
-
-      catalog_weight: safeNum(shippingData.catalog_weight),
-      bulky_price: safeNum(shippingData.bulky_price),
+      transport_company: shippingData.transport_company ?? null,
+      transport_type: shippingData.transport_type ?? null,
+      transport_invoice_number: shippingData.transport_invoice_number ?? null,
+      transport_date: shippingData.transport_date ?? null,
+      received_date: shippingData.received_date ?? null,
+      total_shipping_cost: shippingData.total_shipping_cost ?? 0,
+      shipping_total_weight: shippingData.shipping_total_weight ?? shippingData.total_weight ?? 0,
+      shipping_total_volume: shippingData.shipping_total_volume ?? shippingData.total_volume ?? 0,
+      shipping_density: shippingData.shipping_density ?? shippingData.density ?? 0,
+      packages_count: shippingData.packages_count ?? 0,
+      shipping_comment: shippingData.shipping_comment ?? null,
+      goods_total_value: shippingData.goods_total_value ?? 0,
+      goods_value_per_kg: shippingData.goods_value_per_kg ?? 0,
     }
 
     console.log("INSERTING INTO SHIPMENT:", insertData)
@@ -58,6 +53,8 @@ export async function POST(req: Request) {
       .insert(insertData)
       .select()
       .single()
+
+    console.log("INSERT RESULT:", shipment)
 
     if (shipmentError) throw shipmentError
 

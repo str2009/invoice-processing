@@ -405,31 +405,19 @@ const handleSaveShipping = useCallback(async () => {
       body: JSON.stringify({
         invoiceIds: normalizedInvoiceIds,
         shippingData: {
-          transport_company: shippingForm.transport_company,
-          transport_type: shippingForm.transport_type,
-          transport_invoice_number: shippingForm.transport_invoice_number,
-          transport_date: shippingForm.transport_date,
-          received_date: shippingForm.received_date,
-
-          total_shipping_cost: Number(shippingForm.total_shipping_cost || 0),
-          total_weight: Number(shippingForm.total_weight || 0),
-          total_volume: Number(shippingForm.total_volume || 0),
-          density: Number(shippingForm.density || 0),
-
-          goods_total_value: Number(shippingForm.goods_total_value || 0),
-          goods_value_per_kg:
-            shippingForm.goodsValuePerKg === ""
-              ? null
-              : Number(shippingForm.goodsValuePerKg),
-
-          normal_weight: Number(shippingForm.normal_weight || 0),
-          bulky_weight: Number(shippingForm.bulky_weight || 0),
-
-          normal_shipping: Number(shippingForm.normal_shipping || 0),
-          bulky_shipping: Number(shippingForm.bulky_shipping || 0),
-
-          catalog_weight: Number(shippingForm.catalog_weight || 0),
-          bulky_price: Number(shippingForm.bulky_price || 0),
+          transport_company: shippingForm.company ?? null,
+          transport_type: shippingForm.type ?? null,
+          transport_invoice_number: shippingForm.invoiceNumber ?? null,
+          transport_date: shippingForm.transportDate ?? null,
+          received_date: shippingForm.receivedDate ?? null,
+          total_shipping_cost: Number(shippingForm.totalCost || 0),
+          shipping_total_weight: Number(shippingForm.weight || 0),
+          shipping_total_volume: Number(shippingForm.volume || 0),
+          shipping_density: Number(shippingForm.density || 0),
+          packages_count: Number(shippingForm.packages || 0),
+          shipping_comment: shippingForm.comment ?? null,
+          goods_total_value: Number(shippingForm.goodsTotalValue || 0),
+          goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? 0 : Number(shippingForm.goodsValuePerKg),
         },
       }),
     })
