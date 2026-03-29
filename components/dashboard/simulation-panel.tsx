@@ -21,7 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import type { InvoiceRow } from "@/lib/mock-data"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -93,11 +94,6 @@ export function SimulationPanel({
   onResetScenario,
   isScenarioActive,
 }: SimulationPanelProps) {
-  
-  // Debug: log invoiceIds received
-  useEffect(() => {
-    console.log("[v0] SimulationPanel invoiceIds:", invoiceIds)
-  }, [invoiceIds])
   
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
@@ -388,8 +384,7 @@ const handleSaveShipping = useCallback(async () => {
 
   if (!isFormValid) return
 
-  console.log("SENDING invoiceIds:", normalizedInvoiceIds)
-  console.log("SENDING SHIPPING DATA:", shippingForm)
+  
 
   const prevSaved = savedShipping
   setSavedShipping(shippingForm)
@@ -432,18 +427,14 @@ const handleSaveShipping = useCallback(async () => {
 
     if (!res.ok || !json?.success) {
       console.error("SHIPMENT ERROR:", json)
+      toast.error("Failed to save shipment")
       throw new Error(json?.error || JSON.stringify(json) || "Failed to save shipment")
     }
 
-    console.log("Shipment saved for invoices:", invoiceIds)
-    // ✅ ВАЖНО — сброс состояния
+    toast.success(`Shipment saved for ${normalizedInvoiceIds.length} invoice(s)`)
 
-
-    // можно сбросить флаг изменений
-    
-
-  } catch (err) {
-    console.error("Save shipping error:", err)
+  } catch {
+    toast.error("Error saving shipment")
 
     // откат если ошибка
     setSavedShipping(prevSaved)
@@ -1081,15 +1072,22 @@ const handleSaveGlobal = useCallback(async () => {
     {/* ───────────── COLUMN 4 — CONTROL ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
 
-      <Button
-        className="w-full h-8 text-xs"
-        disabled={!isFormValid || !invoiceIds.length}
-        onClick={handleSaveShipping}
-      >
-        {invoiceIds.length <= 1
-          ? "Save Shipping"
-          : `Save Shipping (${invoiceIds.length})`}
-      </Button>
+<Button
+  className="w-full h-8 text-xs"
+  disabled={isSavingShipping || !isFormValid || !invoiceIds.length}
+  onClick={handleSaveShipping}
+  >
+  {isSavingShipping ? (
+    <>
+      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+      Saving...
+    </>
+  ) : invoiceIds.length <= 1 ? (
+    "Save Shipping"
+  ) : (
+    `Save Shipping (${invoiceIds.length})`
+  )}
+  </Button>
 
       {!isFormValid && (
         <div className="text-xs text-red-500 space-y-1">
