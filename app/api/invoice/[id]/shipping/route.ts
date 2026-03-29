@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 function toNum(v: unknown) {
   if (v === "" || v === null || v === undefined) return null
@@ -14,7 +14,7 @@ export async function POST(
   const { id } = await params
   const { shipping } = await request.json()
 
-  const { error } = await supabaseServer
+  const { error } = await supabase
     .from("invoice")
     .update({
       transport_company: shipping.company ?? null,
