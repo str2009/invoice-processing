@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET() {
-  const { data, error } = await supabaseServer
+  const { data, error } = await supabase
     .from("invoice")
     .select("invoice_id, supplier, total_amount_document, total_rows")
     .order("created_at", { ascending: false })
