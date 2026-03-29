@@ -6,6 +6,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Helper to convert empty strings to null
+const safe = (v: any) => (v === "" || v === undefined ? null : v)
+const safeNum = (v: any) => {
+  if (v === "" || v === undefined || v === null) return null
+  const num = Number(v)
+  return isNaN(num) ? null : num
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -15,33 +23,39 @@ export async function POST(req: Request) {
       shippingData
     } = body
 
+    console.log("BACKEND RECEIVED shippingData:", shippingData)
+
     // 1. создаём shipment
+    const insertData = {
+      transport_company: safe(shippingData.transport_company),
+      transport_type: safe(shippingData.transport_type),
+      transport_invoice_number: safe(shippingData.transport_invoice_number),
+      transport_date: safe(shippingData.transport_date),
+      received_date: safe(shippingData.received_date),
+
+      total_shipping_cost: safeNum(shippingData.total_shipping_cost),
+      total_weight: safeNum(shippingData.total_weight),
+      total_volume: safeNum(shippingData.total_volume),
+      density: safeNum(shippingData.density),
+
+      goods_total_value: safeNum(shippingData.goods_total_value),
+      goods_value_per_kg: safeNum(shippingData.goods_value_per_kg),
+
+      normal_weight: safeNum(shippingData.normal_weight),
+      bulky_weight: safeNum(shippingData.bulky_weight),
+
+      normal_shipping: safeNum(shippingData.normal_shipping),
+      bulky_shipping: safeNum(shippingData.bulky_shipping),
+
+      catalog_weight: safeNum(shippingData.catalog_weight),
+      bulky_price: safeNum(shippingData.bulky_price),
+    }
+
+    console.log("INSERTING INTO SHIPMENT:", insertData)
+
     const { data: shipment, error: shipmentError } = await supabase
       .from("shipment")
-      .insert({
-        transport_company: shippingData.transport_company,
-        transport_type: shippingData.transport_type,
-        transport_invoice_number: shippingData.transport_invoice_number,
-        transport_date: shippingData.transport_date,
-        received_date: shippingData.received_date,
-
-        total_shipping_cost: shippingData.total_shipping_cost,
-        total_weight: shippingData.total_weight,
-        total_volume: shippingData.total_volume,
-        density: shippingData.density,
-
-        goods_total_value: shippingData.goods_total_value,
-        goods_value_per_kg: shippingData.goods_value_per_kg,
-
-        normal_weight: shippingData.normal_weight,
-        bulky_weight: shippingData.bulky_weight,
-
-        normal_shipping: shippingData.normal_shipping,
-        bulky_shipping: shippingData.bulky_shipping,
-
-        catalog_weight: shippingData.catalog_weight,
-        bulky_price: shippingData.bulky_price,
-      })
+      .insert(insertData)
       .select()
       .single()
 

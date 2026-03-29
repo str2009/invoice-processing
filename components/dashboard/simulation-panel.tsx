@@ -389,6 +389,7 @@ const handleSaveShipping = useCallback(async () => {
   if (!isFormValid) return
 
   console.log("SENDING invoiceIds:", normalizedInvoiceIds)
+  console.log("SENDING SHIPPING DATA:", shippingForm)
 
   const prevSaved = savedShipping
   setSavedShipping(shippingForm)
@@ -464,7 +465,7 @@ const handleSaveShipping = useCallback(async () => {
 ])
 // ─── Pricing rules actions & calculations ──────────────────────────────────
 
-// добавить новое правило
+// добавить н��вое правило
 const addRule = useCallback(() => {
   setScenarioRules((prev) => [
     ...prev,
