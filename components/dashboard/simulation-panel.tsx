@@ -1561,40 +1561,24 @@ const handleSaveGlobal = useCallback(async () => {
 
         {/* ─── Pricing Manager Tab (Read-Only Clone of Shipping Model) ─── */}
         <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
-          {!selectedShipmentId ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground/60 italic">
-                Select a shipment to review pricing context.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-5 gap-6">
+          <div className="grid grid-cols-5 gap-6">
 
-              {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Same as Shipping Model) ───────────── */}
-              <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
-                {/* Header */}
-                <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Shipments
-                    </span>
-                    {isLoadingShipments && (
-                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleNewShipment}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    New
-                  </Button>
+            {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Always visible) ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+              {/* Header */}
+              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Shipments
+                  </span>
+                  {isLoadingShipments && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
                 </div>
+              </div>
 
-                {/* Filter tabs */}
+              {/* Filter tabs */}
                 <div className="shrink-0 flex border-b border-border">
                   {(["all", "unlinked", "recent"] as const).map((filter) => (
                     <button
@@ -1719,10 +1703,19 @@ const handleSaveGlobal = useCallback(async () => {
                     </div>
                   </div>
                 )}
-              </div>
+            </div>
 
-              {/* ───────────── COLUMN 1 — DELIVERY INFO (DISABLED) ───────────── */}
-              <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
+            {/* ───────────── COLUMNS 1-4 — FORM (conditional) ───────────── */}
+            {!selectedShipmentId ? (
+              <div className="col-span-4 flex items-center justify-center bg-card border border-border rounded-xl">
+                <p className="text-sm text-muted-foreground/60 italic">
+                  Select a shipment to review pricing context.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* ───────────── COLUMN 1 — DELIVERY INFO (DISABLED) ───────────── */}
+                <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
                 <div className="grid grid-cols-2 gap-6">
 
                   <Field label="Company">
@@ -1965,10 +1958,11 @@ const handleSaveGlobal = useCallback(async () => {
                 <p className="text-[11px] text-muted-foreground/60">
                   This is a read-only view of shipment data. To edit shipment details, use the Shipping Model tab.
                 </p>
-              </div>
+                </div>
+              </>
+            )}
 
-            </div>
-          )}
+          </div>
         </TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
