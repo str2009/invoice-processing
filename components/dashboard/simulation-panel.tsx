@@ -850,6 +850,12 @@ const handleSaveGlobal = useCallback(async () => {
               Shipping Model
             </TabsTrigger>
             <TabsTrigger
+              value="pricing-manager"
+              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Pricing Manager
+            </TabsTrigger>
+            <TabsTrigger
               value="summary"
               className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
             >
@@ -1552,6 +1558,418 @@ const handleSaveGlobal = useCallback(async () => {
   </div>
 
 </TabsContent>
+
+        {/* ─── Pricing Manager Tab (Read-Only Clone of Shipping Model) ─── */}
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
+          {!selectedShipmentId ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground/60 italic">
+                Select a shipment to review pricing context.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 gap-6">
+
+              {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Same as Shipping Model) ───────────── */}
+              <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+                {/* Header */}
+                <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Shipments
+                    </span>
+                    {isLoadingShipments && (
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNewShipment}
+                    className="h-6 px-2 text-[10px]"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    New
+                  </Button>
+                </div>
+
+                {/* Filter tabs */}
+                <div className="shrink-0 flex border-b border-border">
+                  {(["all", "unlinked", "recent"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setShipmentFilter(filter)}
+                      className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                        shipmentFilter === filter
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-muted-foreground/60 hover:text-muted-foreground"
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search input */}
+                <div className="shrink-0 px-3 py-2 border-b border-border">
+                  <input
+                    type="text"
+                    placeholder="Search company, number, type..."
+                    value={shipmentSearch}
+                    onChange={(e) => setShipmentSearch(e.target.value)}
+                    className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Shipment list */}
+                <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
+                  {filteredShipments.length === 0 && !isLoadingShipments ? (
+                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                      {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                    </p>
+                  ) : (
+                    filteredShipments.map((ship) => {
+                      const isSelected = selectedShipmentId === ship.shipment_id
+                      return (
+                        <div
+                          key={ship.shipment_id}
+                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                          className={`flex items-center justify-between gap-3 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
+                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {getTransportIcon(ship.transport_type, isSelected)}
+                            <div className="truncate">
+                              <span className="text-[11px] font-medium text-foreground">
+                                {ship.transport_company || "Unknown"}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground/70 ml-2">
+                                {ship.transport_invoice_number || "—"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {ship.transport_type && (
+                              <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded ${
+                                ship.transport_type.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                                ship.transport_type.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                                ship.transport_type.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                                "bg-amber-500/20 text-amber-400"
+                              }`}>
+                                {ship.transport_type}
+                              </span>
+                            )}
+                            <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                              {ship.transport_date || "—"}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+
+                {/* Linked invoices section */}
+                {selectedShipmentId && (
+                  <div className="shrink-0 border-t border-border bg-muted/30">
+                    <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        Linked Invoices
+                      </span>
+                      {isLoadingShipmentInvoices ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      ) : (
+                        <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                          {shipmentInvoices.length === 0 ? (
+                            <span className="inline-flex items-center gap-1 text-amber-500">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              Unlinked
+                            </span>
+                          ) : (
+                            `${shipmentInvoices.length} linked`
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="max-h-24 overflow-y-auto">
+                      {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                        <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
+                          No invoices linked
+                        </p>
+                      ) : (
+                        <div className="divide-y divide-border/30">
+                          {shipmentInvoices.slice(0, 5).map((inv) => (
+                            <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
+                              <Check className="h-3 w-3 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
+                                {inv.invoice_id}
+                              </span>
+                            </div>
+                          ))}
+                          {shipmentInvoices.length > 5 && (
+                            <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
+                              +{shipmentInvoices.length - 5} more
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ───────────── COLUMN 1 — DELIVERY INFO (DISABLED) ───────────── */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
+                <div className="grid grid-cols-2 gap-6">
+
+                  <Field label="Company">
+                    <Select value={shippingForm.company} disabled>
+                      <SelectTrigger className="h-8 text-xs bg-muted/50 cursor-not-allowed">
+                        <SelectValue placeholder="Select company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="aviamir">Aviamir</SelectItem>
+                        <SelectItem value="greenline">Green Line</SelectItem>
+                        <SelectItem value="transriver">Trans River</SelectItem>
+                        <SelectItem value="northcargo">North Cargo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field label="Type">
+                    <Select value={shippingForm.type} disabled>
+                      <SelectTrigger className="h-8 text-xs bg-muted/50 cursor-not-allowed">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="air">Air</SelectItem>
+                        <SelectItem value="sea">Sea</SelectItem>
+                        <SelectItem value="river">River</SelectItem>
+                        <SelectItem value="winter">Winter Road</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field label="Invoice №">
+                    <Input
+                      value={shippingForm.invoiceNumber}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Reference">
+                    <Input
+                      value={shippingForm.reference}
+                      disabled
+                      className="h-8 text-xs bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Transport Date">
+                    <Input
+                      type="date"
+                      value={shippingForm.transportDate}
+                      disabled
+                      className="h-8 text-xs bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Received Date">
+                    <Input
+                      type="date"
+                      value={shippingForm.receivedDate}
+                      disabled
+                      className="h-8 text-xs bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                </div>
+
+                <Field label="Comment">
+                  <textarea
+                    value={shippingForm.comment}
+                    disabled
+                    className="w-full min-h-[90px] rounded-md border border-border bg-muted/50 px-3 py-2 text-xs resize-none cursor-not-allowed"
+                  />
+                </Field>
+              </div>
+
+              {/* ───────────── COLUMN 2 — CARGO (DISABLED) ───────────── */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
+                <div className="grid grid-cols-2 gap-6">
+
+                  <Field label="Total Cost">
+                    <Input
+                      value={shippingForm.totalCost}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Packages">
+                    <Input
+                      type="number"
+                      value={shippingForm.packages}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Weight (kg)">
+                    <Input
+                      value={shippingForm.weight}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Volume (m³)">
+                    <Input
+                      value={shippingForm.volume}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Density">
+                    <Input
+                      value={shippingForm.density}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Goods Total Value">
+                    <Input
+                      value={shippingForm.goodsTotalValue}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                  <Field label="Goods Value per kg">
+                    <Input
+                      value={goodsValuePerKg}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
+                </div>
+              </div>
+
+              {/* ───────────── COLUMN 3 — MODEL (DISABLED) ───────────── */}
+              <div className="bg-card border border-border rounded-xl p-6 opacity-80">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
+                    <select
+                      value={mode}
+                      disabled
+                      className="w-full border rounded-md px-2 py-1 text-xs bg-muted/50 cursor-not-allowed"
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="hybrid">Hybrid</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Normal cargo price
+                    </div>
+                    <Input
+                      value={normalPrice}
+                      disabled
+                      className="h-8 font-mono text-xs bg-muted/50 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Normal weight
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {model.normalWeight.toFixed(2)} kg
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Bulky weight
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {model.bulkyWeight.toFixed(2)} kg
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Normal shipping
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {model.normalShipping.toLocaleString("ru-RU")} ₽
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Bulky shipping
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Catalog weight
+                    </div>
+                    <div className="text-sm font-semibold text-muted-foreground">
+                      {weightStats.totalWeight.toFixed(2)} kg
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-muted-foreground mb-1">
+                      Bulky price
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* ───────────── COLUMN 4 — READ-ONLY STATUS ───────────── */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  Read-only view
+                </div>
+
+                {selectedShipmentId && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className={`h-2 w-2 rounded-full ${shipmentInvoices.length > 0 ? "bg-green-500" : "bg-amber-500"}`} />
+                    {shipmentInvoices.length > 0 
+                      ? `${shipmentInvoices.length} invoice(s) linked`
+                      : "No invoices linked"}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted-foreground/60">
+                  This is a read-only view of shipment data. To edit shipment details, use the Shipping Model tab.
+                </p>
+              </div>
+
+            </div>
+          )}
+        </TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
         <TabsContent value="summary" className="mt-0 flex-1 overflow-auto p-4">
