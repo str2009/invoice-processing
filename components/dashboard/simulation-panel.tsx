@@ -202,7 +202,8 @@ type ShipmentListItem = {
   transport_invoice_number: string | null
   transport_date: string | null
   transport_type: string | null
-}
+  invoice_count?: number
+  }
 
 type ShipmentInvoice = {
   invoice_id: string
@@ -214,7 +215,12 @@ type ShipmentInvoice = {
 const [shipments, setShipments] = useState<ShipmentListItem[]>([])
 const [isLoadingShipments, setIsLoadingShipments] = useState(false)
 const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
-const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
+  const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
+  
+  // Pricing Manager: selected invoice and its items
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([])
+  const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
 
@@ -250,9 +256,9 @@ const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" =
   }
 }, [])
 
-// Load shipments on tab change or filter change
+// Load shipments on tab change or filter change (for both Shipping Model and Pricing Manager)
 useEffect(() => {
-  if (activeTab === "shipping") {
+  if (activeTab === "shipping" || activeTab === "pricing-manager") {
     loadShipments(shipmentFilter)
   }
 }, [activeTab, shipmentFilter, loadShipments])
@@ -317,6 +323,46 @@ useEffect(() => {
   
   loadShipmentData()
 }, [selectedShipmentId, onSetSelectedInvoices])
+
+// Auto-select invoice if only one exists
+useEffect(() => {
+  if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
+    setSelectedInvoiceId(shipmentInvoices[0].invoice_id)
+  }
+  // Clear selection when shipment changes
+  if (shipmentInvoices.length === 0) {
+    setSelectedInvoiceId(null)
+    setInvoiceItems([])
+  }
+}, [shipmentInvoices, selectedInvoiceId])
+
+// Load invoice items when invoice is selected
+useEffect(() => {
+  if (!selectedInvoiceId) {
+    setInvoiceItems([])
+    return
+  }
+  
+  const loadInvoiceItems = async () => {
+    setIsLoadingInvoiceItems(true)
+    try {
+      const res = await fetch(`/api/invoice-items?invoiceId=${selectedInvoiceId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setInvoiceItems(Array.isArray(data) ? data : [])
+      } else {
+        setInvoiceItems([])
+      }
+    } catch (e) {
+      console.error("Failed to load invoice items:", e)
+      setInvoiceItems([])
+    } finally {
+      setIsLoadingInvoiceItems(false)
+    }
+  }
+  
+  loadInvoiceItems()
+}, [selectedInvoiceId])
 
 // Attach invoices to shipment
 const handleAttachInvoices = useCallback(async () => {
@@ -744,11 +790,28 @@ const missingCatalogWeight = useMemo(() => {
 const goodsValuePerKg = useMemo(() => {
   const total = Number(shippingForm.goodsTotalValue || 0)
   const weight = Number(shippingForm.weight || 0)
-
+  
   if (!weight) return ""
-
+  
   return (total / weight).toFixed(2)
 }, [shippingForm.goodsTotalValue, shippingForm.weight])
+
+// Cost per kg (raw) = total_cost / weight
+const costPerKgRaw = useMemo(() => {
+  const totalCost = Number(shippingForm.totalCost || 0)
+  const weight = Number(shippingForm.weight || 0)
+  
+  if (!weight) return "0.00"
+  
+  return (totalCost / weight).toFixed(2)
+}, [shippingForm.totalCost, shippingForm.weight])
+
+// Sync normalPrice with costPerKgRaw when mode is "normal"
+useEffect(() => {
+  if (mode === "normal") {
+    setNormalPrice(costPerKgRaw)
+  }
+}, [mode, costPerKgRaw])
 
 // перерасчёт строк по правилам
 const previewData = useMemo(
@@ -848,6 +911,12 @@ const handleSaveGlobal = useCallback(async () => {
               className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
             >
               Shipping Model
+            </TabsTrigger>
+            <TabsTrigger
+              value="pricing-manager"
+              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Pricing Manager
             </TabsTrigger>
             <TabsTrigger
               value="summary"
@@ -1012,7 +1081,7 @@ const handleSaveGlobal = useCallback(async () => {
 {/* ─── Shipping Model Tab ─── */}
 <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
 
-  <div className="grid grid-cols-5 gap-6">
+  <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-6">
 
   {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
   <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
@@ -1075,41 +1144,48 @@ const handleSaveGlobal = useCallback(async () => {
       ) : (
         filteredShipments.map((ship) => {
           const isSelected = selectedShipmentId === ship.shipment_id
+          // For selected shipment, use live shipmentInvoices state; for others, use API data
+          const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
           return (
             <div
               key={ship.shipment_id}
               onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-              className={`flex items-center justify-between gap-3 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
+              style={{ gridTemplateColumns: "1.5fr 70px 90px 70px 20px" }}
+              className={`grid items-center gap-2 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
                 isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-              }`}
+              } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
             >
-              {/* LEFT: Icon + Company + Invoice # */}
-              <div className="flex items-center gap-2 min-w-0">
+              {/* COL 1: Icon + Company */}
+              <div className="flex items-center gap-1.5 min-w-0">
                 {getTransportIcon(ship.transport_type, isSelected)}
-                <div className="truncate">
-                  <span className="text-[11px] font-medium text-foreground">
-                    {ship.transport_company || "Unknown"}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/70 ml-2">
-                    {ship.transport_invoice_number || "—"}
-                  </span>
-                </div>
-              </div>
-              {/* RIGHT: Badge + Date */}
-              <div className="flex items-center gap-2 shrink-0">
-                {ship.transport_type && (
-                  <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded ${
-                    ship.transport_type.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                    ship.transport_type.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                    ship.transport_type.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                    "bg-amber-500/20 text-amber-400"
-                  }`}>
-                    {ship.transport_type}
-                  </span>
-                )}
-                <span className="text-[10px] tabular-nums text-muted-foreground/60">
-                  {ship.transport_date || "—"}
+                <span className="text-[11px] font-medium text-foreground truncate">
+                  {ship.transport_company || "Unknown"}
                 </span>
+              </div>
+              {/* COL 2: Invoice Number */}
+              <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right">
+                {ship.transport_invoice_number || "—"}
+              </span>
+              {/* COL 3: Date */}
+              <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
+                {ship.transport_date || "—"}
+              </span>
+              {/* COL 4: Type Badge */}
+              <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center min-w-[60px] ${
+                ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                "bg-amber-500/20 text-amber-400"
+              }`}>
+                {ship.transport_type || "—"}
+              </span>
+              {/* COL 5: Status */}
+              <div className="flex justify-center" title={hasInvoices ? "Invoices linked" : "No invoices linked"}>
+                {hasInvoices ? (
+                  <Check className="h-3 w-3 text-green-500/70" />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+                )}
               </div>
             </div>
           )
@@ -1188,18 +1264,18 @@ const handleSaveGlobal = useCallback(async () => {
   </div>
 
     {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
-    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
 
-      <div className="grid grid-cols-2 gap-6">
-
-        <Field label="Company">
+      {/* Row 1: Company, Type */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Company" compact>
           <Select
             value={shippingForm.company}
             onValueChange={(v) =>
               setShippingForm((p) => ({ ...p, company: v }))
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select company" />
             </SelectTrigger>
             <SelectContent>
@@ -1211,14 +1287,14 @@ const handleSaveGlobal = useCallback(async () => {
           </Select>
         </Field>
 
-        <Field label="Type">
+        <Field label="Type" compact>
           <Select
             value={shippingForm.type}
             onValueChange={(v) =>
               setShippingForm((p) => ({ ...p, type: v }))
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -1229,8 +1305,11 @@ const handleSaveGlobal = useCallback(async () => {
             </SelectContent>
           </Select>
         </Field>
+      </div>
 
-        <Field label="Invoice №">
+      {/* Row 2: Invoice №, Manager */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Invoice №" compact>
           <Input
             value={shippingForm.invoiceNumber}
             onChange={(e) =>
@@ -1239,24 +1318,33 @@ const handleSaveGlobal = useCallback(async () => {
                 invoiceNumber: e.target.value,
               }))
             }
-            className="h-8 text-xs font-mono"
+            className="h-7 text-xs font-mono"
           />
         </Field>
 
-        <Field label="Reference">
-          <Input
-            value={shippingForm.reference}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                reference: e.target.value,
-              }))
+        <Field label="Manager" compact>
+          <Select
+            value={shippingForm.manager}
+            onValueChange={(v) =>
+              setShippingForm((p) => ({ ...p, manager: v }))
             }
-            className="h-8 text-xs"
-          />
+          >
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue placeholder="Select manager" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ivan">Ivan Petrov</SelectItem>
+              <SelectItem value="maria">Maria Sokolova</SelectItem>
+              <SelectItem value="alexey">Alexey Ivanov</SelectItem>
+              <SelectItem value="elena">Elena Kozlova</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
+      </div>
 
-        <Field label="Transport Date">
+      {/* Row 3: Transport Date, Received Date */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Transport Date" compact>
           <Input
             type="date"
             value={shippingForm.transportDate}
@@ -1266,11 +1354,11 @@ const handleSaveGlobal = useCallback(async () => {
                 transportDate: e.target.value,
               }))
             }
-            className="h-8 text-xs"
+            className="h-7 text-xs"
           />
         </Field>
 
-        <Field label="Received Date">
+        <Field label="Received Date" compact>
           <Input
             type="date"
             value={shippingForm.receivedDate}
@@ -1280,13 +1368,27 @@ const handleSaveGlobal = useCallback(async () => {
                 receivedDate: e.target.value,
               }))
             }
-            className="h-8 text-xs"
+            className="h-7 text-xs"
           />
         </Field>
-
       </div>
 
-      <Field label="Comment">
+      {/* Row 4: Reference (full width) */}
+      <Field label="Reference" compact>
+        <Input
+          value={shippingForm.reference}
+          onChange={(e) =>
+            setShippingForm((p) => ({
+              ...p,
+              reference: e.target.value,
+            }))
+          }
+          className="h-7 text-xs"
+        />
+      </Field>
+
+      {/* Row 5: Comment (full width, resizable) */}
+      <Field label="Comment" compact>
         <textarea
           value={shippingForm.comment}
           onChange={(e) =>
@@ -1295,7 +1397,7 @@ const handleSaveGlobal = useCallback(async () => {
               comment: e.target.value,
             }))
           }
-          className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-xs resize-none"
+          className="w-full min-h-[60px] rounded-md border border-border bg-background px-2 py-1.5 text-xs resize-y"
         />
       </Field>
 
@@ -1389,6 +1491,14 @@ const handleSaveGlobal = useCallback(async () => {
           />
         </Field>
 
+        <Field label="Cost per kg (raw)">
+          <Input
+            value={`${costPerKgRaw} ₽ / kg`}
+            readOnly
+            className="h-8 text-xs font-mono bg-muted/50"
+          />
+        </Field>
+
         <Field label="Goods Value per kg">
           <Input
             value={goodsValuePerKg}
@@ -1401,91 +1511,7 @@ const handleSaveGlobal = useCallback(async () => {
 
     </div>
 
-    {/* ─���─────────── COLUMN 3 — MODEL ──────────���── */}
-    <div className="bg-card border border-border rounded-xl p-6">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-            className="w-full border rounded-md px-2 py-1 text-xs"
-          >
-            <option value="normal">Normal</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Normal cargo price
-          </div>
-          <Input
-            value={normalPrice}
-            onChange={(e) => setNormalPrice(e.target.value)}
-            className="h-8 font-mono text-xs"
-          />
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Normal weight
-          </div>
-          <div className="text-sm font-medium">
-            {model.normalWeight.toFixed(2)} kg
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Bulky weight
-          </div>
-          <div className="text-sm">
-            {model.bulkyWeight.toFixed(2)} kg
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Normal shipping
-          </div>
-          <div className="text-sm font-medium">
-            {model.normalShipping.toLocaleString("ru-RU")} ₽
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Bulky shipping
-          </div>
-          <div className="text-sm">
-            {Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Catalog weight
-          </div>
-          <div className="text-sm font-semibold">
-            {weightStats.totalWeight.toFixed(2)} kg
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Bulky price
-          </div>
-          <div className="text-sm">
-            {Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    {/* ───────────── COLUMN 4 — CONTROL ───────────── */}
+    {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
 
       {/* Create Shipment Button - does NOT attach invoices */}
@@ -1552,6 +1578,382 @@ const handleSaveGlobal = useCallback(async () => {
   </div>
 
 </TabsContent>
+
+        {/* ─── Pricing Manager Tab (Compact Pricing UI) ─── */}
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
+          <div className="grid grid-cols-4 gap-6">
+
+            {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Always visible) ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+              {/* Header */}
+              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Shipments
+                  </span>
+                  {isLoadingShipments && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+
+              {/* Filter tabs */}
+                <div className="shrink-0 flex border-b border-border">
+                  {(["all", "unlinked", "recent"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setShipmentFilter(filter)}
+                      className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                        shipmentFilter === filter
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-muted-foreground/60 hover:text-muted-foreground"
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search input */}
+                <div className="shrink-0 px-3 py-2 border-b border-border">
+                  <input
+                    type="text"
+                    placeholder="Search company, number, type..."
+                    value={shipmentSearch}
+                    onChange={(e) => setShipmentSearch(e.target.value)}
+                    className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Shipment list */}
+                <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
+                  {filteredShipments.length === 0 && !isLoadingShipments ? (
+                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                      {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                    </p>
+                  ) : (
+                    filteredShipments.map((ship) => {
+                      const isSelected = selectedShipmentId === ship.shipment_id
+                      // For selected shipment, use live shipmentInvoices state; for others, use API data
+                      const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
+                      return (
+                        <div
+                          key={ship.shipment_id}
+                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                          style={{ gridTemplateColumns: "1.5fr 70px 90px 70px 20px" }}
+                          className={`grid items-center gap-2 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
+                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                        >
+                          {/* COL 1: Icon + Company */}
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {getTransportIcon(ship.transport_type, isSelected)}
+                            <span className="text-[11px] font-medium text-foreground truncate">
+                              {ship.transport_company || "Unknown"}
+                            </span>
+                          </div>
+                          {/* COL 2: Invoice Number */}
+                          <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right">
+                            {ship.transport_invoice_number || "—"}
+                          </span>
+                          {/* COL 3: Date */}
+                          <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
+                            {ship.transport_date || "—"}
+                          </span>
+                          {/* COL 4: Type Badge */}
+                          <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center min-w-[60px] ${
+                            ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                            ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                            ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                            "bg-amber-500/20 text-amber-400"
+                          }`}>
+                            {ship.transport_type || "—"}
+                          </span>
+                          {/* COL 5: Status */}
+                          <div className="flex justify-center" title={hasInvoices ? "Invoices linked" : "No invoices linked"}>
+                            {hasInvoices ? (
+                              <Check className="h-3 w-3 text-green-500/70" />
+                            ) : (
+                              <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+
+                {/* Linked invoices section */}
+                {selectedShipmentId && (
+                  <div className="shrink-0 border-t border-border bg-muted/30">
+                    <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        Linked Invoices
+                      </span>
+                      {isLoadingShipmentInvoices ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      ) : (
+                        <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                          {shipmentInvoices.length === 0 ? (
+                            <span className="inline-flex items-center gap-1 text-amber-500">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              Unlinked
+                            </span>
+                          ) : (
+                            `${shipmentInvoices.length} linked`
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="max-h-24 overflow-y-auto">
+                      {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                        <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
+                          No invoices linked
+                        </p>
+                      ) : (
+                        <div className="divide-y divide-border/30">
+                          {shipmentInvoices.slice(0, 5).map((inv) => (
+                            <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
+                              <Check className="h-3 w-3 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
+                                {inv.invoice_id}
+                              </span>
+                            </div>
+                          ))}
+                          {shipmentInvoices.length > 5 && (
+                            <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
+                              +{shipmentInvoices.length - 5} more
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            {/* ──────�����────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
+            {/* ───────────── COLUMN 2 — COMPACT CONTROL STRIP ───────────── */}
+            {!selectedShipmentId ? (
+              <div className="col-span-2 flex items-center justify-center bg-card border border-border rounded-xl">
+                <p className="text-sm text-muted-foreground/60 italic">
+                  Select a shipment to review pricing context.
+                </p>
+              </div>
+            ) : (
+              <div className="col-span-2 bg-card border border-border rounded-xl p-3">
+                <div className="grid grid-cols-3 gap-3">
+                  {/* ─── COL 1: SHIPMENT INFO ─── */}
+                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                      {getTransportIcon(shippingForm.type, true)}
+                      <span className="font-medium uppercase tracking-wider">Shipment</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">Company</span>
+                      <span className="font-medium text-foreground">{shippingForm.company || "—"}</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="font-medium text-foreground capitalize">{shippingForm.type || "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">Date</span>
+                      <span className="font-medium text-foreground">{shippingForm.transportDate || "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">Weight</span>
+                      <span className="font-medium font-mono text-foreground">{shippingForm.weight || "0"} kg</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-muted-foreground/60">Cost</span>
+                      <span className="font-medium font-mono text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">₽/kg (raw)</span>
+                      <span className="font-medium font-mono text-primary">{costPerKgRaw}</span>
+                    </div>
+                  </div>
+
+                  {/* ─── COL 2: PRICING CONTROLS ─── */}
+                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      <span className="font-medium uppercase tracking-wider">Pricing</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/60">Mode</span>
+                      <select
+                        value={mode}
+                        onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                        className="ml-2 border rounded px-1.5 py-0.5 text-[11px] bg-background"
+                      >
+                        <option value="normal">Normal</option>
+                        <option value="hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/60">₽/kg (used)</span>
+                      {mode === "normal" ? (
+                        <span className="ml-2 font-mono text-foreground">{costPerKgRaw} <span className="text-muted-foreground/50">(auto)</span></span>
+                      ) : (
+                        <Input
+                          value={normalPrice}
+                          onChange={(e) => setNormalPrice(e.target.value)}
+                          className="ml-2 h-6 w-24 inline-flex font-mono text-[11px] bg-background px-1.5"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ─── COL 3: METRICS ─── */}
+                  <div className="text-[11px]">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                      <span className="font-medium uppercase tracking-wider">Metrics</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Normal wt</span>
+                        <span className="font-mono text-foreground">{model.normalWeight.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky wt</span>
+                        <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Normal ship</span>
+                        <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky ship</span>
+                        <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Catalog wt</span>
+                        <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky ₽/kg</span>
+                        <span className="font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ───────────── COLUMN 3 — INVOICES ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Invoices
+                  </span>
+                  {isLoadingShipmentInvoices && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                  {shipmentInvoices.length} linked
+                </span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {!selectedShipmentId ? (
+                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                    Select a shipment first
+                  </p>
+                ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                    No invoices linked to this shipment
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/40">
+                    {shipmentInvoices.map((inv) => {
+                      const isSelected = selectedInvoiceId === inv.invoice_id
+                      return (
+                        <div
+                          key={inv.invoice_id}
+                          onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          }`}
+                        >
+                          <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                              {inv.invoice_id}
+                            </div>
+                          </div>
+                          {isSelected && isLoadingInvoiceItems && (
+                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* ─── Invoice Items Table ─── */}
+          {selectedInvoiceId && (
+            <div className="mt-4 bg-card border border-border rounded-xl">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Invoice Items
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70">
+                    {selectedInvoiceId}
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {invoiceItems.length} item(s)
+                </span>
+              </div>
+              
+              {isLoadingInvoiceItems ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : invoiceItems.length === 0 ? (
+                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                  No items found for this invoice
+                </p>
+              ) : (
+                <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">SKU</th>
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Name</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {invoiceItems.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
+                          <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
+                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
+                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">{item.weight ? `${item.weight} kg` : "—"}</td>
+                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}</td>
+                          <td className="px-3 py-2 text-right font-mono font-medium text-foreground">{item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
         <TabsContent value="summary" className="mt-0 flex-1 overflow-auto p-4">
@@ -1703,13 +2105,15 @@ function SummaryCard({
 function Field({
   label,
   children,
+  compact = false,
 }: {
   label: string
   children: React.ReactNode
+  compact?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className={`flex flex-col ${compact ? "gap-0.5" : "gap-1.5"}`}>
+      <label className={`font-medium uppercase tracking-wider text-muted-foreground ${compact ? "text-[9px]" : "text-[10px]"}`}>
         {label}
       </label>
       {children}
