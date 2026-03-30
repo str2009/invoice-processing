@@ -61,7 +61,6 @@ const DEFAULT_RULES: PricingRule[] = [
 ]
 
 const MOOT_REASONS = [
-  { value: "", label: "Select reason..." },
   { value: "cheap_purchase", label: "Cheap purchase" },
   { value: "clearance", label: "Clearance sale" },
   { value: "analog", label: "Analog available" },
