@@ -744,11 +744,28 @@ const missingCatalogWeight = useMemo(() => {
 const goodsValuePerKg = useMemo(() => {
   const total = Number(shippingForm.goodsTotalValue || 0)
   const weight = Number(shippingForm.weight || 0)
-
+  
   if (!weight) return ""
-
+  
   return (total / weight).toFixed(2)
 }, [shippingForm.goodsTotalValue, shippingForm.weight])
+
+// Cost per kg (raw) = total_cost / weight
+const costPerKgRaw = useMemo(() => {
+  const totalCost = Number(shippingForm.totalCost || 0)
+  const weight = Number(shippingForm.weight || 0)
+  
+  if (!weight) return "0.00"
+  
+  return (totalCost / weight).toFixed(2)
+}, [shippingForm.totalCost, shippingForm.weight])
+
+// Sync normalPrice with costPerKgRaw when mode is "normal"
+useEffect(() => {
+  if (mode === "normal") {
+    setNormalPrice(costPerKgRaw)
+  }
+}, [mode, costPerKgRaw])
 
 // перерасчёт строк по правилам
 const previewData = useMemo(
@@ -1395,6 +1412,14 @@ const handleSaveGlobal = useCallback(async () => {
           />
         </Field>
 
+        <Field label="Cost per kg (raw)">
+          <Input
+            value={`${costPerKgRaw} ₽ / kg`}
+            readOnly
+            className="h-8 text-xs font-mono bg-muted/50"
+          />
+        </Field>
+
         <Field label="Goods Value per kg">
           <Input
             value={goodsValuePerKg}
@@ -1425,12 +1450,13 @@ const handleSaveGlobal = useCallback(async () => {
 
         <div>
           <div className="text-[11px] text-muted-foreground mb-1">
-            Normal cargo price
+            Normal cargo price {mode === "normal" && <span className="text-muted-foreground/60">(auto)</span>}
           </div>
           <Input
-            value={normalPrice}
+            value={mode === "normal" ? `${normalPrice} ₽ / kg` : normalPrice}
             onChange={(e) => setNormalPrice(e.target.value)}
-            className="h-8 font-mono text-xs"
+            readOnly={mode === "normal"}
+            className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : ""}`}
           />
         </div>
 
