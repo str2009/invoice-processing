@@ -1776,7 +1776,8 @@ const handleSaveGlobal = useCallback(async () => {
                 )}
             </div>
 
-            {/* ───────────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
+            {/* ──────���────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
+            {/* ───────────── COLUMN 2 — COMPACT CONTROL STRIP ───────────── */}
             {!selectedShipmentId ? (
               <div className="col-span-2 flex items-center justify-center bg-card border border-border rounded-xl">
                 <p className="text-sm text-muted-foreground/60 italic">
@@ -1784,109 +1785,99 @@ const handleSaveGlobal = useCallback(async () => {
                 </p>
               </div>
             ) : (
-              <div className="col-span-2 space-y-4">
-                {/* ─── SHIPMENT SUMMARY (compact text display) ─── */}
-                <div className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    {getTransportIcon(shippingForm.type, true)}
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Shipment Summary
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-xs">
-                    <div>
-                      <span className="text-muted-foreground/70">Company</span>
-                      <div className="font-medium text-foreground">{shippingForm.company || "—"}</div>
+              <div className="col-span-2 bg-card border border-border rounded-xl p-3">
+                <div className="grid grid-cols-3 gap-3">
+                  {/* ─── COL 1: SHIPMENT INFO ─── */}
+                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                      {getTransportIcon(shippingForm.type, true)}
+                      <span className="font-medium uppercase tracking-wider">Shipment</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Type</span>
-                      <div className="font-medium text-foreground capitalize">{shippingForm.type || "—"}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">Company</span>
+                      <span className="font-medium text-foreground">{shippingForm.company || "—"}</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="font-medium text-foreground capitalize">{shippingForm.type || "—"}</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Transport Date</span>
-                      <div className="font-medium text-foreground">{shippingForm.transportDate || "—"}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">Date</span>
+                      <span className="font-medium text-foreground">{shippingForm.transportDate || "—"}</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Weight</span>
-                      <div className="font-medium font-mono text-foreground">{shippingForm.weight || "0"} kg</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">Weight</span>
+                      <span className="font-medium font-mono text-foreground">{shippingForm.weight || "0"} kg</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-muted-foreground/60">Cost</span>
+                      <span className="font-medium font-mono text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Total Cost</span>
-                      <div className="font-medium font-mono text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Cost per kg (raw)</span>
-                      <div className="font-medium font-mono text-primary">{costPerKgRaw} ₽ / kg</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground/60 w-16">₽/kg (raw)</span>
+                      <span className="font-medium font-mono text-primary">{costPerKgRaw}</span>
                     </div>
                   </div>
-                </div>
 
-                {/* ─── PRICING CONTROLS ─── */}
-                <div className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Pricing Controls
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* ─── COL 2: PRICING CONTROLS ─── */}
+                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      <span className="font-medium uppercase tracking-wider">Pricing</span>
+                    </div>
                     <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
+                      <span className="text-muted-foreground/60">Mode</span>
                       <select
                         value={mode}
                         onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                        className="w-full border rounded-md px-2 py-1.5 text-xs bg-background"
+                        className="ml-2 border rounded px-1.5 py-0.5 text-[11px] bg-background"
                       >
                         <option value="normal">Normal</option>
                         <option value="hybrid">Hybrid</option>
                       </select>
                     </div>
                     <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">
-                        Cost per kg (used) {mode === "normal" && <span className="text-muted-foreground/60">(auto)</span>}
-                      </div>
-                      <Input
-                        value={mode === "normal" ? `${costPerKgRaw} ₽ / kg` : normalPrice}
-                        onChange={(e) => setNormalPrice(e.target.value)}
-                        readOnly={mode === "normal"}
-                        className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : "bg-background"}`}
-                      />
+                      <span className="text-muted-foreground/60">₽/kg (used)</span>
+                      {mode === "normal" ? (
+                        <span className="ml-2 font-mono text-foreground">{costPerKgRaw} <span className="text-muted-foreground/50">(auto)</span></span>
+                      ) : (
+                        <Input
+                          value={normalPrice}
+                          onChange={(e) => setNormalPrice(e.target.value)}
+                          className="ml-2 h-6 w-24 inline-flex font-mono text-[11px] bg-background px-1.5"
+                        />
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* ─── SHIPMENT METRICS ─── */}
-                <div className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground" />
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Shipment Metrics
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
-                    <div>
-                      <span className="text-muted-foreground/70">Normal weight</span>
-                      <div className="font-medium font-mono text-foreground">{model.normalWeight.toFixed(2)} kg</div>
+                  {/* ─── COL 3: METRICS ─── */}
+                  <div className="text-[11px]">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                      <span className="font-medium uppercase tracking-wider">Metrics</span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Bulky weight</span>
-                      <div className="font-medium font-mono text-foreground">{model.bulkyWeight.toFixed(2)} kg</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Normal shipping</span>
-                      <div className="font-medium font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")} ₽</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Bulky shipping</span>
-                      <div className="font-medium font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Catalog weight</span>
-                      <div className="font-medium font-mono text-foreground">{weightStats.totalWeight.toFixed(2)} kg</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/70">Bulky price</span>
-                      <div className="font-medium font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg</div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Normal wt</span>
+                        <span className="font-mono text-foreground">{model.normalWeight.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky wt</span>
+                        <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Normal ship</span>
+                        <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky ship</span>
+                        <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Catalog wt</span>
+                        <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky ₽/kg</span>
+                        <span className="font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
