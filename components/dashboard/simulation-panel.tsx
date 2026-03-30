@@ -1264,18 +1264,18 @@ const handleSaveGlobal = useCallback(async () => {
   </div>
 
     {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
-    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
 
-      <div className="grid grid-cols-2 gap-6">
-
-        <Field label="Company">
+      {/* Row 1: Company, Type */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Company" compact>
           <Select
             value={shippingForm.company}
             onValueChange={(v) =>
               setShippingForm((p) => ({ ...p, company: v }))
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select company" />
             </SelectTrigger>
             <SelectContent>
@@ -1287,14 +1287,14 @@ const handleSaveGlobal = useCallback(async () => {
           </Select>
         </Field>
 
-        <Field label="Type">
+        <Field label="Type" compact>
           <Select
             value={shippingForm.type}
             onValueChange={(v) =>
               setShippingForm((p) => ({ ...p, type: v }))
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -1305,8 +1305,11 @@ const handleSaveGlobal = useCallback(async () => {
             </SelectContent>
           </Select>
         </Field>
+      </div>
 
-        <Field label="Invoice №">
+      {/* Row 2: Invoice №, Manager */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Invoice №" compact>
           <Input
             value={shippingForm.invoiceNumber}
             onChange={(e) =>
@@ -1315,31 +1318,18 @@ const handleSaveGlobal = useCallback(async () => {
                 invoiceNumber: e.target.value,
               }))
             }
-            className="h-8 text-xs font-mono"
+            className="h-7 text-xs font-mono"
           />
         </Field>
 
-        <Field label="Reference">
-          <Input
-            value={shippingForm.reference}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                reference: e.target.value,
-              }))
-            }
-            className="h-8 text-xs"
-          />
-        </Field>
-
-        <Field label="Manager">
+        <Field label="Manager" compact>
           <Select
             value={shippingForm.manager}
             onValueChange={(v) =>
               setShippingForm((p) => ({ ...p, manager: v }))
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Select manager" />
             </SelectTrigger>
             <SelectContent>
@@ -1350,8 +1340,11 @@ const handleSaveGlobal = useCallback(async () => {
             </SelectContent>
           </Select>
         </Field>
+      </div>
 
-        <Field label="Transport Date">
+      {/* Row 3: Transport Date, Received Date */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Transport Date" compact>
           <Input
             type="date"
             value={shippingForm.transportDate}
@@ -1361,11 +1354,11 @@ const handleSaveGlobal = useCallback(async () => {
                 transportDate: e.target.value,
               }))
             }
-            className="h-8 text-xs"
+            className="h-7 text-xs"
           />
         </Field>
 
-        <Field label="Received Date">
+        <Field label="Received Date" compact>
           <Input
             type="date"
             value={shippingForm.receivedDate}
@@ -1375,13 +1368,27 @@ const handleSaveGlobal = useCallback(async () => {
                 receivedDate: e.target.value,
               }))
             }
-            className="h-8 text-xs"
+            className="h-7 text-xs"
           />
         </Field>
-
       </div>
 
-      <Field label="Comment">
+      {/* Row 4: Reference (full width) */}
+      <Field label="Reference" compact>
+        <Input
+          value={shippingForm.reference}
+          onChange={(e) =>
+            setShippingForm((p) => ({
+              ...p,
+              reference: e.target.value,
+            }))
+          }
+          className="h-7 text-xs"
+        />
+      </Field>
+
+      {/* Row 5: Comment (full width, resizable) */}
+      <Field label="Comment" compact>
         <textarea
           value={shippingForm.comment}
           onChange={(e) =>
@@ -1390,7 +1397,7 @@ const handleSaveGlobal = useCallback(async () => {
               comment: e.target.value,
             }))
           }
-          className="w-full min-h-[90px] rounded-md border border-border bg-background px-3 py-2 text-xs resize-none"
+          className="w-full min-h-[60px] rounded-md border border-border bg-background px-2 py-1.5 text-xs resize-y"
         />
       </Field>
 
@@ -2098,13 +2105,15 @@ function SummaryCard({
 function Field({
   label,
   children,
+  compact = false,
 }: {
   label: string
   children: React.ReactNode
+  compact?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className={`flex flex-col ${compact ? "gap-0.5" : "gap-1.5"}`}>
+      <label className={`font-medium uppercase tracking-wider text-muted-foreground ${compact ? "text-[9px]" : "text-[10px]"}`}>
         {label}
       </label>
       {children}
