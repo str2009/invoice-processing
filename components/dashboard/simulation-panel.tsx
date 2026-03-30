@@ -1899,12 +1899,12 @@ const handleSaveGlobal = useCallback(async () => {
 
                   <div>
                     <div className="text-[11px] text-muted-foreground mb-1">
-                      Cost per kg (used)
+                      Cost per kg (used) {mode === "normal" && <span className="text-muted-foreground/60">(auto)</span>}
                     </div>
                     <Input
-                      value={normalPrice}
+                      value={mode === "normal" ? `${costPerKgRaw} ₽ / kg` : normalPrice}
                       onChange={(e) => setNormalPrice(e.target.value)}
-                      disabled={mode === "normal"}
+                      readOnly={mode === "normal"}
                       className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : "bg-background"}`}
                     />
                   </div>
