@@ -1855,16 +1855,16 @@ const handleSaveGlobal = useCallback(async () => {
                 </div>
               </div>
 
-              {/* ───────────── COLUMN 3 — MODEL (DISABLED) ───────────── */}
-              <div className="bg-card border border-border rounded-xl p-6 opacity-80">
+              {/* ───────────── COLUMN 3 — PRICING CONTROLS (ACTIVE) ───────────── */}
+              <div className="bg-card border border-border rounded-xl p-6">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-5">
 
                   <div>
                     <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
                     <select
                       value={mode}
-                      disabled
-                      className="w-full border rounded-md px-2 py-1 text-xs bg-muted/50 cursor-not-allowed"
+                      onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                      className="w-full border rounded-md px-2 py-1 text-xs bg-background"
                     >
                       <option value="normal">Normal</option>
                       <option value="hybrid">Hybrid</option>
@@ -1873,12 +1873,13 @@ const handleSaveGlobal = useCallback(async () => {
 
                   <div>
                     <div className="text-[11px] text-muted-foreground mb-1">
-                      Normal cargo price
+                      Cost per kg (used)
                     </div>
                     <Input
                       value={normalPrice}
-                      disabled
-                      className="h-8 font-mono text-xs bg-muted/50 cursor-not-allowed"
+                      onChange={(e) => setNormalPrice(e.target.value)}
+                      disabled={mode === "normal"}
+                      className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : "bg-background"}`}
                     />
                   </div>
 
@@ -1939,11 +1940,11 @@ const handleSaveGlobal = useCallback(async () => {
                 </div>
               </div>
 
-              {/* ───────────── COLUMN 4 — READ-ONLY STATUS ───────────── */}
-              <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
+              {/* ───────────── COLUMN 4 — PRICING STATUS ───────────── */}
+              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  Read-only view
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  Pricing Mode: <span className="font-medium text-foreground capitalize">{mode}</span>
                 </div>
 
                 {selectedShipmentId && (
@@ -1956,7 +1957,7 @@ const handleSaveGlobal = useCallback(async () => {
                 )}
 
                 <p className="text-[11px] text-muted-foreground/60">
-                  This is a read-only view of shipment data. To edit shipment details, use the Shipping Model tab.
+                  Shipment data is read-only. Use pricing controls on the left to adjust mode and cost per kg.
                 </p>
                 </div>
               </>
