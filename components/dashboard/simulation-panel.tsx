@@ -214,7 +214,12 @@ type ShipmentInvoice = {
 const [shipments, setShipments] = useState<ShipmentListItem[]>([])
 const [isLoadingShipments, setIsLoadingShipments] = useState(false)
 const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
-const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
+  const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
+  
+  // Pricing Manager: selected invoice and its items
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([])
+  const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
 
@@ -317,6 +322,46 @@ useEffect(() => {
   
   loadShipmentData()
 }, [selectedShipmentId, onSetSelectedInvoices])
+
+// Auto-select invoice if only one exists
+useEffect(() => {
+  if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
+    setSelectedInvoiceId(shipmentInvoices[0].invoice_id)
+  }
+  // Clear selection when shipment changes
+  if (shipmentInvoices.length === 0) {
+    setSelectedInvoiceId(null)
+    setInvoiceItems([])
+  }
+}, [shipmentInvoices, selectedInvoiceId])
+
+// Load invoice items when invoice is selected
+useEffect(() => {
+  if (!selectedInvoiceId) {
+    setInvoiceItems([])
+    return
+  }
+  
+  const loadInvoiceItems = async () => {
+    setIsLoadingInvoiceItems(true)
+    try {
+      const res = await fetch(`/api/invoice-items?invoiceId=${selectedInvoiceId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setInvoiceItems(Array.isArray(data) ? data : [])
+      } else {
+        setInvoiceItems([])
+      }
+    } catch (e) {
+      console.error("Failed to load invoice items:", e)
+      setInvoiceItems([])
+    } finally {
+      setIsLoadingInvoiceItems(false)
+    }
+  }
+  
+  loadInvoiceItems()
+}, [selectedInvoiceId])
 
 // Attach invoices to shipment
 const handleAttachInvoices = useCallback(async () => {
@@ -1517,7 +1562,7 @@ const handleSaveGlobal = useCallback(async () => {
       </div>
     </div>
 
-    {/* ─────���─────── COLUMN 4 — CONTROL ───────────── */}
+    {/* ─────�����─────── COLUMN 4 — CONTROL ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
 
       {/* Create Shipment Button - does NOT attach invoices */}
@@ -1839,25 +1884,90 @@ const handleSaveGlobal = useCallback(async () => {
                   </p>
                 ) : (
                   <div className="divide-y divide-border/40">
-                    {shipmentInvoices.map((inv) => (
-                      <div
-                        key={inv.invoice_id}
-                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                      >
-                        <Check className="h-3 w-3 shrink-0 text-primary" />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-mono text-[11px] font-medium text-foreground truncate">
-                            {inv.invoice_id}
+                    {shipmentInvoices.map((inv) => {
+                      const isSelected = selectedInvoiceId === inv.invoice_id
+                      return (
+                        <div
+                          key={inv.invoice_id}
+                          onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          }`}
+                        >
+                          <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                              {inv.invoice_id}
+                            </div>
                           </div>
+                          {isSelected && isLoadingInvoiceItems && (
+                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
             </div>
 
           </div>
+
+          {/* ─── Invoice Items Table ─── */}
+          {selectedInvoiceId && (
+            <div className="mt-4 bg-card border border-border rounded-xl">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Invoice Items
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70">
+                    {selectedInvoiceId}
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {invoiceItems.length} item(s)
+                </span>
+              </div>
+              
+              {isLoadingInvoiceItems ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : invoiceItems.length === 0 ? (
+                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                  No items found for this invoice
+                </p>
+              ) : (
+                <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">SKU</th>
+                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Name</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {invoiceItems.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
+                          <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
+                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
+                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">{item.weight ? `${item.weight} kg` : "—"}</td>
+                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}</td>
+                          <td className="px-3 py-2 text-right font-mono font-medium text-foreground">{item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
