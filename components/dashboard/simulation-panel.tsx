@@ -1081,7 +1081,7 @@ const handleSaveGlobal = useCallback(async () => {
 {/* ─── Shipping Model Tab ─── */}
 <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
 
-  <div className="grid grid-cols-5 gap-6">
+  <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-6">
 
   {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
   <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
@@ -1331,6 +1331,25 @@ const handleSaveGlobal = useCallback(async () => {
           />
         </Field>
 
+        <Field label="Manager">
+          <Select
+            value={shippingForm.manager}
+            onValueChange={(v) =>
+              setShippingForm((p) => ({ ...p, manager: v }))
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select manager" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ivan">Ivan Petrov</SelectItem>
+              <SelectItem value="maria">Maria Sokolova</SelectItem>
+              <SelectItem value="alexey">Alexey Ivanov</SelectItem>
+              <SelectItem value="elena">Elena Kozlova</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+
         <Field label="Transport Date">
           <Input
             type="date"
@@ -1484,92 +1503,7 @@ const handleSaveGlobal = useCallback(async () => {
 
     </div>
 
-    {/* ─���─────────── COLUMN 3 — MODEL ──────────���── */}
-    <div className="bg-card border border-border rounded-xl p-6">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-            className="w-full border rounded-md px-2 py-1 text-xs"
-          >
-            <option value="normal">Normal</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Normal cargo price {mode === "normal" && <span className="text-muted-foreground/60">(auto)</span>}
-          </div>
-          <Input
-            value={mode === "normal" ? `${normalPrice} ₽ / kg` : normalPrice}
-            onChange={(e) => setNormalPrice(e.target.value)}
-            readOnly={mode === "normal"}
-            className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : ""}`}
-          />
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Normal weight
-          </div>
-          <div className="text-sm font-medium">
-            {model.normalWeight.toFixed(2)} kg
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Bulky weight
-          </div>
-          <div className="text-sm">
-            {model.bulkyWeight.toFixed(2)} kg
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Normal shipping
-          </div>
-          <div className="text-sm font-medium">
-            {model.normalShipping.toLocaleString("ru-RU")} ₽
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Bulky shipping
-          </div>
-          <div className="text-sm">
-            {Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Catalog weight
-          </div>
-          <div className="text-sm font-semibold">
-            {weightStats.totalWeight.toFixed(2)} kg
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] text-muted-foreground mb-1">
-            Bulky price
-          </div>
-          <div className="text-sm">
-            {Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    {/* ─────�����─────── COLUMN 4 — CONTROL ───────────── */}
+    {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
 
       {/* Create Shipment Button - does NOT attach invoices */}
