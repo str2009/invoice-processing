@@ -1144,7 +1144,8 @@ const handleSaveGlobal = useCallback(async () => {
       ) : (
         filteredShipments.map((ship) => {
           const isSelected = selectedShipmentId === ship.shipment_id
-          const hasInvoices = (ship.invoice_count ?? 0) > 0
+          // For selected shipment, use live shipmentInvoices state; for others, use API data
+          const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
           return (
             <div
               key={ship.shipment_id}
@@ -1627,7 +1628,8 @@ const handleSaveGlobal = useCallback(async () => {
                   ) : (
                     filteredShipments.map((ship) => {
                       const isSelected = selectedShipmentId === ship.shipment_id
-                      const hasInvoices = (ship.invoice_count ?? 0) > 0
+                      // For selected shipment, use live shipmentInvoices state; for others, use API data
+                      const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
                       return (
                         <div
                           key={ship.shipment_id}
