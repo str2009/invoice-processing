@@ -250,9 +250,9 @@ const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" =
   }
 }, [])
 
-// Load shipments on tab change or filter change
+// Load shipments on tab change or filter change (for both Shipping Model and Pricing Manager)
 useEffect(() => {
-  if (activeTab === "shipping") {
+  if (activeTab === "shipping" || activeTab === "pricing-manager") {
     loadShipments(shipmentFilter)
   }
 }, [activeTab, shipmentFilter, loadShipments])
