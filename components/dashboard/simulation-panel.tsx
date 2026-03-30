@@ -1517,7 +1517,7 @@ const handleSaveGlobal = useCallback(async () => {
       </div>
     </div>
 
-    {/* ───────────── COLUMN 4 — CONTROL ───────────── */}
+    {/* ─────���─────── COLUMN 4 — CONTROL ───────────── */}
     <div className="bg-card border border-border rounded-xl p-6 space-y-6">
 
       {/* Create Shipment Button - does NOT attach invoices */}
@@ -1585,9 +1585,9 @@ const handleSaveGlobal = useCallback(async () => {
 
 </TabsContent>
 
-        {/* ─── Pricing Manager Tab (Read-Only Clone of Shipping Model) ─── */}
+        {/* ─── Pricing Manager Tab (Compact Pricing UI) ─── */}
         <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
-          <div className="grid grid-cols-5 gap-6">
+          <div className="grid grid-cols-4 gap-6">
 
             {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Always visible) ───────────── */}
             <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
@@ -1731,271 +1731,131 @@ const handleSaveGlobal = useCallback(async () => {
                 )}
             </div>
 
-            {/* ───────────── COLUMNS 1-4 — FORM (conditional) ───────────── */}
+            {/* ───────────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
             {!selectedShipmentId ? (
-              <div className="col-span-4 flex items-center justify-center bg-card border border-border rounded-xl">
+              <div className="col-span-2 flex items-center justify-center bg-card border border-border rounded-xl">
                 <p className="text-sm text-muted-foreground/60 italic">
                   Select a shipment to review pricing context.
                 </p>
               </div>
             ) : (
-              <>
-                {/* ───────────── COLUMN 1 — DELIVERY INFO (DISABLED) ───────────── */}
-                <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
-                <div className="grid grid-cols-2 gap-6">
-
-                  <Field label="Company">
-                    <Select value={shippingForm.company} disabled>
-                      <SelectTrigger className="h-8 text-xs bg-muted/50 cursor-not-allowed">
-                        <SelectValue placeholder="Select company" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="aviamir">Aviamir</SelectItem>
-                        <SelectItem value="greenline">Green Line</SelectItem>
-                        <SelectItem value="transriver">Trans River</SelectItem>
-                        <SelectItem value="northcargo">North Cargo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  <Field label="Type">
-                    <Select value={shippingForm.type} disabled>
-                      <SelectTrigger className="h-8 text-xs bg-muted/50 cursor-not-allowed">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="air">Air</SelectItem>
-                        <SelectItem value="sea">Sea</SelectItem>
-                        <SelectItem value="river">River</SelectItem>
-                        <SelectItem value="winter">Winter Road</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  <Field label="Invoice №">
-                    <Input
-                      value={shippingForm.invoiceNumber}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Reference">
-                    <Input
-                      value={shippingForm.reference}
-                      disabled
-                      className="h-8 text-xs bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Transport Date">
-                    <Input
-                      type="date"
-                      value={shippingForm.transportDate}
-                      disabled
-                      className="h-8 text-xs bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Received Date">
-                    <Input
-                      type="date"
-                      value={shippingForm.receivedDate}
-                      disabled
-                      className="h-8 text-xs bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
+              <div className="col-span-2 space-y-4">
+                {/* ─── SHIPMENT SUMMARY (compact text display) ─── */}
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    {getTransportIcon(shippingForm.type, true)}
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Shipment Summary
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground/70">Company</span>
+                      <div className="font-medium text-foreground">{shippingForm.company || "—"}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Type</span>
+                      <div className="font-medium text-foreground capitalize">{shippingForm.type || "—"}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Transport Date</span>
+                      <div className="font-medium text-foreground">{shippingForm.transportDate || "—"}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Weight</span>
+                      <div className="font-medium font-mono text-foreground">{shippingForm.weight || "0"} kg</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Total Cost</span>
+                      <div className="font-medium font-mono text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Cost per kg (raw)</span>
+                      <div className="font-medium font-mono text-primary">{costPerKgRaw} ₽ / kg</div>
+                    </div>
+                  </div>
                 </div>
 
-                <Field label="Comment">
-                  <textarea
-                    value={shippingForm.comment}
-                    disabled
-                    className="w-full min-h-[90px] rounded-md border border-border bg-muted/50 px-3 py-2 text-xs resize-none cursor-not-allowed"
-                  />
-                </Field>
-              </div>
-
-              {/* ───────────── COLUMN 2 — CARGO (DISABLED) ───────────── */}
-              <div className="bg-card border border-border rounded-xl p-6 space-y-6 opacity-80">
-                <div className="grid grid-cols-2 gap-6">
-
-                  <Field label="Total Cost">
-                    <Input
-                      value={shippingForm.totalCost}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Packages">
-                    <Input
-                      type="number"
-                      value={shippingForm.packages}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Weight (kg)">
-                    <Input
-                      value={shippingForm.weight}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Volume (m³)">
-                    <Input
-                      value={shippingForm.volume}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Density">
-                    <Input
-                      value={shippingForm.density}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Goods Total Value">
-                    <Input
-                      value={shippingForm.goodsTotalValue}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Goods Value per kg">
-                    <Input
-                      value={goodsValuePerKg}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
-                  <Field label="Cost per kg (raw)">
-                    <Input
-                      value={costPerKgRaw ? `${Number(costPerKgRaw).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : ""}
-                      disabled
-                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
-                    />
-                  </Field>
-
+                {/* ─── PRICING CONTROLS ─── */}
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Pricing Controls
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
+                      <select
+                        value={mode}
+                        onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                        className="w-full border rounded-md px-2 py-1.5 text-xs bg-background"
+                      >
+                        <option value="normal">Normal</option>
+                        <option value="hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-muted-foreground mb-1">
+                        Cost per kg (used) {mode === "normal" && <span className="text-muted-foreground/60">(auto)</span>}
+                      </div>
+                      <Input
+                        value={mode === "normal" ? `${costPerKgRaw} ₽ / kg` : normalPrice}
+                        onChange={(e) => setNormalPrice(e.target.value)}
+                        readOnly={mode === "normal"}
+                        className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : "bg-background"}`}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* ───────────── COLUMN 3 — PRICING CONTROLS (ACTIVE) ───────────── */}
-              <div className="bg-card border border-border rounded-xl p-6">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">Mode</div>
-                    <select
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                      className="w-full border rounded-md px-2 py-1 text-xs bg-background"
-                    >
-                      <option value="normal">Normal</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Cost per kg (used) {mode === "normal" && <span className="text-muted-foreground/60">(auto)</span>}
-                    </div>
-                    <Input
-                      value={mode === "normal" ? `${costPerKgRaw} ₽ / kg` : normalPrice}
-                      onChange={(e) => setNormalPrice(e.target.value)}
-                      readOnly={mode === "normal"}
-                      className={`h-8 font-mono text-xs ${mode === "normal" ? "bg-muted/50 cursor-not-allowed" : "bg-background"}`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Normal weight
-                    </div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {model.normalWeight.toFixed(2)} kg
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Bulky weight
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {model.bulkyWeight.toFixed(2)} kg
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Normal shipping
-                    </div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {model.normalShipping.toLocaleString("ru-RU")} ₽
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Bulky shipping
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Catalog weight
-                    </div>
-                    <div className="text-sm font-semibold text-muted-foreground">
-                      {weightStats.totalWeight.toFixed(2)} kg
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[11px] text-muted-foreground mb-1">
-                      Bulky price
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg
-                    </div>
-                  </div>
-
+            {/* ───────────── COLUMN 3 — INVOICES ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Invoices
+                  </span>
+                  {isLoadingShipmentInvoices && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
                 </div>
+                <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                  {shipmentInvoices.length} linked
+                </span>
               </div>
 
-              {/* ───────────── COLUMN 4 — PRICING STATUS ───────────── */}
-              <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full bg-primary" />
-                  Pricing Mode: <span className="font-medium text-foreground capitalize">{mode}</span>
-                </div>
-
-                {selectedShipmentId && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className={`h-2 w-2 rounded-full ${shipmentInvoices.length > 0 ? "bg-green-500" : "bg-amber-500"}`} />
-                    {shipmentInvoices.length > 0 
-                      ? `${shipmentInvoices.length} invoice(s) linked`
-                      : "No invoices linked"}
+              <div className="flex-1 overflow-y-auto">
+                {!selectedShipmentId ? (
+                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                    Select a shipment first
+                  </p>
+                ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                    No invoices linked to this shipment
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/40">
+                    {shipmentInvoices.map((inv) => (
+                      <div
+                        key={inv.invoice_id}
+                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                      >
+                        <Check className="h-3 w-3 shrink-0 text-primary" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-mono text-[11px] font-medium text-foreground truncate">
+                            {inv.invoice_id}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                <p className="text-[11px] text-muted-foreground/60">
-                  Shipment data is read-only. Use pricing controls on the left to adjust mode and cost per kg.
-                </p>
-                </div>
-              </>
-            )}
+              </div>
+            </div>
 
           </div>
         </TabsContent>
