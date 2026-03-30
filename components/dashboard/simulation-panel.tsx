@@ -849,19 +849,19 @@ const handleSaveGlobal = useCallback(async () => {
             >
               Shipping Model
             </TabsTrigger>
-<TabsTrigger
-  value="summary"
-  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-  >
-  Summary Impact
-  </TabsTrigger>
-  <TabsTrigger
-  value="pricing-manager"
-  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-  >
-  Pricing Manager
-  </TabsTrigger>
-  </TabsList>
+            <TabsTrigger
+              value="pricing-manager"
+              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Pricing Manager
+            </TabsTrigger>
+            <TabsTrigger
+              value="summary"
+              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Summary Impact
+            </TabsTrigger>
+          </TabsList>
 
           {/* Scenario indicator */}
           {(isModified || isScenarioActive) && (
