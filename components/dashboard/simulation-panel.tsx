@@ -1854,6 +1854,42 @@ const handleSaveGlobal = useCallback(async () => {
                     </div>
                   </div>
                 </div>
+
+                {/* ─── SHIPMENT METRICS ─── */}
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Shipment Metrics
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground/70">Normal weight</span>
+                      <div className="font-medium font-mono text-foreground">{model.normalWeight.toFixed(2)} kg</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Bulky weight</span>
+                      <div className="font-medium font-mono text-foreground">{model.bulkyWeight.toFixed(2)} kg</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Normal shipping</span>
+                      <div className="font-medium font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")} ₽</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Bulky shipping</span>
+                      <div className="font-medium font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Catalog weight</span>
+                      <div className="font-medium font-mono text-foreground">{weightStats.totalWeight.toFixed(2)} kg</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground/70">Bulky price</span>
+                      <div className="font-medium font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")} ₽ / kg</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
