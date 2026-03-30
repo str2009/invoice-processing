@@ -1878,6 +1878,14 @@ const handleSaveGlobal = useCallback(async () => {
                     />
                   </Field>
 
+                  <Field label="Cost per kg (raw)">
+                    <Input
+                      value={costPerKgRaw ? `${Number(costPerKgRaw).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : ""}
+                      disabled
+                      className="h-8 text-xs font-mono bg-muted/50 cursor-not-allowed"
+                    />
+                  </Field>
+
                 </div>
               </div>
 
