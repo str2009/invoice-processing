@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { BottomPanel } from "@/components/dashboard/bottom-panel"
+import { SimulationPanel } from "@/components/dashboard/simulation-panel"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
@@ -1003,7 +1003,7 @@ console.log("scenario active:", isScenarioActive)
             {/* Panel content */}
             {simPanelOpen && (
               <div className="h-[calc(100%-28px)] overflow-hidden">
-<BottomPanel
+<SimulationPanel
   data={baseData}
   invoiceIds={
     Array.isArray(selectedInvoices)
