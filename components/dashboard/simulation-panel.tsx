@@ -2016,24 +2016,37 @@ const handleSaveGlobal = useCallback(async () => {
 </TabsContent>
 
 {/* ─── Pricing Manager Tab (12-Column Grid Layout) ─── */}
-        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-4">
-          {/* Add Panel Button */}
-          <div className="flex items-center gap-2 mb-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addEmptyPanel}
-              className="h-7 text-[10px] gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              Add Panel
-            </Button>
-            <span className="text-[10px] text-muted-foreground/60">
-              Total: {panels.reduce((sum, p) => sum + p.colSpan, 0)}/12 columns
-            </span>
-          </div>
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-0">
+          <div className="relative flex h-full">
+            {/* Left Edge Trigger - expands on hover */}
+            <div className="group shrink-0 w-[8px] hover:w-[140px] transition-all duration-200 ease-out bg-transparent hover:bg-card border-r border-transparent hover:border-border hover:shadow-md">
+              {/* Collapsed state - subtle indicator */}
+              <div className="absolute inset-y-0 left-0 w-[8px] flex items-center justify-center opacity-0 group-hover:opacity-0 transition-opacity">
+                <div className="h-12 w-[3px] rounded-full bg-muted-foreground/20" />
+              </div>
+              {/* Expanded state - panel controls */}
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-75 p-2 flex flex-col gap-2">
+                <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70 px-1">
+                  Layout
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addEmptyPanel}
+                  className="h-7 text-[10px] gap-1 w-full justify-start"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Panel
+                </Button>
+                <span className="text-[9px] text-muted-foreground/50 px-1 tabular-nums">
+                  {panels.reduce((sum, p) => sum + p.colSpan, 0)}/12 cols
+                </span>
+              </div>
+            </div>
 
-          <DndContext
+            {/* Main Grid Area */}
+            <div className="flex-1 p-4 overflow-auto">
+              <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handlePanelDragEnd}
@@ -2417,9 +2430,9 @@ const handleSaveGlobal = useCallback(async () => {
                 })}
               </div>
             </SortableContext>
-          </DndContext>
+              </DndContext>
 
-          {/* ─── Invoice Items Table ─── */}
+              {/* ─── Invoice Items Table ─── */}
           {selectedInvoiceId && (
             <div className="mt-4 bg-card border border-border rounded-xl">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -2474,6 +2487,8 @@ const handleSaveGlobal = useCallback(async () => {
               )}
             </div>
           )}
+            </div>
+          </div>
         </TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
