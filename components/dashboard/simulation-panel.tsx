@@ -610,9 +610,9 @@ const weightStats = useMemo(() => {
     setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
   }, [])
 
-  // Grid template for shipments - Company is flexible (1fr), others fixed
-  // This ensures all columns fit within panel without horizontal scroll
-  const shipmentGridTemplate = `1fr ${Math.min(shipmentColWidths.number, 55)}px ${Math.min(shipmentColWidths.date, 75)}px ${Math.min(shipmentColWidths.type, 50)}px 24px`
+  // Grid template for shipments - Company flexible, others fixed
+  // Widths: Company(1fr) | #(55px) | Date(100px) | Type(55px) | St(28px)
+  const shipmentGridTemplate = `1fr 55px 100px 55px 28px`
 
  // -------------------- Shipping form types --------------------
 
@@ -685,7 +685,77 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
+  
+  // MOOT Calculation state
+  const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
+  const [mootResults, setMootResults] = useState<{
+    calculated: number
+    skipped: number
+    skippedReasons: { noWeight: number; noPrice: number }
+  } | null>(null)
+  const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
+
+// ─── MOOT Calculation Function (defined after all state dependencies) ───
+const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: number) => {
+  // Only calculate for currently loaded invoice items
+  if (!invoiceItems.length) {
+    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    return
+  }
+
+  setIsCalculatingMoot(true)
+  
+  let calculated = 0
+  let skippedNoWeight = 0
+  let skippedNoPrice = 0
+  const newMootPrices = new Map<string | number, number>()
+
+  invoiceItems.forEach((item) => {
+    const itemId = item.id || item.sku || item.article
+    const weight = Number(item.weight ?? 0)
+    const purchasePrice = Number(item.price ?? item.purchase_price ?? 0)
+    const isBulky = item.isBulky || item.is_bulky || false
+    
+    // Validation: skip if no weight
+    if (weight <= 0) {
+      skippedNoWeight++
+      return
+    }
+    
+    // Validation: skip if no purchase price
+    if (purchasePrice <= 0) {
+      skippedNoPrice++
+      return
+    }
+    
+    // Calculate delivery cost per unit
+    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
+    const deliveryCostPerUnit = weight * pricePerKg
+    
+    // Base cost = purchase price + delivery
+    const baseCost = purchasePrice + deliveryCostPerUnit
+    
+    // Apply markup (default 30% if not set)
+    const markup = 0.30
+    const sellingPrice = baseCost * (1 + markup)
+    
+    newMootPrices.set(itemId, Math.round(sellingPrice))
+    calculated++
+  })
+
+  setMootPrices(newMootPrices)
+  setMootResults({
+    calculated,
+    skipped: skippedNoWeight + skippedNoPrice,
+    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
+  })
+  
+  // Brief delay to show loading state
+  setTimeout(() => {
+    setIsCalculatingMoot(false)
+  }, 300)
+}, [invoiceItems])
 
 
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
@@ -804,8 +874,14 @@ useEffect(() => {
 useEffect(() => {
   if (!selectedInvoiceId) {
     setInvoiceItems([])
+    setMootResults(null)
+    setMootPrices(new Map())
     return
   }
+  
+  // Clear MOOT results when invoice changes
+  setMootResults(null)
+  setMootPrices(new Map())
   
   const loadInvoiceItems = async () => {
     setIsLoadingInvoiceItems(true)
@@ -1601,9 +1677,9 @@ const handleSaveGlobal = useCallback(async () => {
 
     {/* Shipment list with resizable columns */}
     <div ref={shipmentListRef} className="flex flex-col">
-      {/* Header row - compact layout */}
+      {/* Header row */}
       <div
-        className="grid items-center gap-1 border-b border-border bg-muted/30 text-[8px] font-medium uppercase tracking-wider text-muted-foreground/70 px-1.5 py-1"
+        className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
         style={{ gridTemplateColumns: shipmentGridTemplate }}
       >
         <div className="truncate">Company</div>
@@ -1629,37 +1705,37 @@ const handleSaveGlobal = useCallback(async () => {
                 key={ship.shipment_id}
                 onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
                 style={{ gridTemplateColumns: shipmentGridTemplate }}
-                className={`grid items-center gap-1 px-1.5 py-1 border-b border-border/40 cursor-pointer transition-colors ${
+                className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${
                   isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                 } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
               >
                 {/* COL 1: Company (truncates) */}
-                <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                   {getTransportIcon(ship.transport_type, isSelected)}
-                  <span className="text-[10px] font-medium text-foreground truncate">
+                  <span className="text-[11px] font-medium text-foreground truncate">
                     {ship.transport_company || "Unknown"}
                   </span>
                 </div>
                 {/* COL 2: Invoice # */}
-                <span className="text-[9px] font-mono text-muted-foreground/70 truncate text-right">
+                <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                   {ship.transport_invoice_number || "—"}
                 </span>
-                {/* COL 3: Date (compact) */}
-                <span className="text-[9px] tabular-nums text-muted-foreground/60 text-right whitespace-nowrap">
-                  {ship.transport_date ? ship.transport_date.slice(5) : "—"}
+                {/* COL 3: Date (full) */}
+                <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
+                  {ship.transport_date || "—"}
                 </span>
-                {/* COL 4: Type */}
-                <span className={`text-[8px] font-medium uppercase text-center ${
+                {/* COL 4: Type (full) */}
+                <span className={`text-[10px] font-semibold uppercase text-center ${
                   ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
                   ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
                   ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
                   "text-amber-400"
                 }`}>
-                  {ship.transport_type?.slice(0, 3) || "—"}
+                  {ship.transport_type || "—"}
                 </span>
                 {/* COL 5: Status */}
                 <div className="flex justify-center" title={hasInvoices ? `${invoiceCount} invoice(s)` : "No invoices"}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500/70"}`} />
+                  <span className={`h-2 w-2 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500/70"}`} />
                 </div>
               </div>
             )
@@ -2078,9 +2154,9 @@ const handleSaveGlobal = useCallback(async () => {
 
                 {/* Shipment list with resizable columns */}
                 <div className="flex flex-col">
-                  {/* Header row - compact, no resize handles for simplicity */}
+                  {/* Header row */}
                   <div
-                    className="grid items-center gap-1 border-b border-border bg-muted/30 text-[8px] font-medium uppercase tracking-wider text-muted-foreground/70 px-1.5 py-1"
+                    className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
                     style={{ gridTemplateColumns: shipmentGridTemplate }}
                   >
                     <div className="truncate">Company</div>
@@ -2106,37 +2182,37 @@ const handleSaveGlobal = useCallback(async () => {
                             key={ship.shipment_id}
                             onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
                             style={{ gridTemplateColumns: shipmentGridTemplate }}
-                            className={`grid items-center gap-1 px-1.5 py-1 border-b border-border/40 cursor-pointer transition-colors ${
+                            className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${
                               isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                             } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                           >
-                            {/* COL 1: Company (truncates, takes remaining space) */}
-                            <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                            {/* COL 1: Company (truncates) */}
+                            <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                               {getTransportIcon(ship.transport_type, isSelected)}
-                              <span className="text-[10px] font-medium text-foreground truncate">
+                              <span className="text-[11px] font-medium text-foreground truncate">
                                 {ship.transport_company || "Unknown"}
                               </span>
                             </div>
-                            {/* COL 2: Invoice # (fixed width) */}
-                            <span className="text-[9px] font-mono text-muted-foreground/70 truncate text-right">
+                            {/* COL 2: Invoice # */}
+                            <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                               {ship.transport_invoice_number || "—"}
                             </span>
-                            {/* COL 3: Date (fixed width, compact format) */}
-                            <span className="text-[9px] tabular-nums text-muted-foreground/60 text-right whitespace-nowrap">
-                              {ship.transport_date ? ship.transport_date.slice(5) : "—"}
+                            {/* COL 3: Date (full YYYY-MM-DD) */}
+                            <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
+                              {ship.transport_date || "—"}
                             </span>
-                            {/* COL 4: Type (fixed width, minimal badge) */}
-                            <span className={`text-[8px] font-medium uppercase text-center ${
+                            {/* COL 4: Type (full name) */}
+                            <span className={`text-[10px] font-semibold uppercase text-center ${
                               ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
                               ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
                               ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
                               "text-amber-400"
                             }`}>
-                              {ship.transport_type?.slice(0, 3) || "—"}
+                              {ship.transport_type || "—"}
                             </span>
-                            {/* COL 5: Status dot (minimal) */}
+                            {/* COL 5: Status */}
                             <div className="flex justify-center" title={hasInvoices ? `${invoiceCount} invoice(s)` : "No invoices"}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500/70"}`} />
+                              <span className={`h-2 w-2 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500/70"}`} />
                             </div>
                           </div>
                         )
@@ -2268,13 +2344,55 @@ const handleSaveGlobal = useCallback(async () => {
                           <Button
                             variant="default"
                             size="sm"
-                            className="h-7 text-[10px] w-full justify-start"
+                            className="h-7 text-[10px] w-full justify-start gap-1"
                             onClick={() => {
-                              console.log("[v0] Calculate MOOT triggered", { mode, normalPrice, costPerKgRaw })
+                              const costPerKg = mode === "hybrid" && normalPrice 
+                                ? parseFloat(normalPrice) 
+                                : parseFloat(costPerKgRaw) || 0
+                              const bulkyPriceKg = model.bulkyPrice || costPerKg
+                              calculateMoot(costPerKg, bulkyPriceKg)
                             }}
+                            disabled={isCalculatingMoot || !invoiceItems.length}
                           >
-                            Calculate MOOT
+                            {isCalculatingMoot ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Calculating...
+                              </>
+                            ) : (
+                              "Calculate MOOT"
+                            )}
                           </Button>
+                          
+                          {/* MOOT Results Feedback */}
+                          {mootResults && !isCalculatingMoot && (
+                            <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                              <div className="text-green-500">
+                                Рассчитано: {mootResults.calculated} поз.
+                              </div>
+                              {mootResults.skipped > 0 && (
+                                <div className="text-amber-500">
+                                  Пропущено: {mootResults.skipped}
+                                  {mootResults.skippedReasons.noWeight > 0 && (
+                                    <span className="block text-[8px]">
+                                      — нет веса: {mootResults.skippedReasons.noWeight}
+                                    </span>
+                                  )}
+                                  {mootResults.skippedReasons.noPrice > 0 && (
+                                    <span className="block text-[8px]">
+                                      — нет цены: {mootResults.skippedReasons.noPrice}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {!invoiceItems.length && !isCalculatingMoot && (
+                            <p className="text-[8px] text-muted-foreground/50 italic mt-1">
+                              Выберите инвойс
+                            </p>
+                          )}
                         </div>
                       </GridPanel>
                     )
@@ -2409,19 +2527,44 @@ const handleSaveGlobal = useCallback(async () => {
                         <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
                         <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
                         <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
+                        <th className="px-3 py-2 text-right font-medium text-primary">MOOT</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {invoiceItems.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
-                          <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
-                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
-                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">{item.weight ? `${item.weight} kg` : "—"}</td>
-                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}</td>
-                          <td className="px-3 py-2 text-right font-mono font-medium text-foreground">{item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}</td>
-                        </tr>
-                      ))}
+                      {invoiceItems.map((item, idx) => {
+                        const itemId = item.id || item.sku || item.article
+                        const mootPrice = mootPrices.get(itemId)
+                        const hasNoWeight = !Number(item.weight ?? 0)
+                        const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
+                        const isSkipped = hasNoWeight || hasNoPrice
+                        
+                        return (
+                          <tr 
+                            key={item.id || idx} 
+                            className={`hover:bg-muted/30 transition-colors ${
+                              isSkipped && mootResults ? "bg-amber-500/5" : ""
+                            }`}
+                          >
+                            <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
+                            <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
+                            <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
+                            <td className={`px-3 py-2 text-right font-mono ${hasNoWeight && mootResults ? "text-amber-500" : "text-muted-foreground"}`}>
+                              {item.weight ? `${item.weight} kg` : "—"}
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono ${hasNoPrice && mootResults ? "text-amber-500" : "text-foreground"}`}>
+                              {item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-medium text-foreground">
+                              {item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono font-medium ${
+                              mootPrice ? "text-primary animate-pulse" : "text-muted-foreground/40"
+                            }`}>
+                              {mootPrice ? `${mootPrice.toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
