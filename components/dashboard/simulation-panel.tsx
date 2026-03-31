@@ -611,8 +611,9 @@ const weightStats = useMemo(() => {
   }, [])
 
   // Grid template for shipments - Company flexible, others fixed
-  // Widths: Company(1fr) | #(55px) | Date(100px) | Type(55px) | St(28px)
-  const shipmentGridTemplate = `1fr 55px 100px 55px 28px`
+  // Status removed - now indicated via row styling (left border for unlinked)
+  // Widths: Company(1fr) | #(60px) | Date(110px) | Type(70px)
+  const shipmentGridTemplate = `minmax(0, 1fr) 60px 110px 70px`
 
  // -------------------- Shipping form types --------------------
 
@@ -1686,7 +1687,6 @@ const handleSaveGlobal = useCallback(async () => {
         <div className="text-right">#</div>
         <div className="text-right">Date</div>
         <div className="text-center">Type</div>
-        <div className="text-center">St</div>
       </div>
 
       {/* Scrollable rows */}
@@ -1709,8 +1709,9 @@ const handleSaveGlobal = useCallback(async () => {
                   isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                 } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
               >
-                {/* COL 1: Company (truncates) */}
-                <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                {/* COL 1: Company with status dot */}
+                <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
                   {getTransportIcon(ship.transport_type, isSelected)}
                   <span className="text-[11px] font-medium text-foreground truncate">
                     {ship.transport_company || "Unknown"}
@@ -1720,11 +1721,11 @@ const handleSaveGlobal = useCallback(async () => {
                 <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                   {ship.transport_invoice_number || "—"}
                 </span>
-                {/* COL 3: Date (full) */}
+                {/* COL 3: Date */}
                 <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
                   {ship.transport_date || "—"}
                 </span>
-                {/* COL 4: Type (full) */}
+                {/* COL 4: Type */}
                 <span className={`text-[10px] font-semibold uppercase text-center ${
                   ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
                   ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
@@ -1733,10 +1734,6 @@ const handleSaveGlobal = useCallback(async () => {
                 }`}>
                   {ship.transport_type || "—"}
                 </span>
-                {/* COL 5: Status */}
-                <div className="flex justify-center" title={hasInvoices ? `${invoiceCount} invoice(s)` : "No invoices"}>
-                  <span className={`h-2 w-2 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500/70"}`} />
-                </div>
               </div>
             )
           })
@@ -2163,7 +2160,6 @@ const handleSaveGlobal = useCallback(async () => {
                     <div className="text-right">#</div>
                     <div className="text-right">Date</div>
                     <div className="text-center">Type</div>
-                    <div className="text-center">St</div>
                   </div>
 
                   {/* Scrollable rows */}
@@ -2186,8 +2182,9 @@ const handleSaveGlobal = useCallback(async () => {
                               isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                             } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                           >
-                            {/* COL 1: Company (truncates) */}
-                            <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                            {/* COL 1: Company with status dot */}
+                            <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
                               {getTransportIcon(ship.transport_type, isSelected)}
                               <span className="text-[11px] font-medium text-foreground truncate">
                                 {ship.transport_company || "Unknown"}
@@ -2197,11 +2194,11 @@ const handleSaveGlobal = useCallback(async () => {
                             <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                               {ship.transport_invoice_number || "—"}
                             </span>
-                            {/* COL 3: Date (full YYYY-MM-DD) */}
+                            {/* COL 3: Date */}
                             <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
                               {ship.transport_date || "—"}
                             </span>
-                            {/* COL 4: Type (full name) */}
+                            {/* COL 4: Type */}
                             <span className={`text-[10px] font-semibold uppercase text-center ${
                               ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
                               ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
@@ -2210,10 +2207,6 @@ const handleSaveGlobal = useCallback(async () => {
                             }`}>
                               {ship.transport_type || "—"}
                             </span>
-                            {/* COL 5: Status */}
-                            <div className="flex justify-center" title={hasInvoices ? `${invoiceCount} invoice(s)` : "No invoices"}>
-                              <span className={`h-2 w-2 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500/70"}`} />
-                            </div>
                           </div>
                         )
                       })
