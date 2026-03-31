@@ -16,6 +16,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   rectSortingStrategy,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -170,6 +171,61 @@ function ResizeHandle({ onResize, onAutoFit }: ResizeHandleProps) {
   )
 }
 
+// ─── Sortable Panel Component for Layout Reordering ───
+interface SortablePanelProps {
+  id: string
+  title: string
+  icon?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+  headerExtra?: React.ReactNode
+}
+
+function SortablePanel({ id, title, icon, children, className, headerExtra }: SortablePanelProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.9 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)] ${
+        isDragging ? "shadow-xl ring-2 ring-primary/30" : ""
+      } ${className || ""}`}
+    >
+      {/* Draggable Header */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3 cursor-grab active:cursor-grabbing select-none hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {title}
+          </span>
+        </div>
+        {headerExtra}
+      </div>
+      {/* Panel Content */}
+      {children}
+    </div>
+  )
+}
+
 // ─── Metric Widget Interface ───
 interface MetricWidget {
   id: string
@@ -242,6 +298,41 @@ const [normalPrice, setNormalPrice] = useState("115")
     "test1", "test2", "test3", "test4"
   ]
   const [metricOrder, setMetricOrder] = useState<string[]>(defaultMetricOrder)
+
+  // ─── Draggable Panel Order for Pricing Manager ───
+  const defaultPanelOrder = ["shipments", "metrics", "actions", "invoices"]
+  const [panelOrder, setPanelOrder] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("pricing_manager_panels_layout")
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          // Validate that all required panels are present
+          if (Array.isArray(parsed) && defaultPanelOrder.every(p => parsed.includes(p))) {
+            return parsed
+          }
+        } catch {}
+      }
+    }
+    return defaultPanelOrder
+  })
+
+  // Persist panel order
+  useEffect(() => {
+    localStorage.setItem("pricing_manager_panels_layout", JSON.stringify(panelOrder))
+  }, [panelOrder])
+
+  // Panel drag handler
+  const handlePanelDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setPanelOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
 
   // ─── DnD Sensors ───
   const sensors = useSensors(
@@ -1765,22 +1856,25 @@ const handleSaveGlobal = useCallback(async () => {
 
         {/* ─── Pricing Manager Tab (Compact Pricing UI) ─── */}
         <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
-          <div className="grid grid-cols-4 gap-6">
-
-            {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Always visible) ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
-              {/* Header */}
-              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Shipments
-                  </span>
-                  {isLoadingShipments && (
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handlePanelDragEnd}
+          >
+            <SortableContext items={panelOrder} strategy={horizontalListSortingStrategy}>
+              <div className="flex gap-4">
+                {panelOrder.map((panelId) => {
+                  // ───────────── SHIPMENTS PANEL ─────────────
+                  if (panelId === "shipments") {
+                    return (
+                      <SortablePanel
+                        key="shipments"
+                        id="shipments"
+                        title="Shipments"
+                        icon={<Truck className="h-4 w-4 text-muted-foreground" />}
+                        className="w-[280px] shrink-0"
+                        headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
+                      >
 
               {/* Filter tabs */}
                 <div className="shrink-0 flex border-b border-border">
@@ -1906,21 +2000,30 @@ const handleSaveGlobal = useCallback(async () => {
                         )
                       })
                     )}
-                  </div>
+</div>
                 </div>
 
-                </div>
+                      </SortablePanel>
+                    )
+                  }
 
-            {/* ──────�����────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
-            {/* ───────────── COLUMN 2 — COMPACT CONTROL STRIP ───────────── */}
-            {!selectedShipmentId ? (
-              <div className="col-span-2 flex items-center justify-center bg-card border border-border rounded-xl">
-                <p className="text-sm text-muted-foreground/60 italic">
-                  Select a shipment to review pricing context.
-                </p>
-              </div>
-) : (
-              <div className="col-span-2 flex gap-2">
+                  // ───────────── METRICS PANEL ─────────────
+                  if (panelId === "metrics") {
+                    return (
+                      <SortablePanel
+                        key="metrics"
+                        id="metrics"
+                        title="Metrics"
+                        className="flex-1 min-w-[300px]"
+                      >
+                        {!selectedShipmentId ? (
+                          <div className="flex-1 flex items-center justify-center p-4">
+                            <p className="text-sm text-muted-foreground/60 italic text-center">
+                              Select a shipment to view metrics
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-2">
                 {/* ─── DRAGGABLE METRICS WIDGETS BLOCK ─── */}
                 <div className="flex-1 bg-card border border-border rounded-lg p-2">
                   {/* Fixed Mode Selector (NOT draggable) */}
@@ -1987,97 +2090,110 @@ const handleSaveGlobal = useCallback(async () => {
                       </div>
                     </SortableContext>
                   </DndContext>
-                </div>
-
-                {/* ─── ACTIONS BLOCK ─── */}
-                <div className="w-[120px] bg-card border border-border rounded-xl p-2.5 flex flex-col">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                    <span className="text-[9px] font-medium uppercase tracking-wider">Actions</span>
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-[10px] w-full justify-start"
-                      onClick={() => {
-                        // Same behavior as Control Panel InReach
-                        console.log("[v0] InReach triggered from Pricing Manager")
-                      }}
-                    >
-                      InReach
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-7 text-[10px] w-full justify-start"
-                      onClick={() => {
-                        // Calculate MOOT using pricing rules + selected mode
-                        console.log("[v0] Calculate MOOT triggered", { mode, normalPrice, costPerKgRaw })
-                      }}
-                    >
-                      Calculate MOOT
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ───────────── COLUMN 3 — INVOICES ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
-              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Invoices
-                  </span>
-                  {isLoadingShipmentInvoices && (
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-                  {shipmentInvoices.length} linked
-                </span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {!selectedShipmentId ? (
-                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                    Select a shipment first
-                  </p>
-                ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                    No invoices linked to this shipment
-                  </p>
-                ) : (
-                  <div className="divide-y divide-border/40">
-                    {shipmentInvoices.map((inv) => {
-                      const isSelected = selectedInvoiceId === inv.invoice_id
-                      return (
-                        <div
-                          key={inv.invoice_id}
-                          onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
-                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
-                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                          }`}
-                        >
-                          <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
-                              {inv.invoice_id}
-                            </div>
                           </div>
-                          {isSelected && isLoadingInvoiceItems && (
-                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                        )}
+                      </SortablePanel>
+                    )
+                  }
+
+                  // ───────────── ACTIONS PANEL ─────────────
+                  if (panelId === "actions") {
+                    return (
+                      <SortablePanel
+                        key="actions"
+                        id="actions"
+                        title="Actions"
+                        className="w-[140px] shrink-0"
+                        headerExtra={<span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
+                      >
+                        <div className="flex-1 flex flex-col gap-1.5 p-2.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px] w-full justify-start"
+                            onClick={() => {
+                              console.log("[v0] InReach triggered from Pricing Manager")
+                            }}
+                          >
+                            InReach
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-7 text-[10px] w-full justify-start"
+                            onClick={() => {
+                              console.log("[v0] Calculate MOOT triggered", { mode, normalPrice, costPerKgRaw })
+                            }}
+                          >
+                            Calculate MOOT
+                          </Button>
+                        </div>
+                      </SortablePanel>
+                    )
+                  }
+
+                  // ───────────── INVOICES PANEL ─────────────
+                  if (panelId === "invoices") {
+                    return (
+                      <SortablePanel
+                        key="invoices"
+                        id="invoices"
+                        title="Invoices"
+                        className="w-[220px] shrink-0"
+                        headerExtra={
+                          <>
+                            {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                            <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                              {shipmentInvoices.length} linked
+                            </span>
+                          </>
+                        }
+                      >
+                        <div className="flex-1 overflow-y-auto">
+                          {!selectedShipmentId ? (
+                            <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                              Select a shipment first
+                            </p>
+                          ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                            <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                              No invoices linked to this shipment
+                            </p>
+                          ) : (
+                            <div className="divide-y divide-border/40">
+                              {shipmentInvoices.map((inv) => {
+                                const isSelected = selectedInvoiceId === inv.invoice_id
+                                return (
+                                  <div
+                                    key={inv.invoice_id}
+                                    onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                                    className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                                      isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                    }`}
+                                  >
+                                    <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                                    <div className="min-w-0 flex-1">
+                                      <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                        {inv.invoice_id}
+                                      </div>
+                                    </div>
+                                    {isSelected && isLoadingInvoiceItems && (
+                                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+                      </SortablePanel>
+                    )
+                  }
 
-          </div>
+                  return null
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {/* ─── Invoice Items Table ─── */}
           {selectedInvoiceId && (
