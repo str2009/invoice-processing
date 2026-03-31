@@ -10,12 +10,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockLogs } from "@/lib/mock-data"
 import { Input } from "@/components/ui/input"
-import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette } from "lucide-react"
+import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { SimulationPanel } from "@/components/dashboard/simulation-panel"
 import { useRouter } from "next/navigation"
@@ -47,10 +49,34 @@ export default function InvoiceDashboard() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  
+  // Workspace display settings
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
+  const [uiScale, setUiScale] = useState<"90" | "100" | "110">("100")
 
 useEffect(() => {
   setMounted(true)
+  // Load workspace settings from localStorage
+  const savedDensity = localStorage.getItem("workspace_density")
+  const savedScale = localStorage.getItem("workspace_ui_scale")
+  if (savedDensity === "comfortable" || savedDensity === "compact") {
+    setDensity(savedDensity)
+  }
+  if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
+    setUiScale(savedScale)
+  }
 }, [])
+
+  // Persist workspace settings
+  const handleDensityChange = useCallback((value: "comfortable" | "compact") => {
+    setDensity(value)
+    localStorage.setItem("workspace_density", value)
+  }, [])
+
+  const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
+    setUiScale(value)
+    localStorage.setItem("workspace_ui_scale", value)
+  }, [])
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "invoiceRightPanelWidth",
     defaultWidth: 420,
@@ -725,7 +751,7 @@ console.log("scenario active:", isScenarioActive)
 
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
       {/* Control Panel Drawer */}
       <ControlPanel
         isOpen={panelOpen}
@@ -879,7 +905,10 @@ console.log("scenario active:", isScenarioActive)
 )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[140px]">
+              <DropdownMenuContent align="end" className="min-w-[160px]">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                  Theme
+                </DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() => setTheme("light")}
                   className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
@@ -907,6 +936,53 @@ console.log("scenario active:", isScenarioActive)
                 >
                   <Monitor className="h-3.5 w-3.5" />
                   Graphite
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                  Density
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => handleDensityChange("comfortable")}
+                  className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  Comfortable
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDensityChange("compact")}
+                  className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}
+                >
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  Compact
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                  UI Scale
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => handleScaleChange("90")}
+                  className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}
+                >
+                  <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span>
+                  90%
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleScaleChange("100")}
+                  className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}
+                >
+                  <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span>
+                  100%
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleScaleChange("110")}
+                  className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}
+                >
+                  <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
+                  110%
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

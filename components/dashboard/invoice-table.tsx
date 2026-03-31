@@ -34,6 +34,8 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -47,6 +49,7 @@ import type { InvoiceRow } from "@/lib/mock-data"
 const STORAGE_KEY_ORDER = "spreadsheet-column-order"
 const STORAGE_KEY_SIZING = "spreadsheet-column-sizing"
 const STORAGE_KEY_VISIBILITY = "spreadsheet-column-visibility"
+const STORAGE_KEY_DETAILS_PANEL = "details_panel_enabled"
 
 function loadFromStorage<T>(key: string): T | null {
   try {
@@ -476,6 +479,7 @@ export function InvoiceTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [isHydrated, setIsHydrated] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(true)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Load saved settings from localStorage on mount
@@ -489,7 +493,17 @@ export function InvoiceTable({
     const savedVisibility = loadFromStorage<VisibilityState>(STORAGE_KEY_VISIBILITY)
     if (savedVisibility) setColumnVisibility(savedVisibility)
 
+    // Load details panel toggle state (default true)
+    const savedDetailsPanelEnabled = loadFromStorage<boolean>(STORAGE_KEY_DETAILS_PANEL)
+    if (savedDetailsPanelEnabled !== null) setDetailsPanelEnabled(savedDetailsPanelEnabled)
+
     setIsHydrated(true)
+  }, [])
+
+  // Toggle details panel and persist
+  const handleDetailsPanelToggle = useCallback((enabled: boolean) => {
+    setDetailsPanelEnabled(enabled)
+    saveToStorage(STORAGE_KEY_DETAILS_PANEL, enabled)
   }, [])
 
   // Persist column order changes
@@ -655,8 +669,24 @@ export function InvoiceTable({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Toolbar with column visibility */}
-      <div className="flex shrink-0 items-center justify-end border-b border-border bg-background px-2 py-1.5">
+      {/* Toolbar with toggle and column visibility */}
+      <div className="flex shrink-0 items-center justify-end gap-4 border-b border-border bg-background px-2 py-1.5">
+        {/* Details Panel Toggle */}
+        <div className="flex items-center gap-2">
+          <Switch
+            id="details-panel-toggle"
+            checked={detailsPanelEnabled}
+            onCheckedChange={handleDetailsPanelToggle}
+            className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30"
+          />
+          <Label 
+            htmlFor="details-panel-toggle" 
+            className="text-xs text-muted-foreground cursor-pointer select-none"
+          >
+            Details Panel
+          </Label>
+        </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-7 gap-1.5 border-border px-2.5 text-xs font-normal text-muted-foreground hover:text-foreground">
@@ -728,12 +758,22 @@ export function InvoiceTable({
                   return (
                     <tr
                       key={row.id}
-                      className={`h-8 cursor-pointer transition-colors ${
+                      className={`h-8 transition-colors ${
+                        detailsPanelEnabled
+                          ? "cursor-pointer"
+                          : "cursor-default"
+                      } ${
                         isSelected
                           ? "bg-primary/10 hover:bg-primary/15"
-                          : "bg-background hover:bg-muted/50"
+                          : detailsPanelEnabled
+                            ? "bg-background hover:bg-muted/50"
+                            : "bg-background hover:bg-muted/20"
                       }`}
-                      onClick={() => onRowClick?.(row.original)}
+                      onClick={() => {
+                        if (detailsPanelEnabled) {
+                          onRowClick?.(row.original)
+                        }
+                      }}
                     >
                       <SortableContext
                         items={columnIds}

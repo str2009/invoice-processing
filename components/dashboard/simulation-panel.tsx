@@ -1,6 +1,24 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -21,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -101,6 +119,265 @@ interface SimulationPanelProps {
   onSetSelectedInvoices?: (ids: string[]) => void
 }
 
+// ─── Column Resize Handle Component ───
+interface ResizeHandleProps {
+  onResize: (delta: number) => void
+  onAutoFit: () => void
+}
+
+function ResizeHandle({ onResize, onAutoFit }: ResizeHandleProps) {
+  const startXRef = useRef(0)
+  const currentWidthRef = useRef(0)
+  
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    startXRef.current = e.clientX
+    currentWidthRef.current = 0
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const totalDelta = moveEvent.clientX - startXRef.current
+      const incrementalDelta = totalDelta - currentWidthRef.current
+      currentWidthRef.current = totalDelta
+      onResize(incrementalDelta)
+    }
+    
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+    
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+  }
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onAutoFit()
+  }
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
+      className="absolute right-0 top-0 h-full w-[5px] cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors z-10"
+      style={{ marginRight: "-2px" }}
+    />
+  )
+}
+
+// ─── Grid Panel Component with Resize + Collapse ───
+interface GridPanelProps {
+  id: string
+  title: string
+  colStart: number
+  colSpan: number
+  maxColSpan: number
+  collapsed: boolean
+  icon?: React.ReactNode
+  children: React.ReactNode
+  headerExtra?: React.ReactNode
+  onResize: (deltaCols: number) => void
+  onToggleCollapse: () => void
+  onRemove?: () => void
+  canRemove?: boolean
+}
+
+function GridPanel({ 
+  id, title, colStart, colSpan, maxColSpan, collapsed, icon, children, headerExtra, 
+  onResize, onToggleCollapse, onRemove, canRemove 
+}: GridPanelProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const resizeStartRef = useRef(0)
+  const initialColSpanRef = useRef(colSpan)
+  const COLUMN_WIDTH = 80 // Approximate width per grid column
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    resizeStartRef.current = e.clientX
+    initialColSpanRef.current = colSpan
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - resizeStartRef.current
+      const deltaCols = Math.round(deltaX / COLUMN_WIDTH)
+      // Clamp to min 2, max allowed (based on available space)
+      const newColSpan = Math.max(2, Math.min(maxColSpan, initialColSpanRef.current + deltaCols))
+      if (newColSpan !== colSpan) {
+        onResize(newColSpan - colSpan)
+      }
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+  }
+
+  // Use explicit grid-column positioning: start / span N
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.9 : 1,
+    gridColumn: `${colStart} / span ${colSpan}`,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative bg-card border border-border rounded-xl flex flex-col ${
+        collapsed ? "h-[44px]" : "min-h-[200px] max-h-[calc(100vh-200px)]"
+      } ${isDragging ? "shadow-xl ring-2 ring-primary/30" : ""}`}
+    >
+      {/* Draggable Header */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="shrink-0 flex items-center justify-between border-b border-border px-3 py-2.5 cursor-grab active:cursor-grabbing select-none hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {title}
+          </span>
+          <span className="text-[9px] font-mono text-muted-foreground/50">
+            {colSpan}col
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {headerExtra}
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
+            className="p-1 hover:bg-muted rounded transition-colors"
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? (
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-3 w-3 text-muted-foreground" />
+            )}
+          </button>
+          {canRemove && onRemove && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              className="p-1 hover:bg-destructive/20 rounded transition-colors"
+              title="Remove panel"
+            >
+              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Panel Content (hidden when collapsed) */}
+      {!collapsed && (
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
+      )}
+
+      {/* Resize Handle on Right Edge */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        className="absolute right-0 top-0 bottom-0 w-[6px] cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors rounded-r-xl"
+        style={{ marginRight: "-3px" }}
+      />
+    </div>
+  )
+}
+
+// ─── Panel Config Interface (12-Column Grid with Explicit Positioning) ───
+interface PanelConfig {
+  id: string
+  type: "shipments" | "metrics" | "actions" | "invoices" | "empty"
+  colSpan: number
+  collapsed: boolean
+}
+
+// Helper to calculate colStart for each panel based on order
+function calculatePanelPositions(panels: PanelConfig[]): Map<string, number> {
+  const positions = new Map<string, number>()
+  let currentCol = 1
+  for (const panel of panels) {
+    positions.set(panel.id, currentCol)
+    currentCol += panel.colSpan
+  }
+  return positions
+}
+
+// ─── Metric Widget Interface ───
+interface MetricWidget {
+  id: string
+  label: string
+  value: string | number
+  highlight?: boolean
+  color?: string
+}
+
+// ─── Sortable Metric Block Component ───
+function SortableMetricBlock({ id, label, value, highlight, color }: MetricWidget) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`
+        flex flex-col gap-0.5 px-2 py-1.5 rounded-md cursor-grab active:cursor-grabbing
+        bg-muted/40 hover:bg-muted/60 border border-border/50
+        transition-colors select-none
+        ${isDragging ? "shadow-lg ring-2 ring-primary/30" : ""}
+        ${highlight ? "bg-primary/10 border-primary/30" : ""}
+      `}
+    >
+      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider font-medium">
+        {label}
+      </span>
+      <span className={`font-mono text-[13px] font-semibold ${color || "text-foreground"}`}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
 export function SimulationPanel({
   data,
   invoiceIds,
@@ -113,6 +390,127 @@ export function SimulationPanel({
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
 const [normalPrice, setNormalPrice] = useState("115")
+
+  // ─── Draggable Metrics Widget Order ───
+  const defaultMetricOrder = [
+    "totalCost", "costPerKg", "weightRaw", "catalogWt", "bulkyPriceKg",
+    "packages", "volume", "density", "bulkyWt", "normalShip", "bulkyShip",
+    "costPerKgRaw", "goodsPerKg", "manager",
+    "test1", "test2", "test3", "test4"
+  ]
+  const [metricOrder, setMetricOrder] = useState<string[]>(defaultMetricOrder)
+
+  // ─── 12-Column Grid Panel System for Pricing Manager ───
+  const defaultPanels: PanelConfig[] = [
+    { id: "shipments", type: "shipments", colSpan: 3, collapsed: false },
+    { id: "metrics", type: "metrics", colSpan: 4, collapsed: false },
+    { id: "actions", type: "actions", colSpan: 2, collapsed: false },
+    { id: "invoices", type: "invoices", colSpan: 2, collapsed: false },
+    { id: "empty-1", type: "empty", colSpan: 1, collapsed: false },
+  ]
+
+  const [panels, setPanels] = useState<PanelConfig[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("pricing_manager_layout_v2")
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed
+          }
+        } catch {}
+      }
+    }
+    return defaultPanels
+  })
+
+  // Persist panel layout
+  useEffect(() => {
+    localStorage.setItem("pricing_manager_layout_v2", JSON.stringify(panels))
+  }, [panels])
+
+  // Panel drag handler (reorder)
+  const handlePanelDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setPanels((items) => {
+        const oldIndex = items.findIndex(p => p.id === active.id)
+        const newIndex = items.findIndex(p => p.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
+
+  // Panel resize handler (snap to grid columns, respect 12-col limit)
+  const handlePanelResize = useCallback((panelId: string, newColSpan: number) => {
+    setPanels((items) => {
+      // Calculate total columns used by OTHER panels
+      const otherPanelsTotal = items.reduce((sum, p) => 
+        p.id === panelId ? sum : sum + p.colSpan, 0
+      )
+      // Max this panel can be is 12 - others, min is 2
+      const maxAllowed = Math.max(2, 12 - otherPanelsTotal)
+      const clampedSpan = Math.max(2, Math.min(maxAllowed, newColSpan))
+      
+      return items.map(p => 
+        p.id === panelId ? { ...p, colSpan: clampedSpan } : p
+      )
+    })
+  }, [])
+
+  // Toggle panel collapse
+  const togglePanelCollapse = useCallback((panelId: string) => {
+    setPanels((items) => items.map(p => 
+      p.id === panelId ? { ...p, collapsed: !p.collapsed } : p
+    ))
+  }, [])
+
+  // Add new empty panel
+  const addEmptyPanel = useCallback(() => {
+    const newId = `empty-${Date.now()}`
+    setPanels((items) => [...items, { id: newId, type: "empty", colSpan: 2, collapsed: false }])
+  }, [])
+
+  // Remove panel (only empty panels can be removed)
+  const removePanel = useCallback((panelId: string) => {
+    setPanels((items) => items.filter(p => p.id !== panelId))
+  }, [])
+
+  // Panel IDs for sortable context
+  const panelIds = useMemo(() => panels.map(p => p.id), [panels])
+
+  // Calculate panel positions (colStart for each panel)
+  const panelPositions = useMemo(() => calculatePanelPositions(panels), [panels])
+
+  // Calculate max colSpan for each panel (remaining space + current)
+  const panelMaxColSpans = useMemo(() => {
+    const maxSpans = new Map<string, number>()
+    const totalUsed = panels.reduce((sum, p) => sum + p.colSpan, 0)
+    const freeSpace = 12 - totalUsed
+    
+    for (const panel of panels) {
+      // This panel can expand into free space
+      maxSpans.set(panel.id, panel.colSpan + freeSpace)
+    }
+    return maxSpans
+  }, [panels])
+
+  // ─── DnD Sensors ───
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleMetricDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setMetricOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
 const weightStats = useMemo(() => {
   let totalWeight = 0
   let missingWeight = false
@@ -149,6 +547,71 @@ const weightStats = useMemo(() => {
   const [costPerKgBulky, setCostPerKgBulky] = useState("12.00")
   const [totalDeliveryCost, setTotalDeliveryCost] = useState("450.00")
   const [distributionMethod, setDistributionMethod] = useState("weight")
+
+  // ─── Resizable Column Widths for Shipments List ───
+  const SHIPMENT_COL_MINS = { company: 100, number: 50, date: 80, type: 70 }
+  const SHIPMENT_COL_MAX_COMPANY = 280
+  const [shipmentColWidths, setShipmentColWidths] = useState(() => {
+    // Try to load from localStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("shipments_column_widths")
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {}
+      }
+    }
+    return { company: 160, number: 60, date: 100, type: 80 }
+  })
+
+  // Persist widths to localStorage
+  useEffect(() => {
+    localStorage.setItem("shipments_column_widths", JSON.stringify(shipmentColWidths))
+  }, [shipmentColWidths])
+
+  // Refs for measuring content width
+  const shipmentListRef = useRef<HTMLDivElement>(null)
+
+  // Column resize handler
+  const handleColumnResize = useCallback((col: keyof typeof shipmentColWidths, delta: number) => {
+    setShipmentColWidths((prev: typeof shipmentColWidths) => {
+      const newWidth = Math.max(SHIPMENT_COL_MINS[col], prev[col] + delta)
+      // Apply max for company column
+      const clampedWidth = col === "company" ? Math.min(newWidth, SHIPMENT_COL_MAX_COMPANY) : newWidth
+      return { ...prev, [col]: clampedWidth }
+    })
+  }, [])
+
+  // AutoFit column to content
+  const handleAutoFitColumn = useCallback((col: keyof typeof shipmentColWidths) => {
+    if (!shipmentListRef.current) return
+    
+    // Find all cells for this column
+    const cells = shipmentListRef.current.querySelectorAll(`[data-col="${col}"]`)
+    let maxWidth = 0
+    
+    cells.forEach((cell) => {
+      // Create a temporary span to measure text width
+      const span = document.createElement("span")
+      span.style.visibility = "hidden"
+      span.style.position = "absolute"
+      span.style.whiteSpace = "nowrap"
+      span.style.font = window.getComputedStyle(cell).font
+      span.textContent = cell.textContent
+      document.body.appendChild(span)
+      maxWidth = Math.max(maxWidth, span.offsetWidth)
+      document.body.removeChild(span)
+    })
+    
+    // Add padding (20px) and clamp
+    const finalWidth = Math.max(SHIPMENT_COL_MINS[col], maxWidth + 20)
+    const clampedWidth = col === "company" ? Math.min(finalWidth, SHIPMENT_COL_MAX_COMPANY) : finalWidth
+    
+    setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
+  }, [])
+
+  // Grid template for shipments
+  const shipmentGridTemplate = `${shipmentColWidths.company}px ${shipmentColWidths.number}px ${shipmentColWidths.date}px ${shipmentColWidths.type}px 20px`
 
  // -------------------- Shipping form types --------------------
 
@@ -1135,133 +1598,106 @@ const handleSaveGlobal = useCallback(async () => {
       />
     </div>
 
-    {/* Shipment list - fixed height ~4 rows */}
-    <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
-      {filteredShipments.length === 0 && !isLoadingShipments ? (
-        <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-          {shipmentSearch ? "No matching shipments" : "No shipments found"}
-        </p>
-      ) : (
-        filteredShipments.map((ship) => {
-          const isSelected = selectedShipmentId === ship.shipment_id
-          // For selected shipment, use live shipmentInvoices state; for others, use API data
-          const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
-          return (
-            <div
-              key={ship.shipment_id}
-              onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-              style={{ gridTemplateColumns: "1.5fr 70px 90px 70px 20px" }}
-              className={`grid items-center gap-2 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
-                isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-              } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-            >
-              {/* COL 1: Icon + Company */}
-              <div className="flex items-center gap-1.5 min-w-0">
-                {getTransportIcon(ship.transport_type, isSelected)}
-                <span className="text-[11px] font-medium text-foreground truncate">
-                  {ship.transport_company || "Unknown"}
-                </span>
-              </div>
-              {/* COL 2: Invoice Number */}
-              <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right">
-                {ship.transport_invoice_number || "—"}
-              </span>
-              {/* COL 3: Date */}
-              <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
-                {ship.transport_date || "—"}
-              </span>
-              {/* COL 4: Type Badge */}
-              <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center min-w-[60px] ${
-                ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                "bg-amber-500/20 text-amber-400"
-              }`}>
-                {ship.transport_type || "—"}
-              </span>
-              {/* COL 5: Status */}
-              <div className="flex justify-center" title={hasInvoices ? "Invoices linked" : "No invoices linked"}>
-                {hasInvoices ? (
-                  <Check className="h-3 w-3 text-green-500/70" />
-                ) : (
-                  <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                )}
-              </div>
-            </div>
-          )
-        })
-      )}
-    </div>
-
-    {/* Linked invoices section */}
-    {selectedShipmentId && (
-      <div className="shrink-0 border-t border-border bg-muted/30">
-        <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Linked Invoices
-          </span>
-          {isLoadingShipmentInvoices ? (
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-          ) : (
-            <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-              {shipmentInvoices.length === 0 ? (
-                <span className="inline-flex items-center gap-1 text-amber-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Unlinked
-                </span>
-              ) : (
-                `${shipmentInvoices.length} linked`
-              )}
-            </span>
-          )}
+    {/* Shipment list with resizable columns */}
+    <div ref={shipmentListRef} className="flex flex-col">
+      {/* Header row with resize handles */}
+      <div
+        className="grid items-center border-b border-border bg-muted/30 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70"
+        style={{ gridTemplateColumns: shipmentGridTemplate }}
+      >
+        <div className="relative px-3 py-1.5" data-col="company">
+          Company
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("company", delta)}
+            onAutoFit={() => handleAutoFitColumn("company")}
+          />
         </div>
-        
-        <div className="max-h-24 overflow-y-auto">
-          {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-            <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
-              No invoices linked
-            </p>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {shipmentInvoices.slice(0, 5).map((inv) => (
-                <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
-                  <Check className="h-3 w-3 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
-                    {inv.invoice_id}
+        <div className="relative px-1 py-1.5 text-right" data-col="number">
+          #
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("number", delta)}
+            onAutoFit={() => handleAutoFitColumn("number")}
+          />
+        </div>
+        <div className="relative px-1 py-1.5 text-right" data-col="date">
+          Date
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("date", delta)}
+            onAutoFit={() => handleAutoFitColumn("date")}
+          />
+        </div>
+        <div className="relative px-1 py-1.5 text-center" data-col="type">
+          Type
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("type", delta)}
+            onAutoFit={() => handleAutoFitColumn("type")}
+          />
+        </div>
+        <div className="px-1 py-1.5 text-center">St</div>
+      </div>
+
+      {/* Scrollable rows */}
+      <div className="max-h-[200px] overflow-y-auto overscroll-contain">
+        {filteredShipments.length === 0 && !isLoadingShipments ? (
+          <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+            {shipmentSearch ? "No matching shipments" : "No shipments found"}
+          </p>
+        ) : (
+          filteredShipments.map((ship) => {
+            const isSelected = selectedShipmentId === ship.shipment_id
+            const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+            const hasInvoices = invoiceCount > 0
+            return (
+              <div
+                key={ship.shipment_id}
+                onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                style={{ gridTemplateColumns: shipmentGridTemplate }}
+                className={`grid items-center border-b border-border/40 cursor-pointer transition-colors ${
+                  isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+              >
+                {/* COL 1: Icon + Company */}
+                <div className="flex items-center gap-1.5 min-w-0 px-3 py-1.5" data-col="company">
+                  {getTransportIcon(ship.transport_type, isSelected)}
+                  <span className="text-[11px] font-medium text-foreground truncate">
+                    {ship.transport_company || "Unknown"}
                   </span>
                 </div>
-              ))}
-              {shipmentInvoices.length > 5 && (
-                <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
-                  +{shipmentInvoices.length - 5} more
+                {/* COL 2: Invoice Number */}
+                <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right px-1 py-1.5" data-col="number">
+                  {ship.transport_invoice_number || "—"}
+                </span>
+                {/* COL 3: Date */}
+                <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1 py-1.5" data-col="date">
+                  {ship.transport_date || "—"}
+                </span>
+                {/* COL 4: Type Badge */}
+                <div className="flex justify-center px-1 py-1.5" data-col="type">
+                  <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center ${
+                    ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                    ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                    ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                    "bg-amber-500/20 text-amber-400"
+                  }`}>
+                    {ship.transport_type || "—"}
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Attach button */}
-        {invoiceIds.length > 0 && (
-          <div className="border-t border-border/50 px-3 py-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isAttaching}
-              onClick={handleAttachInvoices}
-              className="h-7 w-full gap-1.5 text-[10px]"
-            >
-              {isAttaching ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Link2 className="h-3 w-3" />
-              )}
-              Attach {invoiceIds.length} invoice(s)
-            </Button>
-          </div>
+                {/* COL 5: Status */}
+                <div className="flex justify-center px-1 py-1.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                  {hasInvoices ? (
+                    <Check className="h-3 w-3 text-green-500/70" />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+                  )}
+                </div>
+              </div>
+            )
+          })
         )}
       </div>
-    )}
-  </div>
+    </div>
+
+    </div>
 
     {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -1579,26 +2015,69 @@ const handleSaveGlobal = useCallback(async () => {
 
 </TabsContent>
 
-        {/* ─── Pricing Manager Tab (Compact Pricing UI) ─── */}
-        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
-          <div className="grid grid-cols-4 gap-6">
-
-            {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR (Always visible) ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
-              {/* Header */}
-              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Shipments
-                  </span>
-                  {isLoadingShipments && (
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                  )}
-                </div>
+{/* ─── Pricing Manager Tab (12-Column Grid Layout) ─── */}
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-0">
+          <div className="relative flex h-full">
+            {/* Left Edge Trigger - expands on hover */}
+            <div className="group shrink-0 w-[8px] hover:w-[140px] transition-all duration-200 ease-out bg-transparent hover:bg-card border-r border-transparent hover:border-border hover:shadow-md">
+              {/* Collapsed state - subtle indicator */}
+              <div className="absolute inset-y-0 left-0 w-[8px] flex items-center justify-center opacity-0 group-hover:opacity-0 transition-opacity">
+                <div className="h-12 w-[3px] rounded-full bg-muted-foreground/20" />
               </div>
+              {/* Expanded state - panel controls */}
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-75 p-2 flex flex-col gap-2">
+                <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70 px-1">
+                  Layout
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addEmptyPanel}
+                  className="h-7 text-[10px] gap-1 w-full justify-start"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Panel
+                </Button>
+                <span className="text-[9px] text-muted-foreground/50 px-1 tabular-nums">
+                  {panels.reduce((sum, p) => sum + p.colSpan, 0)}/12 cols
+                </span>
+              </div>
+            </div>
 
-              {/* Filter tabs */}
+            {/* Main Grid Area */}
+            <div className="flex-1 p-4 overflow-auto">
+              <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handlePanelDragEnd}
+          >
+            <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
+              {/* 12-Column Grid - NO wrapping, explicit positioning */}
+              <div 
+                className="grid gap-3"
+                style={{ 
+                  gridTemplateColumns: "repeat(12, 1fr)",
+                  gridAutoFlow: "column",
+                }}
+              >
+                {panels.map((panel) => {
+                  // ───────────── SHIPMENTS PANEL ─────────────
+                  if (panel.type === "shipments") {
+                    return (
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
+                        title="Shipments"
+                        colStart={panelPositions.get(panel.id) || 1}
+                        colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                        collapsed={panel.collapsed}
+                        icon={<Truck className="h-3.5 w-3.5 text-muted-foreground" />}
+                        headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                      >
+                        {/* Filter tabs */}
                 <div className="shrink-0 flex border-b border-border">
                   {(["all", "unlinked", "recent"] as const).map((filter) => (
                     <button
@@ -1626,279 +2105,334 @@ const handleSaveGlobal = useCallback(async () => {
                   />
                 </div>
 
-                {/* Shipment list */}
-                <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
-                  {filteredShipments.length === 0 && !isLoadingShipments ? (
-                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                      {shipmentSearch ? "No matching shipments" : "No shipments found"}
-                    </p>
-                  ) : (
-                    filteredShipments.map((ship) => {
-                      const isSelected = selectedShipmentId === ship.shipment_id
-                      // For selected shipment, use live shipmentInvoices state; for others, use API data
-                      const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
-                      return (
-                        <div
-                          key={ship.shipment_id}
-                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                          style={{ gridTemplateColumns: "1.5fr 70px 90px 70px 20px" }}
-                          className={`grid items-center gap-2 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
-                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-                        >
-                          {/* COL 1: Icon + Company */}
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {getTransportIcon(ship.transport_type, isSelected)}
-                            <span className="text-[11px] font-medium text-foreground truncate">
-                              {ship.transport_company || "Unknown"}
-                            </span>
-                          </div>
-                          {/* COL 2: Invoice Number */}
-                          <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right">
-                            {ship.transport_invoice_number || "—"}
-                          </span>
-                          {/* COL 3: Date */}
-                          <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
-                            {ship.transport_date || "—"}
-                          </span>
-                          {/* COL 4: Type Badge */}
-                          <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center min-w-[60px] ${
-                            ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                            ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                            ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                            "bg-amber-500/20 text-amber-400"
-                          }`}>
-                            {ship.transport_type || "—"}
-                          </span>
-                          {/* COL 5: Status */}
-                          <div className="flex justify-center" title={hasInvoices ? "Invoices linked" : "No invoices linked"}>
-                            {hasInvoices ? (
-                              <Check className="h-3 w-3 text-green-500/70" />
-                            ) : (
-                              <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-
-                {/* Linked invoices section */}
-                {selectedShipmentId && (
-                  <div className="shrink-0 border-t border-border bg-muted/30">
-                    <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        Linked Invoices
-                      </span>
-                      {isLoadingShipmentInvoices ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                      ) : (
-                        <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-                          {shipmentInvoices.length === 0 ? (
-                            <span className="inline-flex items-center gap-1 text-amber-500">
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                              Unlinked
-                            </span>
-                          ) : (
-                            `${shipmentInvoices.length} linked`
-                          )}
-                        </span>
-                      )}
+                {/* Shipment list with resizable columns */}
+                <div className="flex flex-col">
+                  {/* Header row with resize handles */}
+                  <div
+                    className="grid items-center border-b border-border bg-muted/30 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70"
+                    style={{ gridTemplateColumns: shipmentGridTemplate }}
+                  >
+                    <div className="relative px-2 py-1.5" data-col="company">
+                      Company
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("company", delta)}
+                        onAutoFit={() => handleAutoFitColumn("company")}
+                      />
                     </div>
-                    
-                    <div className="max-h-24 overflow-y-auto">
-                      {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-                        <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
-                          No invoices linked
-                        </p>
-                      ) : (
-                        <div className="divide-y divide-border/30">
-                          {shipmentInvoices.slice(0, 5).map((inv) => (
-                            <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
-                              <Check className="h-3 w-3 shrink-0 text-primary" />
-                              <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
-                                {inv.invoice_id}
+                    <div className="relative px-1 py-1.5 text-right" data-col="number">
+                      #
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("number", delta)}
+                        onAutoFit={() => handleAutoFitColumn("number")}
+                      />
+                    </div>
+                    <div className="relative px-1 py-1.5 text-right" data-col="date">
+                      Date
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("date", delta)}
+                        onAutoFit={() => handleAutoFitColumn("date")}
+                      />
+                    </div>
+                    <div className="relative px-1 py-1.5 text-center" data-col="type">
+                      Type
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("type", delta)}
+                        onAutoFit={() => handleAutoFitColumn("type")}
+                      />
+                    </div>
+                    <div className="px-1 py-1.5 text-center">St</div>
+                  </div>
+
+                  {/* Scrollable rows */}
+                  <div className="max-h-[200px] overflow-y-auto overscroll-contain">
+                    {filteredShipments.length === 0 && !isLoadingShipments ? (
+                      <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                        {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                      </p>
+                    ) : (
+                      filteredShipments.map((ship) => {
+                        const isSelected = selectedShipmentId === ship.shipment_id
+                        const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                        const hasInvoices = invoiceCount > 0
+                        return (
+                          <div
+                            key={ship.shipment_id}
+                            onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                            style={{ gridTemplateColumns: shipmentGridTemplate }}
+                            className={`grid items-center border-b border-border/40 cursor-pointer transition-colors ${
+                              isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                            } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                          >
+                            {/* COL 1: Icon + Company */}
+                            <div className="flex items-center gap-1 min-w-0 px-2 py-1.5" data-col="company">
+                              {getTransportIcon(ship.transport_type, isSelected)}
+                              <span className="text-[11px] font-medium text-foreground truncate">
+                                {ship.transport_company || "Unknown"}
                               </span>
                             </div>
-                          ))}
-                          {shipmentInvoices.length > 5 && (
-                            <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
-                              +{shipmentInvoices.length - 5} more
+                            {/* COL 2: Invoice Number */}
+                            <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right px-1 py-1.5" data-col="number">
+                              {ship.transport_invoice_number || "—"}
+                            </span>
+                            {/* COL 3: Date */}
+                            <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1 py-1.5" data-col="date">
+                              {ship.transport_date || "—"}
+                            </span>
+                            {/* COL 4: Type Badge */}
+                            <div className="flex justify-center px-1 py-1.5" data-col="type">
+                              <span className={`px-1 py-0.5 text-[8px] font-medium uppercase rounded ${
+                                ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                                ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                                ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                                "bg-amber-500/20 text-amber-400"
+                              }`}>
+                                {ship.transport_type || "—"}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-
-            {/* ──────�����────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
-            {/* ───────────── COLUMN 2 — COMPACT CONTROL STRIP ───────────── */}
-            {!selectedShipmentId ? (
-              <div className="col-span-2 flex items-center justify-center bg-card border border-border rounded-xl">
-                <p className="text-sm text-muted-foreground/60 italic">
-                  Select a shipment to review pricing context.
-                </p>
-              </div>
-            ) : (
-              <div className="col-span-2 bg-card border border-border rounded-xl p-3">
-                <div className="grid grid-cols-3 gap-3">
-                  {/* ─── COL 1: SHIPMENT INFO ─── */}
-                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                      {getTransportIcon(shippingForm.type, true)}
-                      <span className="font-medium uppercase tracking-wider">Shipment</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">Company</span>
-                      <span className="font-medium text-foreground">{shippingForm.company || "—"}</span>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="font-medium text-foreground capitalize">{shippingForm.type || "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">Date</span>
-                      <span className="font-medium text-foreground">{shippingForm.transportDate || "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">Weight</span>
-                      <span className="font-medium font-mono text-foreground">{shippingForm.weight || "0"} kg</span>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="text-muted-foreground/60">Cost</span>
-                      <span className="font-medium font-mono text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">₽/kg (raw)</span>
-                      <span className="font-medium font-mono text-primary">{costPerKgRaw}</span>
-                    </div>
-                  </div>
-
-                  {/* ─── COL 2: PRICING CONTROLS ─── */}
-                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                      <span className="font-medium uppercase tracking-wider">Pricing</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/60">Mode</span>
-                      <select
-                        value={mode}
-                        onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                        className="ml-2 border rounded px-1.5 py-0.5 text-[11px] bg-background"
-                      >
-                        <option value="normal">Normal</option>
-                        <option value="hybrid">Hybrid</option>
-                      </select>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/60">₽/kg (used)</span>
-                      {mode === "normal" ? (
-                        <span className="ml-2 font-mono text-foreground">{costPerKgRaw} <span className="text-muted-foreground/50">(auto)</span></span>
-                      ) : (
-                        <Input
-                          value={normalPrice}
-                          onChange={(e) => setNormalPrice(e.target.value)}
-                          className="ml-2 h-6 w-24 inline-flex font-mono text-[11px] bg-background px-1.5"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ─── COL 3: METRICS ─── */}
-                  <div className="text-[11px]">
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                      <span className="font-medium uppercase tracking-wider">Metrics</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Normal wt</span>
-                        <span className="font-mono text-foreground">{model.normalWeight.toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky wt</span>
-                        <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Normal ship</span>
-                        <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky ship</span>
-                        <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Catalog wt</span>
-                        <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky ₽/kg</span>
-                        <span className="font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ───────────── COLUMN 3 — INVOICES ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
-              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Invoices
-                  </span>
-                  {isLoadingShipmentInvoices && (
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-                  {shipmentInvoices.length} linked
-                </span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {!selectedShipmentId ? (
-                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                    Select a shipment first
-                  </p>
-                ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                    No invoices linked to this shipment
-                  </p>
-                ) : (
-                  <div className="divide-y divide-border/40">
-                    {shipmentInvoices.map((inv) => {
-                      const isSelected = selectedInvoiceId === inv.invoice_id
-                      return (
-                        <div
-                          key={inv.invoice_id}
-                          onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
-                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
-                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                          }`}
-                        >
-                          <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
-                              {inv.invoice_id}
+                            {/* COL 5: Status */}
+                            <div className="flex justify-center px-1 py-1.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                              {hasInvoices ? (
+                                <Check className="h-3 w-3 text-green-500/70" />
+                              ) : (
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500/70" />
+                              )}
                             </div>
                           </div>
-                          {isSelected && isLoadingInvoiceItems && (
-                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                        )
+                      })
+                    )}
+</div>
+                </div>
+
+                      </GridPanel>
+                    )
+                  }
+
+                  // ───────────── METRICS PANEL ─────────────
+                  if (panel.type === "metrics") {
+                    return (
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
+                        title="Metrics"
+                        colStart={panelPositions.get(panel.id) || 1}
+                        colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                        collapsed={panel.collapsed}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                      >
+                        {!selectedShipmentId ? (
+                          <div className="flex-1 flex items-center justify-center p-4">
+                            <p className="text-sm text-muted-foreground/60 italic text-center">
+                              Select a shipment to view metrics
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-2">
+                            {/* Fixed Mode Selector */}
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+                              <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
+                              <select
+                                value={mode}
+                                onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                                className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
+                              >
+                                <option value="normal">Normal</option>
+                                <option value="hybrid">Hybrid</option>
+                              </select>
+                              {mode === "hybrid" && (
+                                <div className="flex items-center gap-1 ml-2">
+                                  <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
+                                  <Input
+                                    value={normalPrice}
+                                    onChange={(e) => setNormalPrice(e.target.value)}
+                                    className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Draggable Metric Widgets Grid */}
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleMetricDragEnd}
+                            >
+                              <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
+                                <div 
+                                  className="grid gap-2"
+                                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+                                >
+                                  {metricOrder.map((metricId) => {
+                                    const metricData: Record<string, MetricWidget> = {
+                                      totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
+                                      costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
+                                      weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
+                                      catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
+                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                                      packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
+                                      volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
+                                      density: { id: "density", label: "Density", value: shippingForm.density || "0" },
+                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: `${model.bulkyWeight.toFixed(1)} kg` },
+                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${model.normalShipping.toLocaleString("ru-RU")} ₽` },
+                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                                      costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
+                                      goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
+                                      manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
+                                      test1: { id: "test1", label: "Test 1", value: "123" },
+                                      test2: { id: "test2", label: "Test 2", value: "456" },
+                                      test3: { id: "test3", label: "Test 3", value: "789" },
+                                      test4: { id: "test4", label: "Test 4", value: "000" },
+                                    }
+                                    const metric = metricData[metricId]
+                                    if (!metric) return null
+                                    return <SortableMetricBlock key={metric.id} {...metric} />
+                                  })}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
+                          </div>
+                        )}
+                      </GridPanel>
+                    )
+                  }
+
+                  // ───────────── ACTIONS PANEL ─────────────
+                  if (panel.type === "actions") {
+                    return (
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
+                        title="Actions"
+                        colStart={panelPositions.get(panel.id) || 1}
+                        colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                        collapsed={panel.collapsed}
+                        headerExtra={<span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                      >
+                        <div className="flex-1 flex flex-col gap-1.5 p-2.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px] w-full justify-start"
+                            onClick={() => {
+                              console.log("[v0] InReach triggered from Pricing Manager")
+                            }}
+                          >
+                            InReach
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-7 text-[10px] w-full justify-start"
+                            onClick={() => {
+                              console.log("[v0] Calculate MOOT triggered", { mode, normalPrice, costPerKgRaw })
+                            }}
+                          >
+                            Calculate MOOT
+                          </Button>
+                        </div>
+                      </GridPanel>
+                    )
+                  }
+
+                  // ───────────── INVOICES PANEL ─────────────
+                  if (panel.type === "invoices") {
+                    return (
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
+                        title="Invoices"
+                        colStart={panelPositions.get(panel.id) || 1}
+                        colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                        collapsed={panel.collapsed}
+                        headerExtra={
+                          <>
+                            {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                            <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                              {shipmentInvoices.length} linked
+                            </span>
+                          </>
+                        }
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                      >
+                        <div className="flex-1 overflow-y-auto">
+                          {!selectedShipmentId ? (
+                            <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                              Select a shipment first
+                            </p>
+                          ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                            <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                              No invoices linked to this shipment
+                            </p>
+                          ) : (
+                            <div className="divide-y divide-border/40">
+                              {shipmentInvoices.map((inv) => {
+                                const isSelected = selectedInvoiceId === inv.invoice_id
+                                return (
+                                  <div
+                                    key={inv.invoice_id}
+                                    onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                                    className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                                      isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                    }`}
+                                  >
+                                    <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                                    <div className="min-w-0 flex-1">
+                                      <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                        {inv.invoice_id}
+                                      </div>
+                                    </div>
+                                    {isSelected && isLoadingInvoiceItems && (
+                                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
+                      </GridPanel>
+                    )
+                  }
+
+                  // ───────────── EMPTY PANEL ─────────────
+                  if (panel.type === "empty") {
+                    return (
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
+                        title="Empty"
+                        colStart={panelPositions.get(panel.id) || 1}
+                        colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                        collapsed={panel.collapsed}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                        onRemove={() => removePanel(panel.id)}
+                        canRemove={true}
+                      >
+                        <div className="flex-1 flex items-center justify-center p-4">
+                          <p className="text-[11px] text-muted-foreground/40 italic text-center">
+                            Empty panel for spacing
+                          </p>
+                        </div>
+                      </GridPanel>
+                    )
+                  }
+
+                  return null
+                })}
               </div>
-            </div>
+            </SortableContext>
+              </DndContext>
 
-          </div>
-
-          {/* ─── Invoice Items Table ─── */}
+              {/* ─── Invoice Items Table ─── */}
           {selectedInvoiceId && (
             <div className="mt-4 bg-card border border-border rounded-xl">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -1953,6 +2487,8 @@ const handleSaveGlobal = useCallback(async () => {
               )}
             </div>
           )}
+            </div>
+          </div>
         </TabsContent>
 
         {/* ─── Summary Impact Tab ─── */}
@@ -2034,7 +2570,7 @@ const handleSaveGlobal = useCallback(async () => {
   )
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ──────────────────────────────────��───────────────────────
 
 function PreviewCard({
   label,
