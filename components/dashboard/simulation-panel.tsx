@@ -1145,7 +1145,8 @@ const handleSaveGlobal = useCallback(async () => {
         filteredShipments.map((ship) => {
           const isSelected = selectedShipmentId === ship.shipment_id
           // For selected shipment, use live shipmentInvoices state; for others, use API data
-          const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
+          const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+          const hasInvoices = invoiceCount > 0
           return (
             <div
               key={ship.shipment_id}
@@ -1179,10 +1180,13 @@ const handleSaveGlobal = useCallback(async () => {
               }`}>
                 {ship.transport_type || "—"}
               </span>
-              {/* COL 5: Status */}
-              <div className="flex justify-center" title={hasInvoices ? "Invoices linked" : "No invoices linked"}>
+              {/* COL 5: Status + Count */}
+              <div className="flex items-center justify-center gap-0.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
                 {hasInvoices ? (
-                  <Check className="h-3 w-3 text-green-500/70" />
+                  <>
+                    <Check className="h-3 w-3 text-green-500/70" />
+                    <span className="text-[9px] font-mono text-green-500/70">{invoiceCount}</span>
+                  </>
                 ) : (
                   <span className="h-2 w-2 rounded-full bg-amber-500/70" />
                 )}
@@ -1193,75 +1197,7 @@ const handleSaveGlobal = useCallback(async () => {
       )}
     </div>
 
-    {/* Linked invoices section */}
-    {selectedShipmentId && (
-      <div className="shrink-0 border-t border-border bg-muted/30">
-        <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Linked Invoices
-          </span>
-          {isLoadingShipmentInvoices ? (
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-          ) : (
-            <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-              {shipmentInvoices.length === 0 ? (
-                <span className="inline-flex items-center gap-1 text-amber-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  Unlinked
-                </span>
-              ) : (
-                `${shipmentInvoices.length} linked`
-              )}
-            </span>
-          )}
-        </div>
-        
-        <div className="max-h-24 overflow-y-auto">
-          {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-            <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
-              No invoices linked
-            </p>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {shipmentInvoices.slice(0, 5).map((inv) => (
-                <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
-                  <Check className="h-3 w-3 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
-                    {inv.invoice_id}
-                  </span>
-                </div>
-              ))}
-              {shipmentInvoices.length > 5 && (
-                <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
-                  +{shipmentInvoices.length - 5} more
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Attach button */}
-        {invoiceIds.length > 0 && (
-          <div className="border-t border-border/50 px-3 py-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isAttaching}
-              onClick={handleAttachInvoices}
-              className="h-7 w-full gap-1.5 text-[10px]"
-            >
-              {isAttaching ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Link2 className="h-3 w-3" />
-              )}
-              Attach {invoiceIds.length} invoice(s)
-            </Button>
-          </div>
-        )}
-      </div>
-    )}
-  </div>
+    </div>
 
     {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -1636,7 +1572,8 @@ const handleSaveGlobal = useCallback(async () => {
                     filteredShipments.map((ship) => {
                       const isSelected = selectedShipmentId === ship.shipment_id
                       // For selected shipment, use live shipmentInvoices state; for others, use API data
-                      const hasInvoices = isSelected ? shipmentInvoices.length > 0 : (ship.invoice_count ?? 0) > 0
+                      const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                      const hasInvoices = invoiceCount > 0
                       return (
                         <div
                           key={ship.shipment_id}
@@ -1670,69 +1607,24 @@ const handleSaveGlobal = useCallback(async () => {
                           }`}>
                             {ship.transport_type || "—"}
                           </span>
-                          {/* COL 5: Status */}
-                          <div className="flex justify-center" title={hasInvoices ? "Invoices linked" : "No invoices linked"}>
-                            {hasInvoices ? (
-                              <Check className="h-3 w-3 text-green-500/70" />
-                            ) : (
-                              <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })
+{/* COL 5: Status + Count */}
+                      <div className="flex items-center justify-center gap-0.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                        {hasInvoices ? (
+                          <>
+                            <Check className="h-3 w-3 text-green-500/70" />
+                            <span className="text-[9px] font-mono text-green-500/70">{invoiceCount}</span>
+                          </>
+                        ) : (
+                          <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
                   )}
                 </div>
 
-                {/* Linked invoices section */}
-                {selectedShipmentId && (
-                  <div className="shrink-0 border-t border-border bg-muted/30">
-                    <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        Linked Invoices
-                      </span>
-                      {isLoadingShipmentInvoices ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                      ) : (
-                        <span className={`ml-auto font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-                          {shipmentInvoices.length === 0 ? (
-                            <span className="inline-flex items-center gap-1 text-amber-500">
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                              Unlinked
-                            </span>
-                          ) : (
-                            `${shipmentInvoices.length} linked`
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="max-h-24 overflow-y-auto">
-                      {shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-                        <p className="px-3 py-2 text-center text-[10px] italic text-muted-foreground/40">
-                          No invoices linked
-                        </p>
-                      ) : (
-                        <div className="divide-y divide-border/30">
-                          {shipmentInvoices.slice(0, 5).map((inv) => (
-                            <div key={inv.invoice_id} className="flex items-center gap-2 px-3 py-1">
-                              <Check className="h-3 w-3 shrink-0 text-primary" />
-                              <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
-                                {inv.invoice_id}
-                              </span>
-                            </div>
-                          ))}
-                          {shipmentInvoices.length > 5 && (
-                            <div className="px-3 py-1 text-center text-[10px] text-muted-foreground/60">
-                              +{shipmentInvoices.length - 5} more
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
+                </div>
 
             {/* ──────�����────── COLUMN 2 — SUMMARY + PRICING (conditional) ───────────── */}
             {/* ───────────── COLUMN 2 — COMPACT CONTROL STRIP ───────────── */}
@@ -2065,7 +1957,7 @@ const handleSaveGlobal = useCallback(async () => {
   )
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ──────────────────────────────────��───────────────────────
 
 function PreviewCard({
   label,
