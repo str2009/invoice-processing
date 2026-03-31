@@ -1742,92 +1742,112 @@ const handleSaveGlobal = useCallback(async () => {
                   Select a shipment to review pricing context.
                 </p>
               </div>
-            ) : (
+) : (
               <div className="col-span-2 flex gap-2">
-                {/* ─── BLOCK 1: WEIGHT & SHIPPING (Comparison) ─── */}
+                {/* ─── UNIFIED ANALYTICS BLOCK ─── */}
                 <div className="flex-1 bg-card border border-border rounded-xl p-2.5">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                    <span className="text-[9px] font-medium uppercase tracking-wider">Weight & Shipping</span>
+                  {/* Title */}
+                  <div className="text-center text-[9px] font-medium uppercase tracking-wider text-muted-foreground mb-2 pb-1 border-b border-border/50">
+                    Weight & Shipping & Pricing
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 text-[11px]">
-                    {/* Left: Normal */}
-                    <div className="space-y-1 border-r border-border pr-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Normal wt</span>
-                        <span className="font-mono text-foreground">{model.normalWeight.toFixed(1)} kg</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Normal ship</span>
-                        <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")} ₽</span>
-                      </div>
+
+                  {/* 3-Column Grid */}
+                  <div className="grid text-[11px]" style={{ gridTemplateColumns: "1fr 1fr 1fr", columnGap: "14px", rowGap: "6px" }}>
+                    
+                    {/* ROW 1 — PRIMARY (highlighted) */}
+                    <div className="flex items-center justify-between bg-primary/5 rounded px-1.5 py-0.5 -mx-1 hover:bg-primary/10 transition-colors">
+                      <span className="text-muted-foreground/70">Mode</span>
+                      <select
+                        value={mode}
+                        onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                        className="border rounded px-1 py-0.5 text-[10px] bg-background font-medium"
+                      >
+                        <option value="normal">Normal</option>
+                        <option value="hybrid">Hybrid</option>
+                      </select>
                     </div>
-                    {/* Right: Catalog + Bulky */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Catalog wt</span>
-                        <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)} kg</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky wt</span>
-                        <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)} kg</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky ship</span>
-                        <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽</span>
-                      </div>
+                    <div className="flex items-center justify-between bg-primary/5 rounded px-1.5 py-0.5 hover:bg-primary/10 transition-colors">
+                      <span className="text-muted-foreground/70">Total Cost</span>
+                      <span className="font-mono font-semibold text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</span>
                     </div>
+                    <div className="flex items-center justify-between bg-primary/5 rounded px-1.5 py-0.5 -mx-1 hover:bg-primary/10 transition-colors">
+                      <span className="text-muted-foreground/70">₽/kg (used)</span>
+                      {mode === "normal" ? (
+                        <span className="font-mono font-semibold text-primary">{costPerKgRaw}</span>
+                      ) : (
+                        <Input
+                          value={normalPrice}
+                          onChange={(e) => setNormalPrice(e.target.value)}
+                          className="h-5 w-14 font-mono text-[10px] bg-background px-1 text-right font-semibold"
+                        />
+                      )}
+                    </div>
+
+                    {/* Subtle divider */}
+                    <div className="col-span-3 border-t border-border/30 my-0.5" />
+
+                    {/* ROW 2 */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Weight (raw)</span>
+                      <span className="font-mono text-foreground">{shippingForm.weight || "0"} kg</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Catalog wt</span>
+                      <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)} kg</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Bulky ₽/kg</span>
+                      <span className={`font-mono ${model.bulkyPrice > 0 ? "text-amber-500" : "text-muted-foreground/50"}`}>
+                        {Math.round(model.bulkyPrice).toLocaleString("ru-RU")}
+                      </span>
+                    </div>
+
+                    {/* ROW 3 */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Packages</span>
+                      <span className="font-mono text-foreground">{shippingForm.packages || "0"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Volume</span>
+                      <span className="font-mono text-foreground">{shippingForm.volume || "0"} m³</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Density</span>
+                      <span className="font-mono text-foreground">{shippingForm.density || "0"}</span>
+                    </div>
+
+                    {/* ROW 4 */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Bulky wt</span>
+                      <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)} kg</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Normal ship</span>
+                      <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")} ₽</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Bulky ship</span>
+                      <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽</span>
+                    </div>
+
+                    {/* ROW 5 */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">₽/kg (raw)</span>
+                      <span className="font-mono text-foreground">{costPerKgRaw}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Goods ₽/kg</span>
+                      <span className="font-mono text-foreground">{goodsValuePerKg || "0"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground/50">Manager</span>
+                      <span className="font-mono text-foreground truncate max-w-[60px]">{shippingForm.manager || "—"}</span>
+                    </div>
+
                   </div>
                 </div>
 
-                {/* ─── BLOCK 2: PRICING (Comparison) ─── */}
-                <div className="flex-1 bg-card border border-border rounded-xl p-2.5">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    <span className="text-[9px] font-medium uppercase tracking-wider">Pricing</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-3 text-[11px]">
-                    {/* Left: Mode + ₽/kg (used) */}
-                    <div className="space-y-1.5 border-r border-border pr-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground/60">Mode</span>
-                        <select
-                          value={mode}
-                          onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                          className="border rounded px-1 py-0.5 text-[10px] bg-background"
-                        >
-                          <option value="normal">Normal</option>
-                          <option value="hybrid">Hybrid</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground/60">₽/kg (used)</span>
-                        {mode === "normal" ? (
-                          <span className="font-mono text-primary">{costPerKgRaw}</span>
-                        ) : (
-                          <Input
-                            value={normalPrice}
-                            onChange={(e) => setNormalPrice(e.target.value)}
-                            className="h-5 w-16 font-mono text-[10px] bg-background px-1 text-right"
-                          />
-                        )}
-                      </div>
-                    </div>
-                    {/* Right: ₽/kg (raw) + Bulky price */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">₽/kg (raw)</span>
-                        <span className="font-mono text-foreground">{costPerKgRaw}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky ₽/kg</span>
-                        <span className="font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ─── BLOCK 3: ACTIONS ─── */}
+                {/* ─── ACTIONS BLOCK ─── */}
                 <div className="w-[120px] bg-card border border-border rounded-xl p-2.5 flex flex-col">
                   <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
