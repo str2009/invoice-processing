@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -171,17 +171,25 @@ function ResizeHandle({ onResize, onAutoFit }: ResizeHandleProps) {
   )
 }
 
-// ─── Sortable Panel Component for Layout Reordering ───
-interface SortablePanelProps {
+// ─── Grid Panel Component with Resize + Collapse ───
+interface GridPanelProps {
   id: string
   title: string
+  colSpan: number
+  collapsed: boolean
   icon?: React.ReactNode
   children: React.ReactNode
-  className?: string
   headerExtra?: React.ReactNode
+  onResize: (deltaCols: number) => void
+  onToggleCollapse: () => void
+  onRemove?: () => void
+  canRemove?: boolean
 }
 
-function SortablePanel({ id, title, icon, children, className, headerExtra }: SortablePanelProps) {
+function GridPanel({ 
+  id, title, colSpan, collapsed, icon, children, headerExtra, 
+  onResize, onToggleCollapse, onRemove, canRemove 
+}: GridPanelProps) {
   const {
     attributes,
     listeners,
@@ -191,39 +199,117 @@ function SortablePanel({ id, title, icon, children, className, headerExtra }: So
     isDragging,
   } = useSortable({ id })
 
+  const resizeStartRef = useRef(0)
+  const initialColSpanRef = useRef(colSpan)
+  const COLUMN_WIDTH = 80 // Approximate width per grid column
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    resizeStartRef.current = e.clientX
+    initialColSpanRef.current = colSpan
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - resizeStartRef.current
+      const deltaCols = Math.round(deltaX / COLUMN_WIDTH)
+      const newColSpan = Math.max(2, Math.min(12, initialColSpanRef.current + deltaCols))
+      if (newColSpan !== colSpan) {
+        onResize(newColSpan - colSpan)
+      }
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+  }
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.9 : 1,
+    gridColumn: `span ${colSpan}`,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)] ${
-        isDragging ? "shadow-xl ring-2 ring-primary/30" : ""
-      } ${className || ""}`}
+      className={`relative bg-card border border-border rounded-xl flex flex-col ${
+        collapsed ? "h-[44px]" : "min-h-[200px] max-h-[calc(100vh-200px)]"
+      } ${isDragging ? "shadow-xl ring-2 ring-primary/30" : ""}`}
     >
       {/* Draggable Header */}
       <div
         {...attributes}
         {...listeners}
-        className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3 cursor-grab active:cursor-grabbing select-none hover:bg-muted/30 transition-colors"
+        className="shrink-0 flex items-center justify-between border-b border-border px-3 py-2.5 cursor-grab active:cursor-grabbing select-none hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             {title}
           </span>
+          <span className="text-[9px] font-mono text-muted-foreground/50">
+            {colSpan}col
+          </span>
         </div>
-        {headerExtra}
+        <div className="flex items-center gap-1">
+          {headerExtra}
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
+            className="p-1 hover:bg-muted rounded transition-colors"
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? (
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-3 w-3 text-muted-foreground" />
+            )}
+          </button>
+          {canRemove && onRemove && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              className="p-1 hover:bg-destructive/20 rounded transition-colors"
+              title="Remove panel"
+            >
+              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+            </button>
+          )}
+        </div>
       </div>
-      {/* Panel Content */}
-      {children}
+
+      {/* Panel Content (hidden when collapsed) */}
+      {!collapsed && (
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
+      )}
+
+      {/* Resize Handle on Right Edge */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        className="absolute right-0 top-0 bottom-0 w-[6px] cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors rounded-r-xl"
+        style={{ marginRight: "-3px" }}
+      />
     </div>
   )
+}
+
+// ─── Panel Config Interface (12-Column Grid) ───
+interface PanelConfig {
+  id: string
+  type: "shipments" | "metrics" | "actions" | "invoices" | "empty"
+  colSpan: number
+  collapsed: boolean
 }
 
 // ─── Metric Widget Interface ───
@@ -299,40 +385,76 @@ const [normalPrice, setNormalPrice] = useState("115")
   ]
   const [metricOrder, setMetricOrder] = useState<string[]>(defaultMetricOrder)
 
-  // ─── Draggable Panel Order for Pricing Manager ───
-  const defaultPanelOrder = ["shipments", "metrics", "actions", "invoices"]
-  const [panelOrder, setPanelOrder] = useState<string[]>(() => {
+  // ─── 12-Column Grid Panel System for Pricing Manager ───
+  const defaultPanels: PanelConfig[] = [
+    { id: "shipments", type: "shipments", colSpan: 3, collapsed: false },
+    { id: "metrics", type: "metrics", colSpan: 4, collapsed: false },
+    { id: "actions", type: "actions", colSpan: 2, collapsed: false },
+    { id: "invoices", type: "invoices", colSpan: 2, collapsed: false },
+    { id: "empty-1", type: "empty", colSpan: 1, collapsed: false },
+  ]
+
+  const [panels, setPanels] = useState<PanelConfig[]>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("pricing_manager_panels_layout")
+      const saved = localStorage.getItem("pricing_manager_layout_v2")
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          // Validate that all required panels are present
-          if (Array.isArray(parsed) && defaultPanelOrder.every(p => parsed.includes(p))) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             return parsed
           }
         } catch {}
       }
     }
-    return defaultPanelOrder
+    return defaultPanels
   })
 
-  // Persist panel order
+  // Persist panel layout
   useEffect(() => {
-    localStorage.setItem("pricing_manager_panels_layout", JSON.stringify(panelOrder))
-  }, [panelOrder])
+    localStorage.setItem("pricing_manager_layout_v2", JSON.stringify(panels))
+  }, [panels])
 
-  // Panel drag handler
+  // Panel drag handler (reorder)
   const handlePanelDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      setPanelOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string)
-        const newIndex = items.indexOf(over.id as string)
+      setPanels((items) => {
+        const oldIndex = items.findIndex(p => p.id === active.id)
+        const newIndex = items.findIndex(p => p.id === over.id)
         return arrayMove(items, oldIndex, newIndex)
       })
     }
   }, [])
+
+  // Panel resize handler (snap to grid columns)
+  const handlePanelResize = useCallback((panelId: string, deltaCols: number) => {
+    setPanels((items) => items.map(p => {
+      if (p.id !== panelId) return p
+      const newColSpan = Math.max(2, Math.min(12, p.colSpan + deltaCols))
+      return { ...p, colSpan: newColSpan }
+    }))
+  }, [])
+
+  // Toggle panel collapse
+  const togglePanelCollapse = useCallback((panelId: string) => {
+    setPanels((items) => items.map(p => 
+      p.id === panelId ? { ...p, collapsed: !p.collapsed } : p
+    ))
+  }, [])
+
+  // Add new empty panel
+  const addEmptyPanel = useCallback(() => {
+    const newId = `empty-${Date.now()}`
+    setPanels((items) => [...items, { id: newId, type: "empty", colSpan: 2, collapsed: false }])
+  }, [])
+
+  // Remove panel (only empty panels can be removed)
+  const removePanel = useCallback((panelId: string) => {
+    setPanels((items) => items.filter(p => p.id !== panelId))
+  }, [])
+
+  // Panel IDs for sortable context
+  const panelIds = useMemo(() => panels.map(p => p.id), [panels])
 
   // ─── DnD Sensors ───
   const sensors = useSensors(
@@ -1854,29 +1976,51 @@ const handleSaveGlobal = useCallback(async () => {
 
 </TabsContent>
 
-        {/* ─── Pricing Manager Tab (Compact Pricing UI) ─── */}
-        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-6">
+{/* ─── Pricing Manager Tab (12-Column Grid Layout) ─── */}
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-4">
+          {/* Add Panel Button */}
+          <div className="flex items-center gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addEmptyPanel}
+              className="h-7 text-[10px] gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add Panel
+            </Button>
+            <span className="text-[10px] text-muted-foreground/60">
+              Total: {panels.reduce((sum, p) => sum + p.colSpan, 0)}/12 columns
+            </span>
+          </div>
+
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handlePanelDragEnd}
           >
-            <SortableContext items={panelOrder} strategy={horizontalListSortingStrategy}>
-              <div className="flex gap-4">
-                {panelOrder.map((panelId) => {
+            <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
+              {/* 12-Column Grid */}
+              <div 
+                className="grid gap-3"
+                style={{ gridTemplateColumns: "repeat(12, 1fr)" }}
+              >
+                {panels.map((panel) => {
                   // ───────────── SHIPMENTS PANEL ─────────────
-                  if (panelId === "shipments") {
+                  if (panel.type === "shipments") {
                     return (
-                      <SortablePanel
-                        key="shipments"
-                        id="shipments"
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
                         title="Shipments"
-                        icon={<Truck className="h-4 w-4 text-muted-foreground" />}
-                        className="w-[280px] shrink-0"
+                        colSpan={panel.colSpan}
+                        collapsed={panel.collapsed}
+                        icon={<Truck className="h-3.5 w-3.5 text-muted-foreground" />}
                         headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
+                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
-
-              {/* Filter tabs */}
+                        {/* Filter tabs */}
                 <div className="shrink-0 flex border-b border-border">
                   {(["all", "unlinked", "recent"] as const).map((filter) => (
                     <button
@@ -2003,18 +2147,21 @@ const handleSaveGlobal = useCallback(async () => {
 </div>
                 </div>
 
-                      </SortablePanel>
+                      </GridPanel>
                     )
                   }
 
                   // ───────────── METRICS PANEL ─────────────
-                  if (panelId === "metrics") {
+                  if (panel.type === "metrics") {
                     return (
-                      <SortablePanel
-                        key="metrics"
-                        id="metrics"
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
                         title="Metrics"
-                        className="flex-1 min-w-[300px]"
+                        colSpan={panel.colSpan}
+                        collapsed={panel.collapsed}
+                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         {!selectedShipmentId ? (
                           <div className="flex-1 flex items-center justify-center p-4">
@@ -2088,19 +2235,22 @@ const handleSaveGlobal = useCallback(async () => {
                             </DndContext>
                           </div>
                         )}
-                      </SortablePanel>
+                      </GridPanel>
                     )
                   }
 
                   // ───────────── ACTIONS PANEL ─────────────
-                  if (panelId === "actions") {
+                  if (panel.type === "actions") {
                     return (
-                      <SortablePanel
-                        key="actions"
-                        id="actions"
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
                         title="Actions"
-                        className="w-[140px] shrink-0"
+                        colSpan={panel.colSpan}
+                        collapsed={panel.collapsed}
                         headerExtra={<span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
+                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
                           <Button
@@ -2124,18 +2274,19 @@ const handleSaveGlobal = useCallback(async () => {
                             Calculate MOOT
                           </Button>
                         </div>
-                      </SortablePanel>
+                      </GridPanel>
                     )
                   }
 
                   // ───────────── INVOICES PANEL ─────────────
-                  if (panelId === "invoices") {
+                  if (panel.type === "invoices") {
                     return (
-                      <SortablePanel
-                        key="invoices"
-                        id="invoices"
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
                         title="Invoices"
-                        className="w-[220px] shrink-0"
+                        colSpan={panel.colSpan}
+                        collapsed={panel.collapsed}
                         headerExtra={
                           <>
                             {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
@@ -2144,6 +2295,8 @@ const handleSaveGlobal = useCallback(async () => {
                             </span>
                           </>
                         }
+                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 overflow-y-auto">
                           {!selectedShipmentId ? (
@@ -2181,7 +2334,30 @@ const handleSaveGlobal = useCallback(async () => {
                             </div>
                           )}
                         </div>
-                      </SortablePanel>
+                      </GridPanel>
+                    )
+                  }
+
+                  // ───────────── EMPTY PANEL ─────────────
+                  if (panel.type === "empty") {
+                    return (
+                      <GridPanel
+                        key={panel.id}
+                        id={panel.id}
+                        title="Empty"
+                        colSpan={panel.colSpan}
+                        collapsed={panel.collapsed}
+                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                        onRemove={() => removePanel(panel.id)}
+                        canRemove={true}
+                      >
+                        <div className="flex-1 flex items-center justify-center p-4">
+                          <p className="text-[11px] text-muted-foreground/40 italic text-center">
+                            Empty panel for spacing
+                          </p>
+                        </div>
+                      </GridPanel>
                     )
                   }
 
