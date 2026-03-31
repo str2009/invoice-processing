@@ -1562,8 +1562,8 @@ const handleSaveGlobal = useCallback(async () => {
                   />
                 </div>
 
-                {/* Shipment list */}
-                <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
+                {/* Shipment list - fixed table layout */}
+                <div className="max-h-[220px] overflow-y-auto overflow-x-auto overscroll-contain">
                   {filteredShipments.length === 0 && !isLoadingShipments ? (
                     <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                       {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -1578,49 +1578,48 @@ const handleSaveGlobal = useCallback(async () => {
                         <div
                           key={ship.shipment_id}
                           onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                          style={{ gridTemplateColumns: "1.5fr 70px 90px 70px 20px" }}
-                          className={`grid items-center gap-2 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
+                          style={{ gridTemplateColumns: "180px 80px 110px 90px 24px" }}
+                          className={`grid items-center gap-0 border-b border-border/40 px-2 py-2 cursor-pointer transition-colors whitespace-nowrap ${
                             isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                         >
-                          {/* COL 1: Icon + Company */}
-                          <div className="flex items-center gap-1.5 min-w-0">
+                          {/* COL 1: Icon + Company (180px, truncates) */}
+                          <div className="flex items-center gap-1.5 overflow-hidden">
                             {getTransportIcon(ship.transport_type, isSelected)}
-                            <span className="text-[11px] font-medium text-foreground truncate">
+                            <span className="text-[11px] font-medium text-foreground overflow-hidden text-ellipsis">
                               {ship.transport_company || "Unknown"}
                             </span>
                           </div>
-                          {/* COL 2: Invoice Number */}
-                          <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right">
+                          {/* COL 2: Invoice Number (80px) */}
+                          <span className="text-[10px] font-mono text-muted-foreground/70 text-right px-1">
                             {ship.transport_invoice_number || "—"}
                           </span>
-                          {/* COL 3: Date */}
-                          <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
+                          {/* COL 3: Date (110px) */}
+                          <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1">
                             {ship.transport_date || "—"}
                           </span>
-                          {/* COL 4: Type Badge */}
-                          <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center min-w-[60px] ${
-                            ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                            ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                            ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                            "bg-amber-500/20 text-amber-400"
-                          }`}>
-                            {ship.transport_type || "—"}
-                          </span>
-{/* COL 5: Status + Count */}
-                      <div className="flex items-center justify-center gap-0.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                        {hasInvoices ? (
-                          <>
-                            <Check className="h-3 w-3 text-green-500/70" />
-                            <span className="text-[9px] font-mono text-green-500/70">{invoiceCount}</span>
-                          </>
-                        ) : (
-                          <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })
+                          {/* COL 4: Type Badge (90px, centered) */}
+                          <div className="flex justify-center px-1">
+                            <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center ${
+                              ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                              ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                              ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                              "bg-amber-500/20 text-amber-400"
+                            }`}>
+                              {ship.transport_type || "—"}
+                            </span>
+                          </div>
+                          {/* COL 5: Status (24px, centered) */}
+                          <div className="flex items-center justify-center" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                            {hasInvoices ? (
+                              <Check className="h-3 w-3 text-green-500/70" />
+                            ) : (
+                              <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })
                   )}
                 </div>
 
