@@ -175,7 +175,9 @@ function ResizeHandle({ onResize, onAutoFit }: ResizeHandleProps) {
 interface GridPanelProps {
   id: string
   title: string
+  colStart: number
   colSpan: number
+  maxColSpan: number
   collapsed: boolean
   icon?: React.ReactNode
   children: React.ReactNode
@@ -187,7 +189,7 @@ interface GridPanelProps {
 }
 
 function GridPanel({ 
-  id, title, colSpan, collapsed, icon, children, headerExtra, 
+  id, title, colStart, colSpan, maxColSpan, collapsed, icon, children, headerExtra, 
   onResize, onToggleCollapse, onRemove, canRemove 
 }: GridPanelProps) {
   const {
@@ -212,7 +214,8 @@ function GridPanel({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - resizeStartRef.current
       const deltaCols = Math.round(deltaX / COLUMN_WIDTH)
-      const newColSpan = Math.max(2, Math.min(12, initialColSpanRef.current + deltaCols))
+      // Clamp to min 2, max allowed (based on available space)
+      const newColSpan = Math.max(2, Math.min(maxColSpan, initialColSpanRef.current + deltaCols))
       if (newColSpan !== colSpan) {
         onResize(newColSpan - colSpan)
       }
@@ -231,12 +234,13 @@ function GridPanel({
     document.addEventListener("mouseup", handleMouseUp)
   }
 
+  // Use explicit grid-column positioning: start / span N
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.9 : 1,
-    gridColumn: `span ${colSpan}`,
+    gridColumn: `${colStart} / span ${colSpan}`,
   }
 
   return (
@@ -304,12 +308,23 @@ function GridPanel({
   )
 }
 
-// ─── Panel Config Interface (12-Column Grid) ───
+// ─── Panel Config Interface (12-Column Grid with Explicit Positioning) ───
 interface PanelConfig {
   id: string
   type: "shipments" | "metrics" | "actions" | "invoices" | "empty"
   colSpan: number
   collapsed: boolean
+}
+
+// Helper to calculate colStart for each panel based on order
+function calculatePanelPositions(panels: PanelConfig[]): Map<string, number> {
+  const positions = new Map<string, number>()
+  let currentCol = 1
+  for (const panel of panels) {
+    positions.set(panel.id, currentCol)
+    currentCol += panel.colSpan
+  }
+  return positions
 }
 
 // ─── Metric Widget Interface ───
@@ -426,13 +441,21 @@ const [normalPrice, setNormalPrice] = useState("115")
     }
   }, [])
 
-  // Panel resize handler (snap to grid columns)
-  const handlePanelResize = useCallback((panelId: string, deltaCols: number) => {
-    setPanels((items) => items.map(p => {
-      if (p.id !== panelId) return p
-      const newColSpan = Math.max(2, Math.min(12, p.colSpan + deltaCols))
-      return { ...p, colSpan: newColSpan }
-    }))
+  // Panel resize handler (snap to grid columns, respect 12-col limit)
+  const handlePanelResize = useCallback((panelId: string, newColSpan: number) => {
+    setPanels((items) => {
+      // Calculate total columns used by OTHER panels
+      const otherPanelsTotal = items.reduce((sum, p) => 
+        p.id === panelId ? sum : sum + p.colSpan, 0
+      )
+      // Max this panel can be is 12 - others, min is 2
+      const maxAllowed = Math.max(2, 12 - otherPanelsTotal)
+      const clampedSpan = Math.max(2, Math.min(maxAllowed, newColSpan))
+      
+      return items.map(p => 
+        p.id === panelId ? { ...p, colSpan: clampedSpan } : p
+      )
+    })
   }, [])
 
   // Toggle panel collapse
@@ -455,6 +478,22 @@ const [normalPrice, setNormalPrice] = useState("115")
 
   // Panel IDs for sortable context
   const panelIds = useMemo(() => panels.map(p => p.id), [panels])
+
+  // Calculate panel positions (colStart for each panel)
+  const panelPositions = useMemo(() => calculatePanelPositions(panels), [panels])
+
+  // Calculate max colSpan for each panel (remaining space + current)
+  const panelMaxColSpans = useMemo(() => {
+    const maxSpans = new Map<string, number>()
+    const totalUsed = panels.reduce((sum, p) => sum + p.colSpan, 0)
+    const freeSpace = 12 - totalUsed
+    
+    for (const panel of panels) {
+      // This panel can expand into free space
+      maxSpans.set(panel.id, panel.colSpan + freeSpace)
+    }
+    return maxSpans
+  }, [panels])
 
   // ─── DnD Sensors ───
   const sensors = useSensors(
@@ -2000,10 +2039,13 @@ const handleSaveGlobal = useCallback(async () => {
             onDragEnd={handlePanelDragEnd}
           >
             <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
-              {/* 12-Column Grid */}
+              {/* 12-Column Grid - NO wrapping, explicit positioning */}
               <div 
                 className="grid gap-3"
-                style={{ gridTemplateColumns: "repeat(12, 1fr)" }}
+                style={{ 
+                  gridTemplateColumns: "repeat(12, 1fr)",
+                  gridAutoFlow: "column",
+                }}
               >
                 {panels.map((panel) => {
                   // ───────────── SHIPMENTS PANEL ─────────────
@@ -2013,11 +2055,13 @@ const handleSaveGlobal = useCallback(async () => {
                         key={panel.id}
                         id={panel.id}
                         title="Shipments"
+                        colStart={panelPositions.get(panel.id) || 1}
                         colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
                         collapsed={panel.collapsed}
                         icon={<Truck className="h-3.5 w-3.5 text-muted-foreground" />}
                         headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
-                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         {/* Filter tabs */}
@@ -2158,9 +2202,11 @@ const handleSaveGlobal = useCallback(async () => {
                         key={panel.id}
                         id={panel.id}
                         title="Metrics"
+                        colStart={panelPositions.get(panel.id) || 1}
                         colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
                         collapsed={panel.collapsed}
-                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         {!selectedShipmentId ? (
@@ -2246,10 +2292,12 @@ const handleSaveGlobal = useCallback(async () => {
                         key={panel.id}
                         id={panel.id}
                         title="Actions"
+                        colStart={panelPositions.get(panel.id) || 1}
                         colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
                         collapsed={panel.collapsed}
                         headerExtra={<span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
-                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
@@ -2285,7 +2333,9 @@ const handleSaveGlobal = useCallback(async () => {
                         key={panel.id}
                         id={panel.id}
                         title="Invoices"
+                        colStart={panelPositions.get(panel.id) || 1}
                         colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
                         collapsed={panel.collapsed}
                         headerExtra={
                           <>
@@ -2295,7 +2345,7 @@ const handleSaveGlobal = useCallback(async () => {
                             </span>
                           </>
                         }
-                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 overflow-y-auto">
@@ -2345,9 +2395,11 @@ const handleSaveGlobal = useCallback(async () => {
                         key={panel.id}
                         id={panel.id}
                         title="Empty"
+                        colStart={panelPositions.get(panel.id) || 1}
                         colSpan={panel.colSpan}
+                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
                         collapsed={panel.collapsed}
-                        onResize={(delta) => handlePanelResize(panel.id, delta)}
+                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                         onRemove={() => removePanel(panel.id)}
                         canRemove={true}
