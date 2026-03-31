@@ -2405,19 +2405,21 @@ const handleSaveGlobal = useCallback(async () => {
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
-                          {/* Active rows indicator - only show when loading or has data */}
-                          {(isLoadingInvoiceItems || invoiceItems.length > 0) && (
-                            <div className="text-[9px] text-muted-foreground/70 mb-1">
-                              {isLoadingInvoiceItems ? (
-                                <span className="flex items-center gap-1">
-                                  <Loader2 className="h-2 w-2 animate-spin" />
-                                  Загрузка...
-                                </span>
-                              ) : (
-                                <span className="text-green-500">{invoiceItems.length} поз. в таблице</span>
-                              )}
-                            </div>
-                          )}
+                          {/* Active rows indicator - always show for debugging */}
+                          <div className="text-[9px] text-muted-foreground/70 mb-1">
+                            {isLoadingInvoiceItems ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-2 w-2 animate-spin" />
+                                Загрузка...
+                              </span>
+                            ) : invoiceItems.length > 0 ? (
+                              <span className="text-green-500">{invoiceItems.length} поз. в таблице</span>
+                            ) : selectedInvoiceId ? (
+                              <span className="text-amber-500">Данные не загружены</span>
+                            ) : (
+                              <span className="text-muted-foreground/50">Выберите инвойс</span>
+                            )}
+                          </div>
                           
                           {/* InReach Check Button */}
                           <Button
@@ -2427,6 +2429,10 @@ const handleSaveGlobal = useCallback(async () => {
                               isCheckingInReach ? "opacity-70 cursor-progress" : ""
                             }`}
                             onClick={() => {
+                              // Debug: log actual state
+                              console.log("[v0] InReach clicked - invoiceItems state:", invoiceItems.length, "selectedInvoiceId:", selectedInvoiceId, "isLoading:", isLoadingInvoiceItems)
+                              console.log("[v0] invoiceItems preview:", invoiceItems.slice(0, 2))
+                              
                               if (invoiceItems.length === 0) {
                                 toast.error("Нет данных для проверки")
                                 return
@@ -2438,7 +2444,7 @@ const handleSaveGlobal = useCallback(async () => {
                             {isCheckingInReach ? (
                               <>
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                Проверка...
+                                Про��ерка...
                               </>
                             ) : (
                               "InReach"
@@ -2478,6 +2484,10 @@ const handleSaveGlobal = useCallback(async () => {
                               isCalculatingMoot ? "opacity-70 cursor-progress" : ""
                             }`}
                             onClick={() => {
+                              // Debug: log actual state
+                              console.log("[v0] Предварительная clicked - invoiceItems state:", invoiceItems.length, "selectedInvoiceId:", selectedInvoiceId, "isLoading:", isLoadingInvoiceItems)
+                              console.log("[v0] invoiceItems preview:", invoiceItems.slice(0, 2))
+                              
                               if (invoiceItems.length === 0) {
                                 toast.error("Нет данных для расчёта")
                                 return
