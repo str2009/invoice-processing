@@ -2398,8 +2398,14 @@ const handleSaveGlobal = useCallback(async () => {
                             variant="outline"
                             size="sm"
                             className="h-7 text-[10px] w-full justify-start gap-1"
-                            onClick={checkInReach}
-                            disabled={isCheckingInReach || !invoiceItems.length}
+                            onClick={() => {
+                              console.log("[v0] InReach clicked, selectedInvoiceId:", selectedInvoiceId, "invoiceItems:", invoiceItems.length)
+                              if (!selectedInvoiceId || invoiceItems.length === 0) {
+                                return
+                              }
+                              checkInReach()
+                            }}
+                            disabled={isCheckingInReach || !selectedInvoiceId || isLoadingInvoiceItems}
                           >
                             {isCheckingInReach ? (
                               <>
@@ -2442,6 +2448,11 @@ const handleSaveGlobal = useCallback(async () => {
                             size="sm"
                             className="h-7 text-[10px] w-full justify-start gap-1"
                             onClick={() => {
+                              console.log("[v0] Предварительная clicked, selectedInvoiceId:", selectedInvoiceId, "invoiceItems:", invoiceItems.length)
+                              if (!selectedInvoiceId || invoiceItems.length === 0) {
+                                return
+                              }
+                              
                               const costPerKg = mode === "hybrid" && normalPrice 
                                 ? parseFloat(normalPrice) 
                                 : parseFloat(costPerKgRaw) || 0
@@ -2459,7 +2470,7 @@ const handleSaveGlobal = useCallback(async () => {
                               const bulkyPriceKg = model.bulkyPrice || costPerKg
                               calculateMoot(costPerKg, bulkyPriceKg)
                             }}
-                            disabled={isCalculatingMoot || !invoiceItems.length}
+                            disabled={isCalculatingMoot || !selectedInvoiceId || isLoadingInvoiceItems}
                           >
                             {isCalculatingMoot ? (
                               <>
@@ -2501,9 +2512,23 @@ const handleSaveGlobal = useCallback(async () => {
                             </div>
                           )}
                           
-                          {!invoiceItems.length && !isCalculatingMoot && (
+                          {/* Status indicator */}
+                          {!selectedInvoiceId ? (
                             <p className="text-[8px] text-muted-foreground/50 italic mt-1">
                               Выберите инвойс
+                            </p>
+                          ) : isLoadingInvoiceItems ? (
+                            <p className="text-[8px] text-muted-foreground/50 italic mt-1 flex items-center gap-1">
+                              <Loader2 className="h-2 w-2 animate-spin" />
+                              Загрузка...
+                            </p>
+                          ) : invoiceItems.length === 0 ? (
+                            <p className="text-[8px] text-amber-500/70 italic mt-1">
+                              Нет позиций
+                            </p>
+                          ) : (
+                            <p className="text-[8px] text-green-500/70 mt-1">
+                              {invoiceItems.length} поз. готово
                             </p>
                           )}
                         </div>
