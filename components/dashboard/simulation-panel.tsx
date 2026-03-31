@@ -1743,100 +1743,119 @@ const handleSaveGlobal = useCallback(async () => {
                 </p>
               </div>
             ) : (
-              <div className="col-span-2 bg-card border border-border rounded-xl p-3">
-                <div className="grid grid-cols-3 gap-3">
-                  {/* ─── COL 1: SHIPMENT INFO ─── */}
-                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                      {getTransportIcon(shippingForm.type, true)}
-                      <span className="font-medium uppercase tracking-wider">Shipment</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">Company</span>
-                      <span className="font-medium text-foreground">{shippingForm.company || "—"}</span>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="font-medium text-foreground capitalize">{shippingForm.type || "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">Date</span>
-                      <span className="font-medium text-foreground">{shippingForm.transportDate || "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">Weight</span>
-                      <span className="font-medium font-mono text-foreground">{shippingForm.weight || "0"} kg</span>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="text-muted-foreground/60">Cost</span>
-                      <span className="font-medium font-mono text-foreground">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground/60 w-16">₽/kg (raw)</span>
-                      <span className="font-medium font-mono text-primary">{costPerKgRaw}</span>
-                    </div>
+              <div className="col-span-2 flex gap-2">
+                {/* ─── BLOCK 1: WEIGHT & SHIPPING (Comparison) ─── */}
+                <div className="flex-1 bg-card border border-border rounded-xl p-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                    <span className="text-[9px] font-medium uppercase tracking-wider">Weight & Shipping</span>
                   </div>
-
-                  {/* ─── COL 2: PRICING CONTROLS ─── */}
-                  <div className="space-y-2 text-[11px] border-r border-border pr-3">
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                      <span className="font-medium uppercase tracking-wider">Pricing</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/60">Mode</span>
-                      <select
-                        value={mode}
-                        onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                        className="ml-2 border rounded px-1.5 py-0.5 text-[11px] bg-background"
-                      >
-                        <option value="normal">Normal</option>
-                        <option value="hybrid">Hybrid</option>
-                      </select>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground/60">₽/kg (used)</span>
-                      {mode === "normal" ? (
-                        <span className="ml-2 font-mono text-foreground">{costPerKgRaw} <span className="text-muted-foreground/50">(auto)</span></span>
-                      ) : (
-                        <Input
-                          value={normalPrice}
-                          onChange={(e) => setNormalPrice(e.target.value)}
-                          className="ml-2 h-6 w-24 inline-flex font-mono text-[11px] bg-background px-1.5"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ─── COL 3: METRICS ─── */}
-                  <div className="text-[11px]">
-                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                      <span className="font-medium uppercase tracking-wider">Metrics</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <div className="grid grid-cols-2 gap-x-3 text-[11px]">
+                    {/* Left: Normal */}
+                    <div className="space-y-1 border-r border-border pr-2">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground/60">Normal wt</span>
-                        <span className="font-mono text-foreground">{model.normalWeight.toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Bulky wt</span>
-                        <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)}</span>
+                        <span className="font-mono text-foreground">{model.normalWeight.toFixed(1)} kg</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground/60">Normal ship</span>
-                        <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")}</span>
+                        <span className="font-mono text-foreground">{model.normalShipping.toLocaleString("ru-RU")} ₽</span>
+                      </div>
+                    </div>
+                    {/* Right: Catalog + Bulky */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Catalog wt</span>
+                        <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)} kg</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground/60">Bulky wt</span>
+                        <span className="font-mono text-foreground">{model.bulkyWeight.toFixed(1)} kg</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground/60">Bulky ship</span>
-                        <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")}</span>
+                        <span className="font-mono text-foreground">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── BLOCK 2: PRICING (Comparison) ─── */}
+                <div className="flex-1 bg-card border border-border rounded-xl p-2.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span className="text-[9px] font-medium uppercase tracking-wider">Pricing</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 text-[11px]">
+                    {/* Left: Mode + ₽/kg (used) */}
+                    <div className="space-y-1.5 border-r border-border pr-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground/60">Mode</span>
+                        <select
+                          value={mode}
+                          onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                          className="border rounded px-1 py-0.5 text-[10px] bg-background"
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="hybrid">Hybrid</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground/60">₽/kg (used)</span>
+                        {mode === "normal" ? (
+                          <span className="font-mono text-primary">{costPerKgRaw}</span>
+                        ) : (
+                          <Input
+                            value={normalPrice}
+                            onChange={(e) => setNormalPrice(e.target.value)}
+                            className="h-5 w-16 font-mono text-[10px] bg-background px-1 text-right"
+                          />
+                        )}
+                      </div>
+                    </div>
+                    {/* Right: ₽/kg (raw) + Bulky price */}
+                    <div className="space-y-1.5">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground/60">Catalog wt</span>
-                        <span className="font-mono text-foreground">{weightStats.totalWeight.toFixed(1)}</span>
+                        <span className="text-muted-foreground/60">₽/kg (raw)</span>
+                        <span className="font-mono text-foreground">{costPerKgRaw}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground/60">Bulky ₽/kg</span>
                         <span className="font-mono text-foreground">{Math.round(model.bulkyPrice).toLocaleString("ru-RU")}</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* ─── BLOCK 3: ACTIONS ─── */}
+                <div className="w-[120px] bg-card border border-border rounded-xl p-2.5 flex flex-col">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    <span className="text-[9px] font-medium uppercase tracking-wider">Actions</span>
+                  </div>
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] w-full justify-start"
+                      onClick={() => {
+                        // Same behavior as Control Panel InReach
+                        console.log("[v0] InReach triggered from Pricing Manager")
+                      }}
+                    >
+                      InReach
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-7 text-[10px] w-full justify-start"
+                      onClick={() => {
+                        // Calculate MOOT using pricing rules + selected mode
+                        console.log("[v0] Calculate MOOT triggered", { mode, normalPrice, costPerKgRaw })
+                      }}
+                    >
+                      Calculate MOOT
+                    </Button>
                   </div>
                 </div>
               </div>
