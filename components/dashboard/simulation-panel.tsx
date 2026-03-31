@@ -695,6 +695,16 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
     skippedReasons: { noWeight: number; noPrice: number }
   } | null>(null)
   const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
+
+  // InReach validation state
+  const [isCheckingInReach, setIsCheckingInReach] = useState(false)
+  const [inReachResults, setInReachResults] = useState<{
+    ready: number
+    issues: number
+    issueDetails: { noStock: number; noWeight: number; noPrice: number }
+  } | null>(null)
+  const [inReachIssues, setInReachIssues] = useState<Set<string | number>>(new Set())
+
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
 // ─── MOOT Calculation Function (defined after all state dependencies) ───
@@ -755,6 +765,61 @@ const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: numb
   // Brief delay to show loading state
   setTimeout(() => {
     setIsCalculatingMoot(false)
+  }, 300)
+}, [invoiceItems])
+
+// ─── InReach Check Function ───
+const checkInReach = useCallback(() => {
+  if (!invoiceItems.length) {
+    setInReachResults({ ready: 0, issues: 0, issueDetails: { noStock: 0, noWeight: 0, noPrice: 0 } })
+    return
+  }
+
+  setIsCheckingInReach(true)
+  
+  let ready = 0
+  let noStock = 0
+  let noWeight = 0
+  let noPrice = 0
+  const issueSet = new Set<string | number>()
+
+  invoiceItems.forEach((item) => {
+    const itemId = item.id || item.sku || item.article
+    const stock = Number(item.stock ?? item.quantity ?? 0)
+    const weight = Number(item.weight ?? 0)
+    const price = Number(item.price ?? item.purchase_price ?? 0)
+    
+    let hasIssue = false
+    
+    if (stock <= 0) {
+      noStock++
+      hasIssue = true
+    }
+    if (weight <= 0) {
+      noWeight++
+      hasIssue = true
+    }
+    if (price <= 0) {
+      noPrice++
+      hasIssue = true
+    }
+    
+    if (hasIssue) {
+      issueSet.add(itemId)
+    } else {
+      ready++
+    }
+  })
+
+  setInReachIssues(issueSet)
+  setInReachResults({
+    ready,
+    issues: issueSet.size,
+    issueDetails: { noStock, noWeight, noPrice }
+  })
+  
+  setTimeout(() => {
+    setIsCheckingInReach(false)
   }, 300)
 }, [invoiceItems])
 
@@ -877,12 +942,16 @@ useEffect(() => {
     setInvoiceItems([])
     setMootResults(null)
     setMootPrices(new Map())
+    setInReachResults(null)
+    setInReachIssues(new Set())
     return
   }
   
-  // Clear MOOT results when invoice changes
+  // Clear results when invoice changes
   setMootResults(null)
   setMootPrices(new Map())
+  setInReachResults(null)
+  setInReachIssues(new Set())
   
   const loadInvoiceItems = async () => {
     setIsLoadingInvoiceItems(true)
@@ -2324,16 +2393,50 @@ const handleSaveGlobal = useCallback(async () => {
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
+                          {/* InReach Check Button */}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-[10px] w-full justify-start"
-                            onClick={() => {
-                              console.log("[v0] InReach triggered from Pricing Manager")
-                            }}
+                            className="h-7 text-[10px] w-full justify-start gap-1"
+                            onClick={checkInReach}
+                            disabled={isCheckingInReach || !invoiceItems.length}
                           >
-                            InReach
+                            {isCheckingInReach ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Проверка...
+                              </>
+                            ) : (
+                              "InReach"
+                            )}
                           </Button>
+                          
+                          {/* InReach Results */}
+                          {inReachResults && !isCheckingInReach && (
+                            <div className="text-[9px] text-muted-foreground space-y-0.5">
+                              <div className={inReachResults.ready > 0 ? "text-green-500" : "text-muted-foreground/50"}>
+                                Готово: {inReachResults.ready} поз.
+                              </div>
+                              {inReachResults.issues > 0 && (
+                                <div className="text-amber-500">
+                                  Проблемы: {inReachResults.issues}
+                                  {inReachResults.issueDetails.noStock > 0 && (
+                                    <span className="block text-[8px]">— нет наличия: {inReachResults.issueDetails.noStock}</span>
+                                  )}
+                                  {inReachResults.issueDetails.noWeight > 0 && (
+                                    <span className="block text-[8px]">— нет веса: {inReachResults.issueDetails.noWeight}</span>
+                                  )}
+                                  {inReachResults.issueDetails.noPrice > 0 && (
+                                    <span className="block text-[8px]">— нет цены: {inReachResults.issueDetails.noPrice}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className="border-t border-border/40 my-1" />
+                          
+                          {/* Предварительная цена Button */}
                           <Button
                             variant="default"
                             size="sm"
@@ -2342,6 +2445,17 @@ const handleSaveGlobal = useCallback(async () => {
                               const costPerKg = mode === "hybrid" && normalPrice 
                                 ? parseFloat(normalPrice) 
                                 : parseFloat(costPerKgRaw) || 0
+                              
+                              // Validate that we have pricing
+                              if (costPerKg <= 0) {
+                                setMootResults({
+                                  calculated: 0,
+                                  skipped: invoiceItems.length,
+                                  skippedReasons: { noWeight: 0, noPrice: 0 }
+                                })
+                                return
+                              }
+                              
                               const bulkyPriceKg = model.bulkyPrice || costPerKg
                               calculateMoot(costPerKg, bulkyPriceKg)
                             }}
@@ -2350,20 +2464,26 @@ const handleSaveGlobal = useCallback(async () => {
                             {isCalculatingMoot ? (
                               <>
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                Calculating...
+                                Расчёт...
                               </>
                             ) : (
-                              "Calculate MOOT"
+                              "Предварительная цена"
                             )}
                           </Button>
                           
                           {/* MOOT Results Feedback */}
                           {mootResults && !isCalculatingMoot && (
                             <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                              <div className="text-green-500">
-                                Рассчитано: {mootResults.calculated} поз.
-                              </div>
-                              {mootResults.skipped > 0 && (
+                              {mootResults.calculated > 0 ? (
+                                <div className="text-green-500">
+                                  Рассчитано: {mootResults.calculated} поз.
+                                </div>
+                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 ? (
+                                <div className="text-red-500">
+                                  Ошибка: нет ₽/kg
+                                </div>
+                              ) : null}
+                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0) && (
                                 <div className="text-amber-500">
                                   Пропущено: {mootResults.skipped}
                                   {mootResults.skippedReasons.noWeight > 0 && (
@@ -2529,12 +2649,15 @@ const handleSaveGlobal = useCallback(async () => {
                         const mootPrice = mootPrices.get(itemId)
                         const hasNoWeight = !Number(item.weight ?? 0)
                         const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
+                        const hasNoStock = !Number(item.stock ?? item.quantity ?? 0)
                         const isSkipped = hasNoWeight || hasNoPrice
+                        const hasInReachIssue = inReachIssues.has(itemId)
                         
                         return (
                           <tr 
                             key={item.id || idx} 
                             className={`hover:bg-muted/30 transition-colors ${
+                              hasInReachIssue && inReachResults ? "bg-amber-500/10 border-l-2 border-l-amber-500" :
                               isSkipped && mootResults ? "bg-amber-500/5" : ""
                             }`}
                           >
