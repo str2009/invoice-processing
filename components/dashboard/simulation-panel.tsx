@@ -762,10 +762,15 @@ const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: numb
     skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
   })
   
-  // Brief delay to show loading state
+  // Brief delay to show loading state, then show toast
   setTimeout(() => {
     setIsCalculatingMoot(false)
-  }, 300)
+    if (calculated > 0) {
+      toast.success(`Готово: ${calculated} строк обработано`)
+    } else if (skippedNoWeight + skippedNoPrice > 0) {
+      toast.warning(`Пропущено: ${skippedNoWeight + skippedNoPrice} строк`)
+    }
+  }, 400)
 }, [invoiceItems])
 
 // ─── InReach Check Function ───
@@ -820,7 +825,14 @@ const checkInReach = useCallback(() => {
   
   setTimeout(() => {
     setIsCheckingInReach(false)
-  }, 300)
+    if (ready > 0 && issueSet.size === 0) {
+      toast.success(`Все ${ready} позиций готовы`)
+    } else if (ready > 0) {
+      toast.success(`Готово: ${ready} поз., проблем: ${issueSet.size}`)
+    } else {
+      toast.warning(`Проблемы: ${issueSet.size} позиций`)
+    }
+  }, 400)
 }, [invoiceItems])
 
 
@@ -2393,35 +2405,35 @@ const handleSaveGlobal = useCallback(async () => {
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
-                          {/* Active rows indicator */}
-                          <div className="text-[9px] text-muted-foreground/70 mb-1">
-                            {isLoadingInvoiceItems ? (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-2 w-2 animate-spin" />
-                                Загрузка...
-                              </span>
-                            ) : invoiceItems.length > 0 ? (
-                              <span className="text-green-500">{invoiceItems.length} поз. в таблице</span>
-                            ) : (
-                              <span className="text-muted-foreground/50">Нет данных</span>
-                            )}
-                          </div>
+                          {/* Active rows indicator - only show when loading or has data */}
+                          {(isLoadingInvoiceItems || invoiceItems.length > 0) && (
+                            <div className="text-[9px] text-muted-foreground/70 mb-1">
+                              {isLoadingInvoiceItems ? (
+                                <span className="flex items-center gap-1">
+                                  <Loader2 className="h-2 w-2 animate-spin" />
+                                  Загрузка...
+                                </span>
+                              ) : (
+                                <span className="text-green-500">{invoiceItems.length} поз. в таблице</span>
+                              )}
+                            </div>
+                          )}
                           
                           {/* InReach Check Button */}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-[10px] w-full justify-start gap-1"
+                            className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
+                              isCheckingInReach ? "opacity-70 cursor-progress" : ""
+                            }`}
                             onClick={() => {
-                              // Use invoiceItems as source of truth (actual table data)
-                              console.log("[v0] InReach clicked, activeRows:", invoiceItems.length)
                               if (invoiceItems.length === 0) {
-                                console.log("[v0] No data to process")
+                                toast.error("Нет данных для проверки")
                                 return
                               }
                               checkInReach()
                             }}
-                            disabled={isCheckingInReach || invoiceItems.length === 0}
+                            disabled={isCheckingInReach}
                           >
                             {isCheckingInReach ? (
                               <>
@@ -2462,12 +2474,12 @@ const handleSaveGlobal = useCallback(async () => {
                           <Button
                             variant="default"
                             size="sm"
-                            className="h-7 text-[10px] w-full justify-start gap-1"
+                            className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
+                              isCalculatingMoot ? "opacity-70 cursor-progress" : ""
+                            }`}
                             onClick={() => {
-                              // Use invoiceItems as source of truth (actual table data)
-                              console.log("[v0] Предварительная clicked, activeRows:", invoiceItems.length)
                               if (invoiceItems.length === 0) {
-                                console.log("[v0] No data to process")
+                                toast.error("Нет данных для расчёта")
                                 return
                               }
                               
@@ -2475,11 +2487,9 @@ const handleSaveGlobal = useCallback(async () => {
                                 ? parseFloat(normalPrice) 
                                 : parseFloat(costPerKgRaw) || 0
                               
-                              console.log("[v0] Pricing - costPerKg:", costPerKg, "mode:", mode, "normalPrice:", normalPrice, "costPerKgRaw:", costPerKgRaw)
-                              
                               // Validate that we have pricing
                               if (costPerKg <= 0) {
-                                console.log("[v0] Error: no ₽/kg pricing available")
+                                toast.error("Ошибка: нет ₽/kg")
                                 setMootResults({
                                   calculated: 0,
                                   skipped: invoiceItems.length,
@@ -2491,7 +2501,7 @@ const handleSaveGlobal = useCallback(async () => {
                               const bulkyPriceKg = model.bulkyPrice || costPerKg
                               calculateMoot(costPerKg, bulkyPriceKg)
                             }}
-                            disabled={isCalculatingMoot || invoiceItems.length === 0}
+                            disabled={isCalculatingMoot}
                           >
                             {isCalculatingMoot ? (
                               <>
