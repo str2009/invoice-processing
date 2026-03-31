@@ -2024,72 +2024,68 @@ const handleSaveGlobal = useCallback(async () => {
                           </div>
                         ) : (
                           <div className="p-2">
-                {/* ─── DRAGGABLE METRICS WIDGETS BLOCK ─── */}
-                <div className="flex-1 bg-card border border-border rounded-lg p-2">
-                  {/* Fixed Mode Selector (NOT draggable) */}
-                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
-                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
-                    <select
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                      className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
-                    >
-                      <option value="normal">Normal</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
-                    {mode === "hybrid" && (
-                      <div className="flex items-center gap-1 ml-2">
-                        <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
-                        <Input
-                          value={normalPrice}
-                          onChange={(e) => setNormalPrice(e.target.value)}
-                          className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
-                        />
-                      </div>
-                    )}
-                  </div>
+                            {/* Fixed Mode Selector */}
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+                              <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
+                              <select
+                                value={mode}
+                                onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                                className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
+                              >
+                                <option value="normal">Normal</option>
+                                <option value="hybrid">Hybrid</option>
+                              </select>
+                              {mode === "hybrid" && (
+                                <div className="flex items-center gap-1 ml-2">
+                                  <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
+                                  <Input
+                                    value={normalPrice}
+                                    onChange={(e) => setNormalPrice(e.target.value)}
+                                    className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
+                                  />
+                                </div>
+                              )}
+                            </div>
 
-                  {/* Draggable Metric Widgets Grid */}
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleMetricDragEnd}
-                  >
-                    <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
-                      <div 
-                        className="grid gap-2"
-                        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
-                      >
-                        {metricOrder.map((metricId) => {
-                          // Build metric data based on ID
-                          const metricData: Record<string, MetricWidget> = {
-                            totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
-                            costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
-                            weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
-                            catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
-                            bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: model.bulkyPrice > 0 ? "text-amber-500" : undefined },
-                            packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
-                            volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
-                            density: { id: "density", label: "Density", value: shippingForm.density || "0" },
-                            bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: `${model.bulkyWeight.toFixed(1)} kg` },
-                            normalShip: { id: "normalShip", label: "Normal ship", value: `${model.normalShipping.toLocaleString("ru-RU")} ₽` },
-                            bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
-                            costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
-                            goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
-                            manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
-                            // Test blocks
-                            test1: { id: "test1", label: "Test 1", value: "123" },
-                            test2: { id: "test2", label: "Test 2", value: "456" },
-                            test3: { id: "test3", label: "Test 3", value: "789" },
-                            test4: { id: "test4", label: "Test 4", value: "000" },
-                          }
-                          const metric = metricData[metricId]
-                          if (!metric) return null
-                          return <SortableMetricBlock key={metric.id} {...metric} />
-                        })}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
+                            {/* Draggable Metric Widgets Grid */}
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleMetricDragEnd}
+                            >
+                              <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
+                                <div 
+                                  className="grid gap-2"
+                                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+                                >
+                                  {metricOrder.map((metricId) => {
+                                    const metricData: Record<string, MetricWidget> = {
+                                      totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
+                                      costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
+                                      weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
+                                      catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
+                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                                      packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
+                                      volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
+                                      density: { id: "density", label: "Density", value: shippingForm.density || "0" },
+                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: `${model.bulkyWeight.toFixed(1)} kg` },
+                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${model.normalShipping.toLocaleString("ru-RU")} ₽` },
+                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                                      costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
+                                      goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
+                                      manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
+                                      test1: { id: "test1", label: "Test 1", value: "123" },
+                                      test2: { id: "test2", label: "Test 2", value: "456" },
+                                      test3: { id: "test3", label: "Test 3", value: "789" },
+                                      test4: { id: "test4", label: "Test 4", value: "000" },
+                                    }
+                                    const metric = metricData[metricId]
+                                    if (!metric) return null
+                                    return <SortableMetricBlock key={metric.id} {...metric} />
+                                  })}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
                           </div>
                         )}
                       </SortablePanel>
