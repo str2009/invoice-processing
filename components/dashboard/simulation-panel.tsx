@@ -2393,19 +2393,35 @@ const handleSaveGlobal = useCallback(async () => {
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
+                          {/* Active rows indicator */}
+                          <div className="text-[9px] text-muted-foreground/70 mb-1">
+                            {isLoadingInvoiceItems ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-2 w-2 animate-spin" />
+                                Загрузка...
+                              </span>
+                            ) : invoiceItems.length > 0 ? (
+                              <span className="text-green-500">{invoiceItems.length} поз. в таблице</span>
+                            ) : (
+                              <span className="text-muted-foreground/50">Нет данных</span>
+                            )}
+                          </div>
+                          
                           {/* InReach Check Button */}
                           <Button
                             variant="outline"
                             size="sm"
                             className="h-7 text-[10px] w-full justify-start gap-1"
                             onClick={() => {
-                              console.log("[v0] InReach clicked, selectedInvoiceId:", selectedInvoiceId, "invoiceItems:", invoiceItems.length)
-                              if (!selectedInvoiceId || invoiceItems.length === 0) {
+                              // Use invoiceItems as source of truth (actual table data)
+                              console.log("[v0] InReach clicked, activeRows:", invoiceItems.length)
+                              if (invoiceItems.length === 0) {
+                                console.log("[v0] No data to process")
                                 return
                               }
                               checkInReach()
                             }}
-                            disabled={isCheckingInReach || !selectedInvoiceId || isLoadingInvoiceItems}
+                            disabled={isCheckingInReach || invoiceItems.length === 0}
                           >
                             {isCheckingInReach ? (
                               <>
@@ -2448,8 +2464,10 @@ const handleSaveGlobal = useCallback(async () => {
                             size="sm"
                             className="h-7 text-[10px] w-full justify-start gap-1"
                             onClick={() => {
-                              console.log("[v0] Предварительная clicked, selectedInvoiceId:", selectedInvoiceId, "invoiceItems:", invoiceItems.length)
-                              if (!selectedInvoiceId || invoiceItems.length === 0) {
+                              // Use invoiceItems as source of truth (actual table data)
+                              console.log("[v0] Предварительная clicked, activeRows:", invoiceItems.length)
+                              if (invoiceItems.length === 0) {
+                                console.log("[v0] No data to process")
                                 return
                               }
                               
@@ -2457,8 +2475,11 @@ const handleSaveGlobal = useCallback(async () => {
                                 ? parseFloat(normalPrice) 
                                 : parseFloat(costPerKgRaw) || 0
                               
+                              console.log("[v0] Pricing - costPerKg:", costPerKg, "mode:", mode, "normalPrice:", normalPrice, "costPerKgRaw:", costPerKgRaw)
+                              
                               // Validate that we have pricing
                               if (costPerKg <= 0) {
+                                console.log("[v0] Error: no ₽/kg pricing available")
                                 setMootResults({
                                   calculated: 0,
                                   skipped: invoiceItems.length,
@@ -2470,7 +2491,7 @@ const handleSaveGlobal = useCallback(async () => {
                               const bulkyPriceKg = model.bulkyPrice || costPerKg
                               calculateMoot(costPerKg, bulkyPriceKg)
                             }}
-                            disabled={isCalculatingMoot || !selectedInvoiceId || isLoadingInvoiceItems}
+                            disabled={isCalculatingMoot || invoiceItems.length === 0}
                           >
                             {isCalculatingMoot ? (
                               <>
@@ -2510,26 +2531,6 @@ const handleSaveGlobal = useCallback(async () => {
                                 </div>
                               )}
                             </div>
-                          )}
-                          
-                          {/* Status indicator */}
-                          {!selectedInvoiceId ? (
-                            <p className="text-[8px] text-muted-foreground/50 italic mt-1">
-                              Выберите инвойс
-                            </p>
-                          ) : isLoadingInvoiceItems ? (
-                            <p className="text-[8px] text-muted-foreground/50 italic mt-1 flex items-center gap-1">
-                              <Loader2 className="h-2 w-2 animate-spin" />
-                              Загрузка...
-                            </p>
-                          ) : invoiceItems.length === 0 ? (
-                            <p className="text-[8px] text-amber-500/70 italic mt-1">
-                              Нет позиций
-                            </p>
-                          ) : (
-                            <p className="text-[8px] text-green-500/70 mt-1">
-                              {invoiceItems.length} поз. готово
-                            </p>
                           )}
                         </div>
                       </GridPanel>
