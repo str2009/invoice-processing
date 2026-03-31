@@ -1,6 +1,23 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -101,6 +118,57 @@ interface SimulationPanelProps {
   onSetSelectedInvoices?: (ids: string[]) => void
 }
 
+// ─── Metric Widget Interface ───
+interface MetricWidget {
+  id: string
+  label: string
+  value: string | number
+  highlight?: boolean
+  color?: string
+}
+
+// ─── Sortable Metric Block Component ───
+function SortableMetricBlock({ id, label, value, highlight, color }: MetricWidget) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`
+        flex flex-col gap-0.5 px-2 py-1.5 rounded-md cursor-grab active:cursor-grabbing
+        bg-muted/40 hover:bg-muted/60 border border-border/50
+        transition-colors select-none
+        ${isDragging ? "shadow-lg ring-2 ring-primary/30" : ""}
+        ${highlight ? "bg-primary/10 border-primary/30" : ""}
+      `}
+    >
+      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider font-medium">
+        {label}
+      </span>
+      <span className={`font-mono text-[13px] font-semibold ${color || "text-foreground"}`}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
 export function SimulationPanel({
   data,
   invoiceIds,
@@ -113,6 +181,32 @@ export function SimulationPanel({
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
 const [normalPrice, setNormalPrice] = useState("115")
+
+  // ─── Draggable Metrics Widget Order ───
+  const defaultMetricOrder = [
+    "totalCost", "costPerKg", "weightRaw", "catalogWt", "bulkyPriceKg",
+    "packages", "volume", "density", "bulkyWt", "normalShip", "bulkyShip",
+    "costPerKgRaw", "goodsPerKg", "manager",
+    "test1", "test2", "test3", "test4"
+  ]
+  const [metricOrder, setMetricOrder] = useState<string[]>(defaultMetricOrder)
+
+  // ─── DnD Sensors ───
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleMetricDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setMetricOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
 const weightStats = useMemo(() => {
   let totalWeight = 0
   let missingWeight = false
@@ -1635,99 +1729,72 @@ const handleSaveGlobal = useCallback(async () => {
               </div>
 ) : (
               <div className="col-span-2 flex gap-2">
-                {/* ─── UNIFIED ANALYTICS BLOCK ─── */}
-                <div className="flex-1 bg-card border border-border rounded-lg p-1.5">
-                  {/* 3-Column Grid - tight financial dashboard style */}
-                  <div className="grid grid-cols-3" style={{ columnGap: "10px", rowGap: "2px" }}>
-                    
-                    {/* ROW 1 — PRIMARY (highlighted) */}
-                    <div className="flex items-center gap-1 bg-primary/8 rounded px-1.5 py-0.5">
-                      <span className="text-[10px] text-muted-foreground/70 shrink-0">Mode</span>
-                      <select
-                        value={mode}
-                        onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                        className="border rounded px-1 py-0.5 text-[12px] bg-background font-semibold ml-auto"
-                      >
-                        <option value="normal">Normal</option>
-                        <option value="hybrid">Hybrid</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-1 bg-primary/8 rounded px-1.5 py-0.5">
-                      <span className="text-[10px] text-muted-foreground/70 shrink-0">Total Cost</span>
-                      <span className="font-mono text-[14px] font-semibold text-foreground ml-auto">{Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽</span>
-                    </div>
-                    <div className="flex items-center gap-1 bg-primary/8 rounded px-1.5 py-0.5">
-                      <span className="text-[10px] text-muted-foreground/70 shrink-0">Cost ₽/kg</span>
-                      {mode === "normal" ? (
-                        <span className="font-mono text-[14px] font-semibold text-primary ml-auto">{costPerKgRaw}</span>
-                      ) : (
+                {/* ─── DRAGGABLE METRICS WIDGETS BLOCK ─── */}
+                <div className="flex-1 bg-card border border-border rounded-lg p-2">
+                  {/* Fixed Mode Selector (NOT draggable) */}
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
+                    <select
+                      value={mode}
+                      onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                      className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="hybrid">Hybrid</option>
+                    </select>
+                    {mode === "hybrid" && (
+                      <div className="flex items-center gap-1 ml-2">
+                        <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
                         <Input
                           value={normalPrice}
                           onChange={(e) => setNormalPrice(e.target.value)}
-                          className="h-5 w-16 font-mono text-[12px] bg-background px-1 text-right font-semibold ml-auto"
+                          className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
                         />
-                      )}
-                    </div>
-
-                    {/* ROW 2 */}
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Weight (raw)</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{shippingForm.weight || "0"} kg</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Catalog wt</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{weightStats.totalWeight.toFixed(1)} kg</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Bulky ₽/kg</span>
-                      <span className={`font-mono text-[13px] ml-auto ${model.bulkyPrice > 0 ? "text-amber-500 font-medium" : "text-muted-foreground/50"}`}>
-                        {Math.round(model.bulkyPrice).toLocaleString("ru-RU")}
-                      </span>
-                    </div>
-
-                    {/* ROW 3 */}
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Packages</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{shippingForm.packages || "0"}</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Volume (m³)</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{shippingForm.volume || "0"}</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Density</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{shippingForm.density || "0"}</span>
-                    </div>
-
-                    {/* ROW 4 */}
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Bulky wt</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{model.bulkyWeight.toFixed(1)} kg</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Normal ship</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{model.normalShipping.toLocaleString("ru-RU")} ₽</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Bulky ship</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽</span>
-                    </div>
-
-                    {/* ROW 5 */}
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Cost ₽/kg (raw)</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{costPerKgRaw}</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Goods ₽/kg</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto">{goodsValuePerKg || "0"}</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-0.5">
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0">Manager</span>
-                      <span className="font-mono text-[13px] text-foreground ml-auto truncate max-w-[70px]">{shippingForm.manager || "—"}</span>
-                    </div>
-
+                      </div>
+                    )}
                   </div>
+
+                  {/* Draggable Metric Widgets Grid */}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleMetricDragEnd}
+                  >
+                    <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
+                      <div 
+                        className="grid gap-2"
+                        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+                      >
+                        {metricOrder.map((metricId) => {
+                          // Build metric data based on ID
+                          const metricData: Record<string, MetricWidget> = {
+                            totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
+                            costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
+                            weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
+                            catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
+                            bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                            packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
+                            volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
+                            density: { id: "density", label: "Density", value: shippingForm.density || "0" },
+                            bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: `${model.bulkyWeight.toFixed(1)} kg` },
+                            normalShip: { id: "normalShip", label: "Normal ship", value: `${model.normalShipping.toLocaleString("ru-RU")} ₽` },
+                            bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                            costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
+                            goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
+                            manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
+                            // Test blocks
+                            test1: { id: "test1", label: "Test 1", value: "123" },
+                            test2: { id: "test2", label: "Test 2", value: "456" },
+                            test3: { id: "test3", label: "Test 3", value: "789" },
+                            test4: { id: "test4", label: "Test 4", value: "000" },
+                          }
+                          const metric = metricData[metricId]
+                          if (!metric) return null
+                          return <SortableMetricBlock key={metric.id} {...metric} />
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 </div>
 
                 {/* ─── ACTIONS BLOCK ─── */}
