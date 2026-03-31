@@ -118,6 +118,58 @@ interface SimulationPanelProps {
   onSetSelectedInvoices?: (ids: string[]) => void
 }
 
+// ─── Column Resize Handle Component ───
+interface ResizeHandleProps {
+  onResize: (delta: number) => void
+  onAutoFit: () => void
+}
+
+function ResizeHandle({ onResize, onAutoFit }: ResizeHandleProps) {
+  const startXRef = useRef(0)
+  const currentWidthRef = useRef(0)
+  
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    startXRef.current = e.clientX
+    currentWidthRef.current = 0
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const totalDelta = moveEvent.clientX - startXRef.current
+      const incrementalDelta = totalDelta - currentWidthRef.current
+      currentWidthRef.current = totalDelta
+      onResize(incrementalDelta)
+    }
+    
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+    
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+  }
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onAutoFit()
+  }
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
+      className="absolute right-0 top-0 h-full w-[5px] cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors z-10"
+      style={{ marginRight: "-2px" }}
+    />
+  )
+}
+
 // ─── Metric Widget Interface ───
 interface MetricWidget {
   id: string
@@ -243,6 +295,71 @@ const weightStats = useMemo(() => {
   const [costPerKgBulky, setCostPerKgBulky] = useState("12.00")
   const [totalDeliveryCost, setTotalDeliveryCost] = useState("450.00")
   const [distributionMethod, setDistributionMethod] = useState("weight")
+
+  // ─── Resizable Column Widths for Shipments List ───
+  const SHIPMENT_COL_MINS = { company: 100, number: 50, date: 80, type: 70 }
+  const SHIPMENT_COL_MAX_COMPANY = 280
+  const [shipmentColWidths, setShipmentColWidths] = useState(() => {
+    // Try to load from localStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("shipments_column_widths")
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {}
+      }
+    }
+    return { company: 160, number: 60, date: 100, type: 80 }
+  })
+
+  // Persist widths to localStorage
+  useEffect(() => {
+    localStorage.setItem("shipments_column_widths", JSON.stringify(shipmentColWidths))
+  }, [shipmentColWidths])
+
+  // Refs for measuring content width
+  const shipmentListRef = useRef<HTMLDivElement>(null)
+
+  // Column resize handler
+  const handleColumnResize = useCallback((col: keyof typeof shipmentColWidths, delta: number) => {
+    setShipmentColWidths((prev: typeof shipmentColWidths) => {
+      const newWidth = Math.max(SHIPMENT_COL_MINS[col], prev[col] + delta)
+      // Apply max for company column
+      const clampedWidth = col === "company" ? Math.min(newWidth, SHIPMENT_COL_MAX_COMPANY) : newWidth
+      return { ...prev, [col]: clampedWidth }
+    })
+  }, [])
+
+  // AutoFit column to content
+  const handleAutoFitColumn = useCallback((col: keyof typeof shipmentColWidths) => {
+    if (!shipmentListRef.current) return
+    
+    // Find all cells for this column
+    const cells = shipmentListRef.current.querySelectorAll(`[data-col="${col}"]`)
+    let maxWidth = 0
+    
+    cells.forEach((cell) => {
+      // Create a temporary span to measure text width
+      const span = document.createElement("span")
+      span.style.visibility = "hidden"
+      span.style.position = "absolute"
+      span.style.whiteSpace = "nowrap"
+      span.style.font = window.getComputedStyle(cell).font
+      span.textContent = cell.textContent
+      document.body.appendChild(span)
+      maxWidth = Math.max(maxWidth, span.offsetWidth)
+      document.body.removeChild(span)
+    })
+    
+    // Add padding (20px) and clamp
+    const finalWidth = Math.max(SHIPMENT_COL_MINS[col], maxWidth + 20)
+    const clampedWidth = col === "company" ? Math.min(finalWidth, SHIPMENT_COL_MAX_COMPANY) : finalWidth
+    
+    setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
+  }, [])
+
+  // Grid template for shipments
+  const shipmentGridTemplate = `${shipmentColWidths.company}px ${shipmentColWidths.number}px ${shipmentColWidths.date}px ${shipmentColWidths.type}px 20px`
 
  // -------------------- Shipping form types --------------------
 
@@ -1229,66 +1346,103 @@ const handleSaveGlobal = useCallback(async () => {
       />
     </div>
 
-    {/* Shipment list - fixed height ~4 rows */}
-    <div className="max-h-[220px] overflow-y-auto overscroll-contain pr-1">
-      {filteredShipments.length === 0 && !isLoadingShipments ? (
-        <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-          {shipmentSearch ? "No matching shipments" : "No shipments found"}
-        </p>
-      ) : (
-        filteredShipments.map((ship) => {
-          const isSelected = selectedShipmentId === ship.shipment_id
-          // For selected shipment, use live shipmentInvoices state; for others, use API data
-          const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
-          const hasInvoices = invoiceCount > 0
-          return (
-            <div
-              key={ship.shipment_id}
-              onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-              style={{ gridTemplateColumns: "1.5fr 70px 90px 70px 20px" }}
-              className={`grid items-center gap-2 border-b border-border/40 px-3 py-2 cursor-pointer transition-colors ${
-                isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-              } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-            >
-              {/* COL 1: Icon + Company */}
-              <div className="flex items-center gap-1.5 min-w-0">
-                {getTransportIcon(ship.transport_type, isSelected)}
-                <span className="text-[11px] font-medium text-foreground truncate">
-                  {ship.transport_company || "Unknown"}
+    {/* Shipment list with resizable columns */}
+    <div ref={shipmentListRef} className="flex flex-col">
+      {/* Header row with resize handles */}
+      <div
+        className="grid items-center border-b border-border bg-muted/30 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70"
+        style={{ gridTemplateColumns: shipmentGridTemplate }}
+      >
+        <div className="relative px-3 py-1.5" data-col="company">
+          Company
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("company", delta)}
+            onAutoFit={() => handleAutoFitColumn("company")}
+          />
+        </div>
+        <div className="relative px-1 py-1.5 text-right" data-col="number">
+          #
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("number", delta)}
+            onAutoFit={() => handleAutoFitColumn("number")}
+          />
+        </div>
+        <div className="relative px-1 py-1.5 text-right" data-col="date">
+          Date
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("date", delta)}
+            onAutoFit={() => handleAutoFitColumn("date")}
+          />
+        </div>
+        <div className="relative px-1 py-1.5 text-center" data-col="type">
+          Type
+          <ResizeHandle
+            onResize={(delta) => handleColumnResize("type", delta)}
+            onAutoFit={() => handleAutoFitColumn("type")}
+          />
+        </div>
+        <div className="px-1 py-1.5 text-center">St</div>
+      </div>
+
+      {/* Scrollable rows */}
+      <div className="max-h-[200px] overflow-y-auto overscroll-contain">
+        {filteredShipments.length === 0 && !isLoadingShipments ? (
+          <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+            {shipmentSearch ? "No matching shipments" : "No shipments found"}
+          </p>
+        ) : (
+          filteredShipments.map((ship) => {
+            const isSelected = selectedShipmentId === ship.shipment_id
+            const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+            const hasInvoices = invoiceCount > 0
+            return (
+              <div
+                key={ship.shipment_id}
+                onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                style={{ gridTemplateColumns: shipmentGridTemplate }}
+                className={`grid items-center border-b border-border/40 cursor-pointer transition-colors ${
+                  isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+              >
+                {/* COL 1: Icon + Company */}
+                <div className="flex items-center gap-1.5 min-w-0 px-3 py-1.5" data-col="company">
+                  {getTransportIcon(ship.transport_type, isSelected)}
+                  <span className="text-[11px] font-medium text-foreground truncate">
+                    {ship.transport_company || "Unknown"}
+                  </span>
+                </div>
+                {/* COL 2: Invoice Number */}
+                <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right px-1 py-1.5" data-col="number">
+                  {ship.transport_invoice_number || "—"}
                 </span>
-              </div>
-              {/* COL 2: Invoice Number */}
-              <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right">
-                {ship.transport_invoice_number || "—"}
-              </span>
-              {/* COL 3: Date */}
-              <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
-                {ship.transport_date || "—"}
-              </span>
-              {/* COL 4: Type Badge */}
-              <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center min-w-[60px] ${
-                ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                "bg-amber-500/20 text-amber-400"
-              }`}>
-                {ship.transport_type || "—"}
-              </span>
-              {/* COL 5: Status + Count */}
-              <div className="flex items-center justify-center gap-0.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                {hasInvoices ? (
-                  <>
+                {/* COL 3: Date */}
+                <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1 py-1.5" data-col="date">
+                  {ship.transport_date || "—"}
+                </span>
+                {/* COL 4: Type Badge */}
+                <div className="flex justify-center px-1 py-1.5" data-col="type">
+                  <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center ${
+                    ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                    ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                    ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                    "bg-amber-500/20 text-amber-400"
+                  }`}>
+                    {ship.transport_type || "—"}
+                  </span>
+                </div>
+                {/* COL 5: Status */}
+                <div className="flex justify-center px-1 py-1.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                  {hasInvoices ? (
                     <Check className="h-3 w-3 text-green-500/70" />
-                    <span className="text-[9px] font-mono text-green-500/70">{invoiceCount}</span>
-                  </>
-                ) : (
-                  <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                )}
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+                  )}
+                </div>
               </div>
-            </div>
-          )
-        })
-      )}
+            )
+          })
+        )}
+      </div>
     </div>
 
     </div>
@@ -1656,65 +1810,103 @@ const handleSaveGlobal = useCallback(async () => {
                   />
                 </div>
 
-                {/* Shipment list - compact fixed grid, no horizontal scroll */}
-                <div className="max-h-[220px] overflow-y-auto overscroll-contain">
-                  {filteredShipments.length === 0 && !isLoadingShipments ? (
-                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                      {shipmentSearch ? "No matching shipments" : "No shipments found"}
-                    </p>
-                  ) : (
-                    filteredShipments.map((ship) => {
-                      const isSelected = selectedShipmentId === ship.shipment_id
-                      // For selected shipment, use live shipmentInvoices state; for others, use API data
-                      const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
-                      const hasInvoices = invoiceCount > 0
-                      return (
-                        <div
-                          key={ship.shipment_id}
-                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                          style={{ gridTemplateColumns: "minmax(120px, 1fr) 60px 90px 70px 20px" }}
-                          className={`grid items-center gap-x-2 border-b border-border/40 px-2 py-1.5 cursor-pointer transition-colors ${
-                            isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-                        >
-                          {/* COL 1: Icon + Company (min 120px, flex, truncates) */}
-                          <div className="flex items-center gap-1 min-w-0">
-                            {getTransportIcon(ship.transport_type, isSelected)}
-                            <span className="text-[11px] font-medium text-foreground truncate">
-                              {ship.transport_company || "Unknown"}
+                {/* Shipment list with resizable columns */}
+                <div className="flex flex-col">
+                  {/* Header row with resize handles */}
+                  <div
+                    className="grid items-center border-b border-border bg-muted/30 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70"
+                    style={{ gridTemplateColumns: shipmentGridTemplate }}
+                  >
+                    <div className="relative px-2 py-1.5" data-col="company">
+                      Company
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("company", delta)}
+                        onAutoFit={() => handleAutoFitColumn("company")}
+                      />
+                    </div>
+                    <div className="relative px-1 py-1.5 text-right" data-col="number">
+                      #
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("number", delta)}
+                        onAutoFit={() => handleAutoFitColumn("number")}
+                      />
+                    </div>
+                    <div className="relative px-1 py-1.5 text-right" data-col="date">
+                      Date
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("date", delta)}
+                        onAutoFit={() => handleAutoFitColumn("date")}
+                      />
+                    </div>
+                    <div className="relative px-1 py-1.5 text-center" data-col="type">
+                      Type
+                      <ResizeHandle
+                        onResize={(delta) => handleColumnResize("type", delta)}
+                        onAutoFit={() => handleAutoFitColumn("type")}
+                      />
+                    </div>
+                    <div className="px-1 py-1.5 text-center">St</div>
+                  </div>
+
+                  {/* Scrollable rows */}
+                  <div className="max-h-[200px] overflow-y-auto overscroll-contain">
+                    {filteredShipments.length === 0 && !isLoadingShipments ? (
+                      <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                        {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                      </p>
+                    ) : (
+                      filteredShipments.map((ship) => {
+                        const isSelected = selectedShipmentId === ship.shipment_id
+                        const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                        const hasInvoices = invoiceCount > 0
+                        return (
+                          <div
+                            key={ship.shipment_id}
+                            onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                            style={{ gridTemplateColumns: shipmentGridTemplate }}
+                            className={`grid items-center border-b border-border/40 cursor-pointer transition-colors ${
+                              isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                            } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                          >
+                            {/* COL 1: Icon + Company */}
+                            <div className="flex items-center gap-1 min-w-0 px-2 py-1.5" data-col="company">
+                              {getTransportIcon(ship.transport_type, isSelected)}
+                              <span className="text-[11px] font-medium text-foreground truncate">
+                                {ship.transport_company || "Unknown"}
+                              </span>
+                            </div>
+                            {/* COL 2: Invoice Number */}
+                            <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right px-1 py-1.5" data-col="number">
+                              {ship.transport_invoice_number || "—"}
                             </span>
-                          </div>
-                          {/* COL 2: Invoice Number (60px, center) */}
-                          <span className="text-[10px] font-mono text-muted-foreground/70 text-center truncate">
-                            {ship.transport_invoice_number || "—"}
-                          </span>
-                          {/* COL 3: Date (90px, right) */}
-                          <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right">
-                            {ship.transport_date || "—"}
-                          </span>
-                          {/* COL 4: Type Badge (70px, centered) */}
-                          <div className="flex justify-center">
-                            <span className={`px-1 py-0.5 text-[8px] font-medium uppercase rounded ${
-                              ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                              ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                              ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                              "bg-amber-500/20 text-amber-400"
-                            }`}>
-                              {ship.transport_type || "—"}
+                            {/* COL 3: Date */}
+                            <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1 py-1.5" data-col="date">
+                              {ship.transport_date || "—"}
                             </span>
+                            {/* COL 4: Type Badge */}
+                            <div className="flex justify-center px-1 py-1.5" data-col="type">
+                              <span className={`px-1 py-0.5 text-[8px] font-medium uppercase rounded ${
+                                ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
+                                ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
+                                ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
+                                "bg-amber-500/20 text-amber-400"
+                              }`}>
+                                {ship.transport_type || "—"}
+                              </span>
+                            </div>
+                            {/* COL 5: Status */}
+                            <div className="flex justify-center px-1 py-1.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                              {hasInvoices ? (
+                                <Check className="h-3 w-3 text-green-500/70" />
+                              ) : (
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500/70" />
+                              )}
+                            </div>
                           </div>
-                          {/* COL 5: Status (20px, centered) */}
-                          <div className="flex justify-center" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                            {hasInvoices ? (
-                              <Check className="h-3 w-3 text-green-500/70" />
-                            ) : (
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500/70" />
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
 
                 </div>
