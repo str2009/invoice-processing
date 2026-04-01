@@ -1091,7 +1091,9 @@ console.log("scenario active:", isScenarioActive)
   isScenarioActive={isScenarioActive}
   onSetSelectedInvoices={setSelectedInvoices}
   onEnrich={handleEnrich}
+  onEnrichSelected={handleEnrichSelected}
   isEnriching={isEnriching}
+  selectedInvoice={selectedInvoice}
 />
               </div>
             )}

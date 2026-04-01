@@ -118,7 +118,9 @@ interface SimulationPanelProps {
   isScenarioActive: boolean
   onSetSelectedInvoices?: (ids: string[]) => void
   onEnrich?: () => void
+  onEnrichSelected?: (ids: string[]) => void
   isEnriching?: boolean
+  selectedInvoice?: string | null
   }
 
 // ─── Column Resize Handle Component ───
@@ -388,7 +390,9 @@ export function SimulationPanel({
   isScenarioActive,
   onSetSelectedInvoices,
   onEnrich,
+  onEnrichSelected,
   isEnriching = false,
+  selectedInvoice,
   }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
@@ -1647,7 +1651,7 @@ const handleSaveGlobal = useCallback(async () => {
             )}
           </div>
         </TabsContent>
-{/* ─── Shipping Model Tab ─── */}
+{/* ─── Shipping Model Tab ��── */}
 <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
 
   <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-6">
@@ -2368,7 +2372,7 @@ const handleSaveGlobal = useCallback(async () => {
                             )}
                           </div>
                           
-{/* Enrich Button - calls same API as Control Panel */}
+{/* Enrich Button - same logic as Control Panel */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -2376,13 +2380,16 @@ const handleSaveGlobal = useCallback(async () => {
                               isEnriching ? "opacity-70 cursor-progress" : ""
                             }`}
                             onClick={() => {
-                              if (onEnrich) {
-                                onEnrich()
+                              // Same logic as Control Panel Enrich button
+                              if (invoiceIds.length > 0) {
+                                onEnrichSelected?.(invoiceIds)
+                              } else if (selectedInvoice) {
+                                onEnrich?.()
                               } else {
-                                toast.error("Enrich не настроен")
+                                toast.error("Выберите инвойс")
                               }
                             }}
-                            disabled={isEnriching || !onEnrich}
+                            disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
                           >
                             {isEnriching ? (
                               <>
