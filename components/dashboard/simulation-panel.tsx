@@ -731,11 +731,17 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   let skippedNoPrice = 0
   const newMootPrices = new Map<string | number, number>()
 
+  // Debug: log first row to see available fields
+  if (data.length > 0) {
+    console.log("[v0] Row sample:", data[0])
+  }
+  
   data.forEach((item) => {
     const itemId = item.id || item.sku || item.article
     const weight = Number(item.weight ?? 0)
-    const purchasePrice = Number(item.price ?? item.purchase_price ?? 0)
-    const isBulky = item.isBulky || item.is_bulky || false
+    // Use 'cost' field (actual purchase price in data)
+    const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
+    const isBulky = item.isBulky || item.is_bulky || item.bulky || false
     
     // Validation: skip if no weight
     if (weight <= 0) {
@@ -743,24 +749,21 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
       return
     }
     
-    // Validation: skip if no purchase price
-    if (purchasePrice <= 0) {
+    // Validation: skip if no cost (purchase price)
+    if (cost <= 0) {
       skippedNoPrice++
       return
     }
     
     // Calculate delivery cost per unit
     const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
-    const deliveryCostPerUnit = weight * pricePerKg
+    const delivery = weight * pricePerKg
     
-    // Base cost = purchase price + delivery
-    const baseCost = purchasePrice + deliveryCostPerUnit
-    
-    // Apply markup (default 30% if not set)
+    // Final price = (cost + delivery) * (1 + markup)
     const markup = 0.30
-    const sellingPrice = baseCost * (1 + markup)
+    const finalPrice = (cost + delivery) * (1 + markup)
     
-    newMootPrices.set(itemId, Math.round(sellingPrice))
+    newMootPrices.set(itemId, Math.round(finalPrice))
     calculated++
   })
 
@@ -2433,7 +2436,7 @@ const handleSaveGlobal = useCallback(async () => {
                                   )}
                                   {mootResults.skippedReasons.noPrice > 0 && (
                                     <span className="block text-[8px]">
-                                      — нет цены: {mootResults.skippedReasons.noPrice}
+                                      — нет закупочной цены: {mootResults.skippedReasons.noPrice}
                                     </span>
                                   )}
                                 </div>
