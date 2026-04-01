@@ -684,6 +684,21 @@ useEffect(() => {
     }, 800)
   }, [])
 
+  // Update rows with calculated MOOT prices (writes to "now" column)
+  const handleUpdateMoot = useCallback((updates: Map<string | number, number>) => {
+    setRows((prevRows) => {
+      const updatedRows = prevRows.map((row) => {
+        const itemId = row.id || row.sku || row.article
+        const mootPrice = updates.get(itemId)
+        if (mootPrice !== undefined) {
+          return { ...row, now: mootPrice }
+        }
+        return row
+      })
+      return updatedRows
+    })
+  }, [])
+
   const handleRowClick = useCallback((row: InvoiceRow) => {
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
@@ -1094,6 +1109,7 @@ console.log("scenario active:", isScenarioActive)
   onEnrichSelected={handleEnrichSelected}
   isEnriching={isEnriching}
   selectedInvoice={selectedInvoice}
+  onUpdateMoot={handleUpdateMoot}
 />
               </div>
             )}

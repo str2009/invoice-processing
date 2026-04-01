@@ -121,6 +121,7 @@ interface SimulationPanelProps {
   onEnrichSelected?: (ids: string[]) => void
   isEnriching?: boolean
   selectedInvoice?: string | null
+  onUpdateMoot?: (updates: Map<string | number, number>) => void
   }
 
 // ─── Column Resize Handle Component ───
@@ -393,6 +394,7 @@ export function SimulationPanel({
   onEnrichSelected,
   isEnriching = false,
   selectedInvoice,
+  onUpdateMoot,
   }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
@@ -731,11 +733,6 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   let skippedNoPrice = 0
   const newMootPrices = new Map<string | number, number>()
 
-  // Debug: log first row to see available fields
-  if (data.length > 0) {
-    console.log("[v0] Row sample:", data[0])
-  }
-  
   data.forEach((item) => {
     const itemId = item.id || item.sku || item.article
     const weight = Number(item.weight ?? 0)
@@ -773,6 +770,11 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     skipped: skippedNoWeight + skippedNoPrice,
     skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
   })
+  
+  // Call parent to update actual row data (writes to "now" column in main table)
+  if (onUpdateMoot && newMootPrices.size > 0) {
+    onUpdateMoot(newMootPrices)
+  }
   
   // Brief delay to show loading state, then show toast
   setTimeout(() => {
