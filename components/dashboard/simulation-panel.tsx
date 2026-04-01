@@ -695,12 +695,6 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
   
-  // Ref to always have latest invoiceItems (avoids stale closure in handlers)
-  const invoiceItemsRef = useRef<any[]>([])
-  useEffect(() => {
-    invoiceItemsRef.current = invoiceItems
-  }, [invoiceItems])
-  
   // MOOT Calculation state
   const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
   const [mootResults, setMootResults] = useState<{
@@ -714,13 +708,10 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
 
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
-// ─── MOOT Calculation Function (uses ref to avoid stale closure) ───
+// ─── MOOT Calculation Function (uses data prop - same source as main table) ───
 const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
-  const items = invoiceItemsRef.current
-  console.log("[v0] calculateMoot items:", items.length)
-  
   // Validate data exists
-  if (!items || items.length === 0) {
+  if (!data || data.length === 0) {
     toast.error("Нет данных для расчёта")
     setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
     return
@@ -729,7 +720,7 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   // Validate pricing exists
   if (costPerKgValue <= 0) {
     toast.error("Ошибка: нет ₽/kg")
-    setMootResults({ calculated: 0, skipped: items.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
     return
   }
 
@@ -740,7 +731,7 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   let skippedNoPrice = 0
   const newMootPrices = new Map<string | number, number>()
 
-  items.forEach((item) => {
+  data.forEach((item) => {
     const itemId = item.id || item.sku || item.article
     const weight = Number(item.weight ?? 0)
     const purchasePrice = Number(item.price ?? item.purchase_price ?? 0)
@@ -2356,19 +2347,12 @@ const handleSaveGlobal = useCallback(async () => {
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
-                          {/* Active rows indicator - always show for debugging */}
+                          {/* Active rows indicator - uses data prop (same as main table) */}
                           <div className="text-[9px] text-muted-foreground/70 mb-1">
-                            {isLoadingInvoiceItems ? (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-2 w-2 animate-spin" />
-                                Загрузка...
-                              </span>
-                            ) : invoiceItems.length > 0 ? (
-                              <span className="text-green-500">{invoiceItems.length} поз. в таблице</span>
-                            ) : selectedInvoiceId ? (
-                              <span className="text-amber-500">Данные не загружены</span>
+                            {data.length > 0 ? (
+                              <span className="text-green-500">{data.length} строк в таблице</span>
                             ) : (
-                              <span className="text-muted-foreground/50">Выберите инвойс</span>
+                              <span className="text-muted-foreground/50">Нет данных</span>
                             )}
                           </div>
                           
