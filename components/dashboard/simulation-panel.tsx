@@ -709,9 +709,17 @@ const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false
 
 // ─── MOOT Calculation Function (defined after all state dependencies) ───
 const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: number) => {
-  // Only calculate for currently loaded invoice items
+  // Validate data exists
   if (!invoiceItems.length) {
+    toast.error("Нет данных для расчёта")
     setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    return
+  }
+  
+  // Validate pricing exists
+  if (costPerKgValue <= 0) {
+    toast.error("Ошибка: нет ₽/kg")
+    setMootResults({ calculated: 0, skipped: invoiceItems.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
     return
   }
 
@@ -776,6 +784,7 @@ const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: numb
 // ─── InReach Check Function ───
 const checkInReach = useCallback(() => {
   if (!invoiceItems.length) {
+    toast.error("Нет данных для проверки")
     setInReachResults({ ready: 0, issues: 0, issueDetails: { noStock: 0, noWeight: 0, noPrice: 0 } })
     return
   }
@@ -2428,17 +2437,7 @@ const handleSaveGlobal = useCallback(async () => {
                             className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
                               isCheckingInReach ? "opacity-70 cursor-progress" : ""
                             }`}
-                            onClick={() => {
-                              // Debug: log actual state
-                              console.log("[v0] InReach clicked - invoiceItems state:", invoiceItems.length, "selectedInvoiceId:", selectedInvoiceId, "isLoading:", isLoadingInvoiceItems)
-                              console.log("[v0] invoiceItems preview:", invoiceItems.slice(0, 2))
-                              
-                              if (invoiceItems.length === 0) {
-                                toast.error("Нет данных для проверки")
-                                return
-                              }
-                              checkInReach()
-                            }}
+                            onClick={checkInReach}
                             disabled={isCheckingInReach}
                           >
                             {isCheckingInReach ? (
@@ -2484,31 +2483,13 @@ const handleSaveGlobal = useCallback(async () => {
                               isCalculatingMoot ? "opacity-70 cursor-progress" : ""
                             }`}
                             onClick={() => {
-                              // Debug: log actual state
-                              console.log("[v0] Предварительная clicked - invoiceItems state:", invoiceItems.length, "selectedInvoiceId:", selectedInvoiceId, "isLoading:", isLoadingInvoiceItems)
-                              console.log("[v0] invoiceItems preview:", invoiceItems.slice(0, 2))
-                              
-                              if (invoiceItems.length === 0) {
-                                toast.error("Нет данных для расчёта")
-                                return
-                              }
-                              
+                              // Get pricing from current mode/metrics
                               const costPerKg = mode === "hybrid" && normalPrice 
                                 ? parseFloat(normalPrice) 
                                 : parseFloat(costPerKgRaw) || 0
-                              
-                              // Validate that we have pricing
-                              if (costPerKg <= 0) {
-                                toast.error("Ошибка: нет ₽/kg")
-                                setMootResults({
-                                  calculated: 0,
-                                  skipped: invoiceItems.length,
-                                  skippedReasons: { noWeight: 0, noPrice: 0 }
-                                })
-                                return
-                              }
-                              
                               const bulkyPriceKg = model.bulkyPrice || costPerKg
+                              
+                              // Pass pricing to calculation function
                               calculateMoot(costPerKg, bulkyPriceKg)
                             }}
                             disabled={isCalculatingMoot}
