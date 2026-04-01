@@ -704,7 +704,7 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   const [mootResults, setMootResults] = useState<{
     calculated: number
     skipped: number
-    skippedReasons: { noWeight: number; noPrice: number }
+    skippedReasons: { noWeight: number; noPrice: number; noRule: number }
   } | null>(null)
   const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
 
@@ -712,19 +712,51 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
 
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
+// ─── Helper: Find markup from pricing rules based on cost and group ───
+const getMarkupFromRules = (cost: number, group: string): { markup: number; rule: PricingRule | null } => {
+  // Map row.productGroup to pricing_group in rules
+  // "parts" → "Запчасти", "fluids" → "Масло"
+  let pricingGroup = "Запчасти" // default
+  if (group === "fluids" || group === "oil" || group === "Масло") {
+    pricingGroup = "Масло"
+  } else if (group === "parts" || group === "Запчасти") {
+    pricingGroup = "Запчасти"
+  }
+  
+  // Find matching rule by pricing_group and cost range
+  const matchedRule = scenarioRules.find((rule) => {
+    const fromPrice = parseFloat(rule.fromPrice) || 0
+    const toPrice = parseFloat(rule.toPrice) || Infinity
+    const ruleGroup = rule.pricingGroup
+    
+    // Check if group matches and cost is within range [from, to)
+    return ruleGroup === pricingGroup && cost >= fromPrice && cost < toPrice
+  })
+  
+  if (!matchedRule) {
+    return { markup: -1, rule: null } // -1 indicates no rule found
+  }
+  
+  // Convert markup_pct to decimal (e.g., 105 → 1.05)
+  const markupPct = parseFloat(matchedRule.markupPct) || 0
+  const markup = markupPct / 100
+  
+  return { markup, rule: matchedRule }
+}
+
 // ─── MOOT Calculation Function (uses data prop - same source as main table) ───
 const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   // Validate data exists
   if (!data || data.length === 0) {
     toast.error("Нет данных для расчёта")
-    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
     return
   }
   
   // Validate pricing exists
   if (costPerKgValue <= 0) {
     toast.error("Ошибка: нет ₽/kg")
-    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
     return
   }
 
@@ -733,6 +765,7 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   let calculated = 0
   let skippedNoWeight = 0
   let skippedNoPrice = 0
+  let skippedNoRule = 0
   const newMootPrices = new Map<string | number, number>()
   const newShipValues = new Map<string | number, number>()
 
@@ -742,6 +775,7 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     // Use 'cost' field (actual purchase price in data)
     const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
     const isBulky = item.isBulky || item.is_bulky || item.bulky || false
+    const group = item.productGroup || item.group || "parts"
     
     // Calculate delivery cost per unit (Ship value)
     const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
@@ -765,9 +799,31 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
       return
     }
     
+    // Get markup from pricing rules based on cost and group
+    const { markup, rule } = getMarkupFromRules(cost, group)
+    
+    // Debug logging for first few items
+    if (calculated < 3) {
+      console.log("[v0] MOOT calc:", {
+        cost,
+        group,
+        matchedRule: rule,
+        markupPct: rule?.markupPct,
+        markup,
+        delivery,
+        formula: `${cost} * (1 + ${markup}) + ${delivery.toFixed(2)}`
+      })
+    }
+    
+    // Skip if no matching rule found
+    if (markup < 0 || !rule) {
+      console.warn(`[v0] No pricing rule for cost=${cost}, group=${group}`)
+      skippedNoRule++
+      return
+    }
+    
     // Final MOOT price = cost * (1 + markup) + delivery
-    // markup is "on top of cost", then delivery is added separately
-    const markup = 0.30 // TODO: Replace with configurable markup from pricing_rules
+    // markup is from pricing_rules (e.g., 105 → 1.05)
     const finalPrice = cost * (1 + markup) + delivery
     
     newMootPrices.set(itemId, Math.round(finalPrice))
@@ -777,8 +833,8 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   setMootPrices(newMootPrices)
   setMootResults({
     calculated,
-    skipped: skippedNoWeight + skippedNoPrice,
-    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
+    skipped: skippedNoWeight + skippedNoPrice + skippedNoRule,
+    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice, noRule: skippedNoRule }
   })
   
   // Update Ship values in parent (writes to "ship" column)
@@ -2459,12 +2515,12 @@ const handleSaveGlobal = useCallback(async () => {
                                 <div className="text-green-500">
                                   Рассчитано: {mootResults.calculated} поз.
                                 </div>
-                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 ? (
+                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 && mootResults.skippedReasons.noRule === 0 ? (
                                 <div className="text-red-500">
                                   Ошибка: нет ₽/kg
                                 </div>
                               ) : null}
-                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0) && (
+                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0 || mootResults.skippedReasons.noRule > 0) && (
                                 <div className="text-amber-500">
                                   Пропущено: {mootResults.skipped}
                                   {mootResults.skippedReasons.noWeight > 0 && (
@@ -2475,6 +2531,11 @@ const handleSaveGlobal = useCallback(async () => {
                                   {mootResults.skippedReasons.noPrice > 0 && (
                                     <span className="block text-[8px]">
                                       — нет закупочной цены: {mootResults.skippedReasons.noPrice}
+                                    </span>
+                                  )}
+                                  {mootResults.skippedReasons.noRule > 0 && (
+                                    <span className="block text-[8px]">
+                                      — нет правила: {mootResults.skippedReasons.noRule}
                                     </span>
                                   )}
                                 </div>
