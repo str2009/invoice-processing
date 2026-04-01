@@ -2244,33 +2244,27 @@ const handleSaveGlobal = useCallback(async () => {
                         maxColSpan={panelMaxColSpans.get(panel.id) || 12}
                         collapsed={panel.collapsed}
                         icon={<Truck className="h-3.5 w-3.5 text-muted-foreground" />}
-                        headerExtra={
-                          <div className="flex items-center gap-1.5">
-                            {/* Compact filter toggles */}
-                            <div className="flex items-center gap-0.5 rounded-md border border-border/60 px-0.5 py-0.5 bg-muted/30">
-                              {(["all", "unlinked", "recent"] as const).map((filter) => (
-                                <button
-                                  key={filter}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setShipmentFilter(filter)
-                                  }}
-                                  className={`h-5 px-1.5 text-[9px] font-medium rounded transition-colors ${
-                                    shipmentFilter === filter
-                                      ? "bg-primary text-primary-foreground"
-                                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  {filter === "all" ? "All" : filter === "unlinked" ? "Unlinked" : "Recent"}
-                                </button>
-                              ))}
-                            </div>
-                            {isLoadingShipments && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                          </div>
-                        }
+                        headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
                         onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
+                        {/* Filter tabs */}
+                <div className="shrink-0 flex border-b border-border">
+                  {(["all", "unlinked", "recent"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setShipmentFilter(filter)}
+                      className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                        shipmentFilter === filter
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-muted-foreground/60 hover:text-muted-foreground"
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Search input */}
                 <div className="shrink-0 px-3 py-2 border-b border-border">
                   <input
