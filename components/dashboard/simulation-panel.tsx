@@ -1397,11 +1397,9 @@ const costPerKgRaw = useMemo(() => {
 }, [shippingForm.totalCost, shippingForm.weight])
 
 // Sync normalPrice with costPerKgRaw when mode is "normal"
-// Also reset override when switching to normal mode
 useEffect(() => {
   if (mode === "normal") {
     setNormalPrice(costPerKgRaw)
-    setOverridePerKg("") // Clear override in normal mode
   }
 }, [mode, costPerKgRaw])
 
