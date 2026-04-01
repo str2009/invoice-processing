@@ -122,7 +122,7 @@ interface SimulationPanelProps {
   isEnriching?: boolean
   selectedInvoice?: string | null
   onUpdateMoot?: (updates: Map<string | number, number>) => void
-  onUpdateShip?: (costPerKg: number) => void
+  onUpdateShip?: (updates: Map<string | number, number>) => void
   }
 
 // ─── Column Resize Handle Component ───
@@ -734,6 +734,7 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   let skippedNoWeight = 0
   let skippedNoPrice = 0
   const newMootPrices = new Map<string | number, number>()
+  const newShipValues = new Map<string | number, number>()
 
   data.forEach((item) => {
     const itemId = item.id || item.sku || item.article
@@ -742,24 +743,30 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
     const isBulky = item.isBulky || item.is_bulky || item.bulky || false
     
-    // Validation: skip if no weight
+    // Calculate delivery cost per unit (Ship value)
+    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
+    const delivery = weight * pricePerKg
+    const ship = Math.round(delivery * 100) / 100 // Round to 2 decimals
+    
+    // Always store Ship value if weight > 0
+    if (weight > 0) {
+      newShipValues.set(itemId, ship)
+    }
+    
+    // Validation: skip MOOT if no weight
     if (weight <= 0) {
       skippedNoWeight++
       return
     }
     
-    // Validation: skip if no cost (purchase price)
+    // Validation: skip MOOT if no cost (purchase price)
     if (cost <= 0) {
       skippedNoPrice++
       return
     }
     
-    // Calculate delivery cost per unit
-    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
-    const delivery = weight * pricePerKg
-    
-    // Final price = (cost + delivery) * (1 + markup)
-    const markup = 0.30
+    // Final MOOT price = (cost + delivery) * (1 + markup)
+    const markup = 0.30 // TODO: Replace with configurable markup
     const finalPrice = (cost + delivery) * (1 + markup)
     
     newMootPrices.set(itemId, Math.round(finalPrice))
@@ -773,7 +780,12 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
   })
   
-  // Call parent to update actual row data (writes to "now" column in main table)
+  // Update Ship values in parent (writes to "ship" column)
+  if (onUpdateShip && newShipValues.size > 0) {
+    onUpdateShip(newShipValues)
+  }
+  
+  // Update MOOT values in parent (writes to "moot" column)
   if (onUpdateMoot && newMootPrices.size > 0) {
     onUpdateMoot(newMootPrices)
   }
@@ -1404,14 +1416,6 @@ useEffect(() => {
     setNormalPrice(costPerKgRaw)
   }
 }, [mode, costPerKgRaw])
-
-// Update Ship values in table when costPerKg changes
-useEffect(() => {
-  const costPerKg = parseFloat(costPerKgRaw) || 0
-  if (costPerKg > 0 && onUpdateShip) {
-    onUpdateShip(costPerKg)
-  }
-}, [costPerKgRaw, onUpdateShip])
 
 // перерасчёт строк по правилам
 const previewData = useMemo(
