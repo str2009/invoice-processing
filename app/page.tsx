@@ -1090,6 +1090,8 @@ console.log("scenario active:", isScenarioActive)
   onResetScenario={handleResetScenario}
   isScenarioActive={isScenarioActive}
   onSetSelectedInvoices={setSelectedInvoices}
+  onEnrich={handleEnrich}
+  isEnriching={isEnriching}
 />
               </div>
             )}

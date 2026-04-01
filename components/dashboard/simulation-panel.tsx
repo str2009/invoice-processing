@@ -117,7 +117,9 @@ interface SimulationPanelProps {
   onResetScenario: () => void
   isScenarioActive: boolean
   onSetSelectedInvoices?: (ids: string[]) => void
-}
+  onEnrich?: () => void
+  isEnriching?: boolean
+  }
 
 // ─── Column Resize Handle Component ───
 interface ResizeHandleProps {
@@ -385,7 +387,9 @@ export function SimulationPanel({
   onResetScenario,
   isScenarioActive,
   onSetSelectedInvoices,
-}: SimulationPanelProps) {
+  onEnrich,
+  isEnriching = false,
+  }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
@@ -702,14 +706,7 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   } | null>(null)
   const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
 
-  // InReach validation state
-  const [isCheckingInReach, setIsCheckingInReach] = useState(false)
-  const [inReachResults, setInReachResults] = useState<{
-    ready: number
-    issues: number
-    issueDetails: { noStock: number; noWeight: number; noPrice: number }
-  } | null>(null)
-  const [inReachIssues, setInReachIssues] = useState<Set<string | number>>(new Set())
+  
 
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
@@ -789,73 +786,6 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     }
   }, 400)
 }
-
-// ─── InReach Check Function (uses ref to avoid stale closure) ───
-const checkInReach = () => {
-  const items = invoiceItemsRef.current
-  console.log("[v0] checkInReach items:", items.length)
-  
-  if (!items || items.length === 0) {
-    toast.error("Нет данных для проверки")
-    setInReachResults({ ready: 0, issues: 0, issueDetails: { noStock: 0, noWeight: 0, noPrice: 0 } })
-    return
-  }
-
-  setIsCheckingInReach(true)
-  
-  let ready = 0
-  let noStock = 0
-  let noWeight = 0
-  let noPrice = 0
-  const issueSet = new Set<string | number>()
-
-  items.forEach((item) => {
-    const itemId = item.id || item.sku || item.article
-    const stock = Number(item.stock ?? item.quantity ?? 0)
-    const weight = Number(item.weight ?? 0)
-    const price = Number(item.price ?? item.purchase_price ?? 0)
-    
-    let hasIssue = false
-    
-    if (stock <= 0) {
-      noStock++
-      hasIssue = true
-    }
-    if (weight <= 0) {
-      noWeight++
-      hasIssue = true
-    }
-    if (price <= 0) {
-      noPrice++
-      hasIssue = true
-    }
-    
-    if (hasIssue) {
-      issueSet.add(itemId)
-    } else {
-      ready++
-    }
-  })
-
-  setInReachIssues(issueSet)
-  setInReachResults({
-    ready,
-    issues: issueSet.size,
-    issueDetails: { noStock, noWeight, noPrice }
-  })
-  
-  setTimeout(() => {
-    setIsCheckingInReach(false)
-    if (ready > 0 && issueSet.size === 0) {
-      toast.success(`Все ${ready} позиций готовы`)
-    } else if (ready > 0) {
-      toast.success(`Готово: ${ready} поз., проблем: ${issueSet.size}`)
-    } else {
-      toast.warning(`Проблемы: ${issueSet.size} позиций`)
-    }
-  }, 400)
-}
-
 
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
 const [isAttaching, setIsAttaching] = useState(false)
@@ -975,16 +905,12 @@ useEffect(() => {
     setInvoiceItems([])
     setMootResults(null)
     setMootPrices(new Map())
-    setInReachResults(null)
-    setInReachIssues(new Set())
     return
   }
   
   // Clear results when invoice changes
   setMootResults(null)
   setMootPrices(new Map())
-  setInReachResults(null)
-  setInReachIssues(new Set())
   
   const loadInvoiceItems = async () => {
     setIsLoadingInvoiceItems(true)
@@ -2442,48 +2368,31 @@ const handleSaveGlobal = useCallback(async () => {
                             )}
                           </div>
                           
-                          {/* InReach Check Button */}
+{/* Enrich Button - calls same API as Control Panel */}
                           <Button
                             variant="outline"
                             size="sm"
                             className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
-                              isCheckingInReach ? "opacity-70 cursor-progress" : ""
+                              isEnriching ? "opacity-70 cursor-progress" : ""
                             }`}
-                            onClick={checkInReach}
-                            disabled={isCheckingInReach}
+                            onClick={() => {
+                              if (onEnrich) {
+                                onEnrich()
+                              } else {
+                                toast.error("Enrich не настроен")
+                              }
+                            }}
+                            disabled={isEnriching || !onEnrich}
                           >
-                            {isCheckingInReach ? (
+                            {isEnriching ? (
                               <>
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                Про��ерка...
+                                Enriching...
                               </>
                             ) : (
                               "Enrich"
                             )}
                           </Button>
-                          
-                          {/* InReach Results */}
-                          {inReachResults && !isCheckingInReach && (
-                            <div className="text-[9px] text-muted-foreground space-y-0.5">
-                              <div className={inReachResults.ready > 0 ? "text-green-500" : "text-muted-foreground/50"}>
-                                Готово: {inReachResults.ready} поз.
-                              </div>
-                              {inReachResults.issues > 0 && (
-                                <div className="text-amber-500">
-                                  Проблемы: {inReachResults.issues}
-                                  {inReachResults.issueDetails.noStock > 0 && (
-                                    <span className="block text-[8px]">— нет наличия: {inReachResults.issueDetails.noStock}</span>
-                                  )}
-                                  {inReachResults.issueDetails.noWeight > 0 && (
-                                    <span className="block text-[8px]">— нет веса: {inReachResults.issueDetails.noWeight}</span>
-                                  )}
-                                  {inReachResults.issueDetails.noPrice > 0 && (
-                                    <span className="block text-[8px]">— нет цены: {inReachResults.issueDetails.noPrice}</span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
                           
                           <div className="border-t border-border/40 my-1" />
                           
@@ -2688,15 +2597,12 @@ const handleSaveGlobal = useCallback(async () => {
                         const mootPrice = mootPrices.get(itemId)
                         const hasNoWeight = !Number(item.weight ?? 0)
                         const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
-                        const hasNoStock = !Number(item.stock ?? item.quantity ?? 0)
                         const isSkipped = hasNoWeight || hasNoPrice
-                        const hasInReachIssue = inReachIssues.has(itemId)
                         
                         return (
                           <tr 
                             key={item.id || idx} 
                             className={`hover:bg-muted/30 transition-colors ${
-                              hasInReachIssue && inReachResults ? "bg-amber-500/10 border-l-2 border-l-amber-500" :
                               isSkipped && mootResults ? "bg-amber-500/5" : ""
                             }`}
                           >
