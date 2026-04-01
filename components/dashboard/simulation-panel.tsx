@@ -1009,19 +1009,38 @@ const model = useMemo(() => {
       return
     }
 
-    if (row.isBulky) {
-      bulkyWeight += weight * qty
-    } else {
+    // In Normal mode, treat ALL items as normal (no bulky separation)
+    if (mode === "normal") {
       normalWeight += weight * qty
+    } else {
+      // Hybrid mode: separate bulky and normal
+      if (row.isBulky) {
+        bulkyWeight += weight * qty
+      } else {
+        normalWeight += weight * qty
+      }
     }
   })
 
+  // Normal mode: all shipping goes to normal, no bulky calculations
+  if (mode === "normal") {
+    return {
+      normalWeight,
+      bulkyWeight: 0,
+      normalShipping: totalCost, // All cost is normal shipping
+      bulkyShipping: 0,
+      bulkyPrice: 0,
+      missingWeight,
+    }
+  }
+
+  // Hybrid mode: calculate bulky separately
   const normalShipping = normalWeight * normalCargoPrice
-  const bulkyShipping = totalCost - normalShipping
+  const bulkyShipping = Math.max(0, totalCost - normalShipping) // Prevent negative
 
   const bulkyPrice =
     bulkyWeight > 0
-      ? bulkyShipping / bulkyWeight
+      ? Math.max(0, bulkyShipping / bulkyWeight) // Prevent negative
       : 0
 
   return {
@@ -1032,7 +1051,7 @@ const model = useMemo(() => {
     bulkyPrice,
     missingWeight,
   }
-}, [data, shippingForm.totalCost, normalCargoPrice])
+}, [data, shippingForm.totalCost, normalCargoPrice, mode])
 
 const hasBulky = model.bulkyWeight > 0
 
@@ -1096,12 +1115,13 @@ const handleCreateShipment = useCallback(async () => {
         comment: shippingForm.comment ?? null,
         goods_total_value: Number(shippingForm.goodsTotalValue || 0),
         goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+        pricing_mode: mode, // "normal" or "hybrid"
         normal_weight: Number(model.normalWeight || 0),
-        bulky_weight: Number(model.bulkyWeight || 0),
+        bulky_weight: mode === "normal" ? 0 : Number(model.bulkyWeight || 0),
         normal_shipping: Number(model.normalShipping || 0),
-        bulky_shipping: Number(model.bulkyShipping || 0),
+        bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
         catalog_weight: Number(weightStats.totalWeight || 0),
-        bulky_price: Number(model.bulkyPrice || 0),
+        bulky_price: mode === "normal" ? 0 : Number(model.bulkyPrice || 0),
       }),
     })
     
@@ -1272,10 +1292,11 @@ const handleSaveShipping = useCallback(async () => {
           comment: shippingForm.comment ?? null,
           goods_total_value: Number(shippingForm.goodsTotalValue || 0),
           goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+          pricing_mode: mode, // "normal" or "hybrid"
           normal_weight: Number(model.normalWeight || 0),
-          bulky_weight: Number(model.bulkyWeight || 0),
+          bulky_weight: mode === "normal" ? 0 : Number(model.bulkyWeight || 0),
           normal_shipping: Number(model.normalShipping || 0),
-          bulky_shipping: Number(model.bulkyShipping || 0),
+          bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
           catalog_weight: Number(weightStats.totalWeight || 0),
           bulky_price: Number(model.bulkyPrice || 0),
         },
@@ -1376,9 +1397,11 @@ const costPerKgRaw = useMemo(() => {
 }, [shippingForm.totalCost, shippingForm.weight])
 
 // Sync normalPrice with costPerKgRaw when mode is "normal"
+// Also reset override when switching to normal mode
 useEffect(() => {
   if (mode === "normal") {
     setNormalPrice(costPerKgRaw)
+    setOverridePerKg("") // Clear override in normal mode
   }
 }, [mode, costPerKgRaw])
 
@@ -2308,13 +2331,13 @@ const handleSaveGlobal = useCallback(async () => {
                                       costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
                                       weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
                                       catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
-                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
                                       packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
                                       volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
                                       density: { id: "density", label: "Density", value: shippingForm.density || "0" },
-                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: `${model.bulkyWeight.toFixed(1)} kg` },
-                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${model.normalShipping.toLocaleString("ru-RU")} ₽` },
-                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(1)} kg` },
+                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
+                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
                                       costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
                                       goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
                                       manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
