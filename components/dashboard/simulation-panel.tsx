@@ -765,9 +765,10 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
       return
     }
     
-    // Final MOOT price = (cost + delivery) * (1 + markup)
-    const markup = 0.30 // TODO: Replace with configurable markup
-    const finalPrice = (cost + delivery) * (1 + markup)
+    // Final MOOT price = cost * (1 + markup) + delivery
+    // markup is "on top of cost", then delivery is added separately
+    const markup = 0.30 // TODO: Replace with configurable markup from pricing_rules
+    const finalPrice = cost * (1 + markup) + delivery
     
     newMootPrices.set(itemId, Math.round(finalPrice))
     calculated++
@@ -2168,7 +2169,7 @@ const handleSaveGlobal = useCallback(async () => {
                 }}
               >
                 {panels.map((panel) => {
-                  // ───────────── SHIPMENTS PANEL ─────────────
+                  // ─��─────────── SHIPMENTS PANEL ─────────────
                   if (panel.type === "shipments") {
                     return (
                       <GridPanel
