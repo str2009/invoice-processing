@@ -684,17 +684,19 @@ useEffect(() => {
     }, 800)
   }, [])
 
-  // Update rows with calculated MOOT prices (writes to "now" column)
+  // Update rows with calculated MOOT prices (writes to "moot" column, NOT "now")
   const handleUpdateMoot = useCallback((updates: Map<string | number, number>) => {
     setRows((prevRows) => {
       const updatedRows = prevRows.map((row) => {
         const itemId = row.id || row.sku || row.article
         const mootPrice = updates.get(itemId)
         if (mootPrice !== undefined) {
-          return { ...row, now: mootPrice }
+          return { ...row, moot: mootPrice }
         }
         return row
       })
+      // Debug log
+      console.log("[v0] Updated MOOT values:", updatedRows.filter(r => r.moot != null).slice(0, 5))
       return updatedRows
     })
   }, [])

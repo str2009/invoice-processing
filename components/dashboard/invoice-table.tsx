@@ -388,6 +388,11 @@ const columns: ColumnDef<InvoiceRow>[] = [
     header: "MOOT",
     cell: ({ row }) => {
       const [value, setValue] = useState(row.original.moot ?? "")
+      
+      // Sync when row.original.moot changes (from calculateMoot)
+      useEffect(() => {
+        setValue(row.original.moot ?? "")
+      }, [row.original.moot])
     
       return (
         <input
