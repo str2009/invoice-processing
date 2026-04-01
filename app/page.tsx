@@ -684,7 +684,7 @@ useEffect(() => {
     }, 800)
   }, [])
 
-  // Update rows with calculated MOOT prices (writes to "moot" column, NOT "now")
+  // Update rows with calculated MOOT prices (writes to "moot" column)
   const handleUpdateMoot = useCallback((updates: Map<string | number, number>) => {
     setRows((prevRows) => {
       const updatedRows = prevRows.map((row) => {
@@ -695,8 +695,21 @@ useEffect(() => {
         }
         return row
       })
-      // Debug log
-      console.log("[v0] Updated MOOT values:", updatedRows.filter(r => r.moot != null).slice(0, 5))
+      return updatedRows
+    })
+  }, [])
+
+  // Update Ship values for all rows based on calculated delivery costs
+  const handleUpdateShip = useCallback((updates: Map<string | number, number>) => {
+    setRows((prevRows) => {
+      const updatedRows = prevRows.map((row) => {
+        const itemId = row.id || row.sku || row.article
+        const shipValue = updates.get(itemId)
+        if (shipValue !== undefined) {
+          return { ...row, ship: shipValue }
+        }
+        return row
+      })
       return updatedRows
     })
   }, [])
@@ -1112,6 +1125,7 @@ console.log("scenario active:", isScenarioActive)
   isEnriching={isEnriching}
   selectedInvoice={selectedInvoice}
   onUpdateMoot={handleUpdateMoot}
+  onUpdateShip={handleUpdateShip}
 />
               </div>
             )}

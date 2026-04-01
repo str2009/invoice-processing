@@ -122,6 +122,7 @@ interface SimulationPanelProps {
   isEnriching?: boolean
   selectedInvoice?: string | null
   onUpdateMoot?: (updates: Map<string | number, number>) => void
+  onUpdateShip?: (updates: Map<string | number, number>) => void
   }
 
 // ─── Column Resize Handle Component ───
@@ -395,6 +396,7 @@ export function SimulationPanel({
   isEnriching = false,
   selectedInvoice,
   onUpdateMoot,
+  onUpdateShip,
   }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
@@ -702,7 +704,7 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   const [mootResults, setMootResults] = useState<{
     calculated: number
     skipped: number
-    skippedReasons: { noWeight: number; noPrice: number }
+    skippedReasons: { noWeight: number; noPrice: number; noRule: number }
   } | null>(null)
   const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
 
@@ -710,19 +712,51 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
 
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
+// ─── Helper: Find markup from pricing rules based on cost and group ───
+const getMarkupFromRules = (cost: number, group: string): { markup: number; rule: PricingRule | null } => {
+  // Map row.productGroup to pricing_group in rules
+  // "parts" → "Запчасти", "fluids" → "Масло"
+  let pricingGroup = "Запчасти" // default
+  if (group === "fluids" || group === "oil" || group === "Масло") {
+    pricingGroup = "Масло"
+  } else if (group === "parts" || group === "Запчасти") {
+    pricingGroup = "Запчасти"
+  }
+  
+  // Find matching rule by pricing_group and cost range
+  const matchedRule = scenarioRules.find((rule) => {
+    const fromPrice = parseFloat(rule.fromPrice) || 0
+    const toPrice = parseFloat(rule.toPrice) || Infinity
+    const ruleGroup = rule.pricingGroup
+    
+    // Check if group matches and cost is within range [from, to)
+    return ruleGroup === pricingGroup && cost >= fromPrice && cost < toPrice
+  })
+  
+  if (!matchedRule) {
+    return { markup: -1, rule: null } // -1 indicates no rule found
+  }
+  
+  // Convert markup_pct to decimal (e.g., 105 → 1.05)
+  const markupPct = parseFloat(matchedRule.markupPct) || 0
+  const markup = markupPct / 100
+  
+  return { markup, rule: matchedRule }
+}
+
 // ─── MOOT Calculation Function (uses data prop - same source as main table) ───
 const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   // Validate data exists
   if (!data || data.length === 0) {
     toast.error("Нет данных для расчёта")
-    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
     return
   }
   
   // Validate pricing exists
   if (costPerKgValue <= 0) {
     toast.error("Ошибка: нет ₽/kg")
-    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
     return
   }
 
@@ -731,7 +765,9 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   let calculated = 0
   let skippedNoWeight = 0
   let skippedNoPrice = 0
+  let skippedNoRule = 0
   const newMootPrices = new Map<string | number, number>()
+  const newShipValues = new Map<string | number, number>()
 
   data.forEach((item) => {
     const itemId = item.id || item.sku || item.article
@@ -739,26 +775,56 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     // Use 'cost' field (actual purchase price in data)
     const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
     const isBulky = item.isBulky || item.is_bulky || item.bulky || false
+    const group = item.productGroup || item.group || "parts"
     
-    // Validation: skip if no weight
+    // Calculate delivery cost per unit (Ship value)
+    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
+    const delivery = weight * pricePerKg
+    const ship = Math.round(delivery * 100) / 100 // Round to 2 decimals
+    
+    // Always store Ship value if weight > 0
+    if (weight > 0) {
+      newShipValues.set(itemId, ship)
+    }
+    
+    // Validation: skip MOOT if no weight
     if (weight <= 0) {
       skippedNoWeight++
       return
     }
     
-    // Validation: skip if no cost (purchase price)
+    // Validation: skip MOOT if no cost (purchase price)
     if (cost <= 0) {
       skippedNoPrice++
       return
     }
     
-    // Calculate delivery cost per unit
-    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
-    const delivery = weight * pricePerKg
+    // Get markup from pricing rules based on cost and group
+    const { markup, rule } = getMarkupFromRules(cost, group)
     
-    // Final price = (cost + delivery) * (1 + markup)
-    const markup = 0.30
-    const finalPrice = (cost + delivery) * (1 + markup)
+    // Debug logging for first few items
+    if (calculated < 3) {
+      console.log("[v0] MOOT calc:", {
+        cost,
+        group,
+        matchedRule: rule,
+        markupPct: rule?.markupPct,
+        markup,
+        delivery,
+        formula: `${cost} * (1 + ${markup}) + ${delivery.toFixed(2)}`
+      })
+    }
+    
+    // Skip if no matching rule found
+    if (markup < 0 || !rule) {
+      console.warn(`[v0] No pricing rule for cost=${cost}, group=${group}`)
+      skippedNoRule++
+      return
+    }
+    
+    // Final MOOT price = cost * (1 + markup) + delivery
+    // markup is from pricing_rules (e.g., 105 → 1.05)
+    const finalPrice = cost * (1 + markup) + delivery
     
     newMootPrices.set(itemId, Math.round(finalPrice))
     calculated++
@@ -767,11 +833,16 @@ const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
   setMootPrices(newMootPrices)
   setMootResults({
     calculated,
-    skipped: skippedNoWeight + skippedNoPrice,
-    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
+    skipped: skippedNoWeight + skippedNoPrice + skippedNoRule,
+    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice, noRule: skippedNoRule }
   })
   
-  // Call parent to update actual row data (writes to "now" column in main table)
+  // Update Ship values in parent (writes to "ship" column)
+  if (onUpdateShip && newShipValues.size > 0) {
+    onUpdateShip(newShipValues)
+  }
+  
+  // Update MOOT values in parent (writes to "moot" column)
   if (onUpdateMoot && newMootPrices.size > 0) {
     onUpdateMoot(newMootPrices)
   }
@@ -1009,19 +1080,38 @@ const model = useMemo(() => {
       return
     }
 
-    if (row.isBulky) {
-      bulkyWeight += weight * qty
-    } else {
+    // In Normal mode, treat ALL items as normal (no bulky separation)
+    if (mode === "normal") {
       normalWeight += weight * qty
+    } else {
+      // Hybrid mode: separate bulky and normal
+      if (row.isBulky) {
+        bulkyWeight += weight * qty
+      } else {
+        normalWeight += weight * qty
+      }
     }
   })
 
+  // Normal mode: all shipping goes to normal, no bulky calculations
+  if (mode === "normal") {
+    return {
+      normalWeight,
+      bulkyWeight: 0,
+      normalShipping: totalCost, // All cost is normal shipping
+      bulkyShipping: 0,
+      bulkyPrice: 0,
+      missingWeight,
+    }
+  }
+
+  // Hybrid mode: calculate bulky separately
   const normalShipping = normalWeight * normalCargoPrice
-  const bulkyShipping = totalCost - normalShipping
+  const bulkyShipping = Math.max(0, totalCost - normalShipping) // Prevent negative
 
   const bulkyPrice =
     bulkyWeight > 0
-      ? bulkyShipping / bulkyWeight
+      ? Math.max(0, bulkyShipping / bulkyWeight) // Prevent negative
       : 0
 
   return {
@@ -1032,7 +1122,7 @@ const model = useMemo(() => {
     bulkyPrice,
     missingWeight,
   }
-}, [data, shippingForm.totalCost, normalCargoPrice])
+}, [data, shippingForm.totalCost, normalCargoPrice, mode])
 
 const hasBulky = model.bulkyWeight > 0
 
@@ -1096,12 +1186,13 @@ const handleCreateShipment = useCallback(async () => {
         comment: shippingForm.comment ?? null,
         goods_total_value: Number(shippingForm.goodsTotalValue || 0),
         goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+        pricing_mode: mode, // "normal" or "hybrid"
         normal_weight: Number(model.normalWeight || 0),
-        bulky_weight: Number(model.bulkyWeight || 0),
+        bulky_weight: mode === "normal" ? 0 : Number(model.bulkyWeight || 0),
         normal_shipping: Number(model.normalShipping || 0),
-        bulky_shipping: Number(model.bulkyShipping || 0),
+        bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
         catalog_weight: Number(weightStats.totalWeight || 0),
-        bulky_price: Number(model.bulkyPrice || 0),
+        bulky_price: mode === "normal" ? 0 : Number(model.bulkyPrice || 0),
       }),
     })
     
@@ -1158,8 +1249,15 @@ useEffect(() => {
         fromPrice: String(r.from_price),
         toPrice: String(r.to_price),
         markupPct: String(r.markup_pct),
-        pricingGroup: r.pricing_group,
+        // Map Supabase pricing_group to UI format
+        pricingGroup: r.pricing_group === "parts" 
+          ? "Запчасти" 
+          : r.pricing_group === "fluids" 
+            ? "Масло" 
+            : r.pricing_group,
       }))
+
+      console.log("[v0] Loaded pricing rules:", formatted)
 
       if (!cancelled) {
         setDefaultRules(formatted)
@@ -1272,10 +1370,11 @@ const handleSaveShipping = useCallback(async () => {
           comment: shippingForm.comment ?? null,
           goods_total_value: Number(shippingForm.goodsTotalValue || 0),
           goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+          pricing_mode: mode, // "normal" or "hybrid"
           normal_weight: Number(model.normalWeight || 0),
-          bulky_weight: Number(model.bulkyWeight || 0),
+          bulky_weight: mode === "normal" ? 0 : Number(model.bulkyWeight || 0),
           normal_shipping: Number(model.normalShipping || 0),
-          bulky_shipping: Number(model.bulkyShipping || 0),
+          bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
           catalog_weight: Number(weightStats.totalWeight || 0),
           bulky_price: Number(model.bulkyPrice || 0),
         },
@@ -2133,7 +2232,7 @@ const handleSaveGlobal = useCallback(async () => {
                 }}
               >
                 {panels.map((panel) => {
-                  // ───────────── SHIPMENTS PANEL ─────────────
+                  // ─��─────────── SHIPMENTS PANEL ─────────────
                   if (panel.type === "shipments") {
                     return (
                       <GridPanel
@@ -2308,13 +2407,13 @@ const handleSaveGlobal = useCallback(async () => {
                                       costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
                                       weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
                                       catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
-                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
                                       packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
                                       volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
                                       density: { id: "density", label: "Density", value: shippingForm.density || "0" },
-                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: `${model.bulkyWeight.toFixed(1)} kg` },
-                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${model.normalShipping.toLocaleString("ru-RU")} ₽` },
-                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(1)} kg` },
+                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
+                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
                                       costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
                                       goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
                                       manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
@@ -2336,7 +2435,7 @@ const handleSaveGlobal = useCallback(async () => {
                     )
                   }
 
-                  // ───────────── ACTIONS PANEL ─────────────
+                  // ────────��──── ACTIONS PANEL ─────────────
                   if (panel.type === "actions") {
                     return (
                       <GridPanel
@@ -2423,12 +2522,12 @@ const handleSaveGlobal = useCallback(async () => {
                                 <div className="text-green-500">
                                   Рассчитано: {mootResults.calculated} поз.
                                 </div>
-                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 ? (
+                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 && mootResults.skippedReasons.noRule === 0 ? (
                                 <div className="text-red-500">
                                   Ошибка: нет ₽/kg
                                 </div>
                               ) : null}
-                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0) && (
+                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0 || mootResults.skippedReasons.noRule > 0) && (
                                 <div className="text-amber-500">
                                   Пропущено: {mootResults.skipped}
                                   {mootResults.skippedReasons.noWeight > 0 && (
@@ -2439,6 +2538,11 @@ const handleSaveGlobal = useCallback(async () => {
                                   {mootResults.skippedReasons.noPrice > 0 && (
                                     <span className="block text-[8px]">
                                       — нет закупочной цены: {mootResults.skippedReasons.noPrice}
+                                    </span>
+                                  )}
+                                  {mootResults.skippedReasons.noRule > 0 && (
+                                    <span className="block text-[8px]">
+                                      — нет правила: {mootResults.skippedReasons.noRule}
                                     </span>
                                   )}
                                 </div>
