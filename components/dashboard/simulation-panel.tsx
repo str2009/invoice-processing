@@ -687,6 +687,12 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
   
+  // Ref to always have latest invoiceItems (avoids stale closure in handlers)
+  const invoiceItemsRef = useRef<any[]>([])
+  useEffect(() => {
+    invoiceItemsRef.current = invoiceItems
+  }, [invoiceItems])
+  
   // MOOT Calculation state
   const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
   const [mootResults, setMootResults] = useState<{
@@ -707,10 +713,13 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
 
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
-// ─── MOOT Calculation Function (defined after all state dependencies) ───
-const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: number) => {
+// ─── MOOT Calculation Function (uses ref to avoid stale closure) ───
+const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
+  const items = invoiceItemsRef.current
+  console.log("[v0] calculateMoot items:", items.length)
+  
   // Validate data exists
-  if (!invoiceItems.length) {
+  if (!items || items.length === 0) {
     toast.error("Нет данных для расчёта")
     setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
     return
@@ -719,7 +728,7 @@ const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: numb
   // Validate pricing exists
   if (costPerKgValue <= 0) {
     toast.error("Ошибка: нет ₽/kg")
-    setMootResults({ calculated: 0, skipped: invoiceItems.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    setMootResults({ calculated: 0, skipped: items.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
     return
   }
 
@@ -730,7 +739,7 @@ const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: numb
   let skippedNoPrice = 0
   const newMootPrices = new Map<string | number, number>()
 
-  invoiceItems.forEach((item) => {
+  items.forEach((item) => {
     const itemId = item.id || item.sku || item.article
     const weight = Number(item.weight ?? 0)
     const purchasePrice = Number(item.price ?? item.purchase_price ?? 0)
@@ -779,11 +788,14 @@ const calculateMoot = useCallback((costPerKgValue: number, bulkyPriceValue: numb
       toast.warning(`Пропущено: ${skippedNoWeight + skippedNoPrice} строк`)
     }
   }, 400)
-}, [invoiceItems])
+}
 
-// ─── InReach Check Function ───
-const checkInReach = useCallback(() => {
-  if (!invoiceItems.length) {
+// ─── InReach Check Function (uses ref to avoid stale closure) ───
+const checkInReach = () => {
+  const items = invoiceItemsRef.current
+  console.log("[v0] checkInReach items:", items.length)
+  
+  if (!items || items.length === 0) {
     toast.error("Нет данных для проверки")
     setInReachResults({ ready: 0, issues: 0, issueDetails: { noStock: 0, noWeight: 0, noPrice: 0 } })
     return
@@ -797,7 +809,7 @@ const checkInReach = useCallback(() => {
   let noPrice = 0
   const issueSet = new Set<string | number>()
 
-  invoiceItems.forEach((item) => {
+  items.forEach((item) => {
     const itemId = item.id || item.sku || item.article
     const stock = Number(item.stock ?? item.quantity ?? 0)
     const weight = Number(item.weight ?? 0)
@@ -842,7 +854,7 @@ const checkInReach = useCallback(() => {
       toast.warning(`Проблемы: ${issueSet.size} позиций`)
     }
   }, 400)
-}, [invoiceItems])
+}
 
 
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
