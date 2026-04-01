@@ -1249,8 +1249,15 @@ useEffect(() => {
         fromPrice: String(r.from_price),
         toPrice: String(r.to_price),
         markupPct: String(r.markup_pct),
-        pricingGroup: r.pricing_group,
+        // Map Supabase pricing_group to UI format
+        pricingGroup: r.pricing_group === "parts" 
+          ? "Запчасти" 
+          : r.pricing_group === "fluids" 
+            ? "Масло" 
+            : r.pricing_group,
       }))
+
+      console.log("[v0] Loaded pricing rules:", formatted)
 
       if (!cancelled) {
         setDefaultRules(formatted)
