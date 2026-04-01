@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -117,7 +117,12 @@ interface SimulationPanelProps {
   onResetScenario: () => void
   isScenarioActive: boolean
   onSetSelectedInvoices?: (ids: string[]) => void
-}
+  onEnrich?: () => void
+  onEnrichSelected?: (ids: string[]) => void
+  isEnriching?: boolean
+  selectedInvoice?: string | null
+  onUpdateMoot?: (updates: Map<string | number, number>) => void
+  }
 
 // ─── Column Resize Handle Component ───
 interface ResizeHandleProps {
@@ -385,7 +390,12 @@ export function SimulationPanel({
   onResetScenario,
   isScenarioActive,
   onSetSelectedInvoices,
-}: SimulationPanelProps) {
+  onEnrich,
+  onEnrichSelected,
+  isEnriching = false,
+  selectedInvoice,
+  onUpdateMoot,
+  }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
@@ -610,8 +620,10 @@ const weightStats = useMemo(() => {
     setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
   }, [])
 
-  // Grid template for shipments
-  const shipmentGridTemplate = `${shipmentColWidths.company}px ${shipmentColWidths.number}px ${shipmentColWidths.date}px ${shipmentColWidths.type}px 20px`
+  // Grid template for shipments - Company flexible, others fixed
+  // Status removed - now indicated via row styling (left border for unlinked)
+  // Widths: Company(1fr) | #(60px) | Date(110px) | Type(70px)
+  const shipmentGridTemplate = `minmax(0, 1fr) 60px 110px 70px`
 
  // -------------------- Shipping form types --------------------
 
@@ -684,8 +696,96 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
+  
+  // MOOT Calculation state
+  const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
+  const [mootResults, setMootResults] = useState<{
+    calculated: number
+    skipped: number
+    skippedReasons: { noWeight: number; noPrice: number }
+  } | null>(null)
+  const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
+
+  
+
 const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
+// ─── MOOT Calculation Function (uses data prop - same source as main table) ───
+const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
+  // Validate data exists
+  if (!data || data.length === 0) {
+    toast.error("Нет данных для расчёта")
+    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    return
+  }
+  
+  // Validate pricing exists
+  if (costPerKgValue <= 0) {
+    toast.error("Ошибка: нет ₽/kg")
+    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0 } })
+    return
+  }
+
+  setIsCalculatingMoot(true)
+  
+  let calculated = 0
+  let skippedNoWeight = 0
+  let skippedNoPrice = 0
+  const newMootPrices = new Map<string | number, number>()
+
+  data.forEach((item) => {
+    const itemId = item.id || item.sku || item.article
+    const weight = Number(item.weight ?? 0)
+    // Use 'cost' field (actual purchase price in data)
+    const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
+    const isBulky = item.isBulky || item.is_bulky || item.bulky || false
+    
+    // Validation: skip if no weight
+    if (weight <= 0) {
+      skippedNoWeight++
+      return
+    }
+    
+    // Validation: skip if no cost (purchase price)
+    if (cost <= 0) {
+      skippedNoPrice++
+      return
+    }
+    
+    // Calculate delivery cost per unit
+    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
+    const delivery = weight * pricePerKg
+    
+    // Final price = (cost + delivery) * (1 + markup)
+    const markup = 0.30
+    const finalPrice = (cost + delivery) * (1 + markup)
+    
+    newMootPrices.set(itemId, Math.round(finalPrice))
+    calculated++
+  })
+
+  setMootPrices(newMootPrices)
+  setMootResults({
+    calculated,
+    skipped: skippedNoWeight + skippedNoPrice,
+    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice }
+  })
+  
+  // Call parent to update actual row data (writes to "now" column in main table)
+  if (onUpdateMoot && newMootPrices.size > 0) {
+    onUpdateMoot(newMootPrices)
+  }
+  
+  // Brief delay to show loading state, then show toast
+  setTimeout(() => {
+    setIsCalculatingMoot(false)
+    if (calculated > 0) {
+      toast.success(`Готово: ${calculated} строк обработано`)
+    } else if (skippedNoWeight + skippedNoPrice > 0) {
+      toast.warning(`Пропущено: ${skippedNoWeight + skippedNoPrice} строк`)
+    }
+  }, 400)
+}
 
 const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
 const [isAttaching, setIsAttaching] = useState(false)
@@ -803,8 +903,14 @@ useEffect(() => {
 useEffect(() => {
   if (!selectedInvoiceId) {
     setInvoiceItems([])
+    setMootResults(null)
+    setMootPrices(new Map())
     return
   }
+  
+  // Clear results when invoice changes
+  setMootResults(null)
+  setMootPrices(new Map())
   
   const loadInvoiceItems = async () => {
     setIsLoadingInvoiceItems(true)
@@ -1541,7 +1647,7 @@ const handleSaveGlobal = useCallback(async () => {
             )}
           </div>
         </TabsContent>
-{/* ─── Shipping Model Tab ─── */}
+{/* ─── Shipping Model Tab ��── */}
 <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
 
   <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-6">
@@ -1600,40 +1706,15 @@ const handleSaveGlobal = useCallback(async () => {
 
     {/* Shipment list with resizable columns */}
     <div ref={shipmentListRef} className="flex flex-col">
-      {/* Header row with resize handles */}
+      {/* Header row */}
       <div
-        className="grid items-center border-b border-border bg-muted/30 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70"
+        className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
         style={{ gridTemplateColumns: shipmentGridTemplate }}
       >
-        <div className="relative px-3 py-1.5" data-col="company">
-          Company
-          <ResizeHandle
-            onResize={(delta) => handleColumnResize("company", delta)}
-            onAutoFit={() => handleAutoFitColumn("company")}
-          />
-        </div>
-        <div className="relative px-1 py-1.5 text-right" data-col="number">
-          #
-          <ResizeHandle
-            onResize={(delta) => handleColumnResize("number", delta)}
-            onAutoFit={() => handleAutoFitColumn("number")}
-          />
-        </div>
-        <div className="relative px-1 py-1.5 text-right" data-col="date">
-          Date
-          <ResizeHandle
-            onResize={(delta) => handleColumnResize("date", delta)}
-            onAutoFit={() => handleAutoFitColumn("date")}
-          />
-        </div>
-        <div className="relative px-1 py-1.5 text-center" data-col="type">
-          Type
-          <ResizeHandle
-            onResize={(delta) => handleColumnResize("type", delta)}
-            onAutoFit={() => handleAutoFitColumn("type")}
-          />
-        </div>
-        <div className="px-1 py-1.5 text-center">St</div>
+        <div className="truncate">Company</div>
+        <div className="text-right">#</div>
+        <div className="text-right">Date</div>
+        <div className="text-center">Type</div>
       </div>
 
       {/* Scrollable rows */}
@@ -1652,44 +1733,35 @@ const handleSaveGlobal = useCallback(async () => {
                 key={ship.shipment_id}
                 onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
                 style={{ gridTemplateColumns: shipmentGridTemplate }}
-                className={`grid items-center border-b border-border/40 cursor-pointer transition-colors ${
+                className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${
                   isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                 } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
               >
-                {/* COL 1: Icon + Company */}
-                <div className="flex items-center gap-1.5 min-w-0 px-3 py-1.5" data-col="company">
+                {/* COL 1: Company with status dot */}
+                <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
                   {getTransportIcon(ship.transport_type, isSelected)}
                   <span className="text-[11px] font-medium text-foreground truncate">
                     {ship.transport_company || "Unknown"}
                   </span>
                 </div>
-                {/* COL 2: Invoice Number */}
-                <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right px-1 py-1.5" data-col="number">
+                {/* COL 2: Invoice # */}
+                <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                   {ship.transport_invoice_number || "—"}
                 </span>
                 {/* COL 3: Date */}
-                <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1 py-1.5" data-col="date">
+                <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
                   {ship.transport_date || "—"}
                 </span>
-                {/* COL 4: Type Badge */}
-                <div className="flex justify-center px-1 py-1.5" data-col="type">
-                  <span className={`px-1.5 py-0.5 text-[9px] font-medium uppercase rounded text-center ${
-                    ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                    ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                    ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                    "bg-amber-500/20 text-amber-400"
-                  }`}>
-                    {ship.transport_type || "—"}
-                  </span>
-                </div>
-                {/* COL 5: Status */}
-                <div className="flex justify-center px-1 py-1.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                  {hasInvoices ? (
-                    <Check className="h-3 w-3 text-green-500/70" />
-                  ) : (
-                    <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                  )}
-                </div>
+                {/* COL 4: Type */}
+                <span className={`text-[10px] font-semibold uppercase text-center ${
+                  ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                  ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                  ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                  "text-amber-400"
+                }`}>
+                  {ship.transport_type || "—"}
+                </span>
               </div>
             )
           })
@@ -2107,40 +2179,15 @@ const handleSaveGlobal = useCallback(async () => {
 
                 {/* Shipment list with resizable columns */}
                 <div className="flex flex-col">
-                  {/* Header row with resize handles */}
+                  {/* Header row */}
                   <div
-                    className="grid items-center border-b border-border bg-muted/30 text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70"
+                    className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
                     style={{ gridTemplateColumns: shipmentGridTemplate }}
                   >
-                    <div className="relative px-2 py-1.5" data-col="company">
-                      Company
-                      <ResizeHandle
-                        onResize={(delta) => handleColumnResize("company", delta)}
-                        onAutoFit={() => handleAutoFitColumn("company")}
-                      />
-                    </div>
-                    <div className="relative px-1 py-1.5 text-right" data-col="number">
-                      #
-                      <ResizeHandle
-                        onResize={(delta) => handleColumnResize("number", delta)}
-                        onAutoFit={() => handleAutoFitColumn("number")}
-                      />
-                    </div>
-                    <div className="relative px-1 py-1.5 text-right" data-col="date">
-                      Date
-                      <ResizeHandle
-                        onResize={(delta) => handleColumnResize("date", delta)}
-                        onAutoFit={() => handleAutoFitColumn("date")}
-                      />
-                    </div>
-                    <div className="relative px-1 py-1.5 text-center" data-col="type">
-                      Type
-                      <ResizeHandle
-                        onResize={(delta) => handleColumnResize("type", delta)}
-                        onAutoFit={() => handleAutoFitColumn("type")}
-                      />
-                    </div>
-                    <div className="px-1 py-1.5 text-center">St</div>
+                    <div className="truncate">Company</div>
+                    <div className="text-right">#</div>
+                    <div className="text-right">Date</div>
+                    <div className="text-center">Type</div>
                   </div>
 
                   {/* Scrollable rows */}
@@ -2159,44 +2206,35 @@ const handleSaveGlobal = useCallback(async () => {
                             key={ship.shipment_id}
                             onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
                             style={{ gridTemplateColumns: shipmentGridTemplate }}
-                            className={`grid items-center border-b border-border/40 cursor-pointer transition-colors ${
+                            className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${
                               isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                             } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                           >
-                            {/* COL 1: Icon + Company */}
-                            <div className="flex items-center gap-1 min-w-0 px-2 py-1.5" data-col="company">
+                            {/* COL 1: Company with status dot */}
+                            <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
                               {getTransportIcon(ship.transport_type, isSelected)}
                               <span className="text-[11px] font-medium text-foreground truncate">
                                 {ship.transport_company || "Unknown"}
                               </span>
                             </div>
-                            {/* COL 2: Invoice Number */}
-                            <span className="text-[10px] font-mono text-muted-foreground/70 truncate text-right px-1 py-1.5" data-col="number">
+                            {/* COL 2: Invoice # */}
+                            <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                               {ship.transport_invoice_number || "—"}
                             </span>
                             {/* COL 3: Date */}
-                            <span className="text-[10px] tabular-nums text-muted-foreground/60 text-right px-1 py-1.5" data-col="date">
+                            <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
                               {ship.transport_date || "—"}
                             </span>
-                            {/* COL 4: Type Badge */}
-                            <div className="flex justify-center px-1 py-1.5" data-col="type">
-                              <span className={`px-1 py-0.5 text-[8px] font-medium uppercase rounded ${
-                                ship.transport_type?.toLowerCase() === "air" ? "bg-sky-500/20 text-sky-400" :
-                                ship.transport_type?.toLowerCase() === "sea" ? "bg-blue-500/20 text-blue-400" :
-                                ship.transport_type?.toLowerCase() === "river" ? "bg-cyan-500/20 text-cyan-400" :
-                                "bg-amber-500/20 text-amber-400"
-                              }`}>
-                                {ship.transport_type || "—"}
-                              </span>
-                            </div>
-                            {/* COL 5: Status */}
-                            <div className="flex justify-center px-1 py-1.5" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                              {hasInvoices ? (
-                                <Check className="h-3 w-3 text-green-500/70" />
-                              ) : (
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500/70" />
-                              )}
-                            </div>
+                            {/* COL 4: Type */}
+                            <span className={`text-[10px] font-semibold uppercase text-center ${
+                              ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                              ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                              "text-amber-400"
+                            }`}>
+                              {ship.transport_type || "—"}
+                            </span>
                           </div>
                         )
                       })
@@ -2314,26 +2352,99 @@ const handleSaveGlobal = useCallback(async () => {
                         onToggleCollapse={() => togglePanelCollapse(panel.id)}
                       >
                         <div className="flex-1 flex flex-col gap-1.5 p-2.5">
+                          {/* Active rows indicator - uses data prop (same as main table) */}
+                          <div className="text-[9px] text-muted-foreground/70 mb-1">
+                            {data.length > 0 ? (
+                              <span className="text-green-500">{data.length} строк в таблице</span>
+                            ) : (
+                              <span className="text-muted-foreground/50">Нет данных</span>
+                            )}
+                          </div>
+                          
+{/* Enrich Button - same styling as Control Panel */}
                           <Button
-                            variant="outline"
                             size="sm"
-                            className="h-7 text-[10px] w-full justify-start"
                             onClick={() => {
-                              console.log("[v0] InReach triggered from Pricing Manager")
+                              // Same logic as Control Panel Enrich button
+                              if (invoiceIds.length > 0) {
+                                onEnrichSelected?.(invoiceIds)
+                              } else if (selectedInvoice) {
+                                onEnrich?.()
+                              } else {
+                                toast.error("Выберите инвойс")
+                              }
                             }}
+                            disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
+                            className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
                           >
-                            InReach
+                            {isEnriching ? (
+                              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3 shrink-0" />
+                            )}
+                            {isEnriching ? "Enriching..." : "Enrich"}
                           </Button>
+                          
+                          <div className="border-t border-border/40 my-1" />
+                          
+                          {/* Предварительная цена Button */}
                           <Button
                             variant="default"
                             size="sm"
-                            className="h-7 text-[10px] w-full justify-start"
+                            className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
+                              isCalculatingMoot ? "opacity-70 cursor-progress" : ""
+                            }`}
                             onClick={() => {
-                              console.log("[v0] Calculate MOOT triggered", { mode, normalPrice, costPerKgRaw })
+                              // Get pricing from current mode/metrics
+                              const costPerKg = mode === "hybrid" && normalPrice 
+                                ? parseFloat(normalPrice) 
+                                : parseFloat(costPerKgRaw) || 0
+                              const bulkyPriceKg = model.bulkyPrice || costPerKg
+                              
+                              // Pass pricing to calculation function
+                              calculateMoot(costPerKg, bulkyPriceKg)
                             }}
+                            disabled={isCalculatingMoot}
                           >
-                            Calculate MOOT
+                            {isCalculatingMoot ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Расчёт...
+                              </>
+                            ) : (
+                              "Предварительная цена"
+                            )}
                           </Button>
+                          
+                          {/* MOOT Results Feedback */}
+                          {mootResults && !isCalculatingMoot && (
+                            <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                              {mootResults.calculated > 0 ? (
+                                <div className="text-green-500">
+                                  Рассчитано: {mootResults.calculated} поз.
+                                </div>
+                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 ? (
+                                <div className="text-red-500">
+                                  Ошибка: нет ₽/kg
+                                </div>
+                              ) : null}
+                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0) && (
+                                <div className="text-amber-500">
+                                  Пропущено: {mootResults.skipped}
+                                  {mootResults.skippedReasons.noWeight > 0 && (
+                                    <span className="block text-[8px]">
+                                      — нет веса: {mootResults.skippedReasons.noWeight}
+                                    </span>
+                                  )}
+                                  {mootResults.skippedReasons.noPrice > 0 && (
+                                    <span className="block text-[8px]">
+                                      — нет закупочной цены: {mootResults.skippedReasons.noPrice}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </GridPanel>
                     )
@@ -2468,19 +2579,44 @@ const handleSaveGlobal = useCallback(async () => {
                         <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
                         <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
                         <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
+                        <th className="px-3 py-2 text-right font-medium text-primary">MOOT</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {invoiceItems.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
-                          <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
-                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
-                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">{item.weight ? `${item.weight} kg` : "—"}</td>
-                          <td className="px-3 py-2 text-right font-mono text-foreground">{item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}</td>
-                          <td className="px-3 py-2 text-right font-mono font-medium text-foreground">{item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}</td>
-                        </tr>
-                      ))}
+                      {invoiceItems.map((item, idx) => {
+                        const itemId = item.id || item.sku || item.article
+                        const mootPrice = mootPrices.get(itemId)
+                        const hasNoWeight = !Number(item.weight ?? 0)
+                        const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
+                        const isSkipped = hasNoWeight || hasNoPrice
+                        
+                        return (
+                          <tr 
+                            key={item.id || idx} 
+                            className={`hover:bg-muted/30 transition-colors ${
+                              isSkipped && mootResults ? "bg-amber-500/5" : ""
+                            }`}
+                          >
+                            <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
+                            <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
+                            <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
+                            <td className={`px-3 py-2 text-right font-mono ${hasNoWeight && mootResults ? "text-amber-500" : "text-muted-foreground"}`}>
+                              {item.weight ? `${item.weight} kg` : "—"}
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono ${hasNoPrice && mootResults ? "text-amber-500" : "text-foreground"}`}>
+                              {item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-medium text-foreground">
+                              {item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono font-medium ${
+                              mootPrice ? "text-primary animate-pulse" : "text-muted-foreground/40"
+                            }`}>
+                              {mootPrice ? `${mootPrice.toLocaleString("ru-RU")} ₽` : "—"}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

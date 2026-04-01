@@ -19,6 +19,7 @@ export interface InvoiceRow {
   weight: number
   productGroup: string
   sales12m: number
+  moot?: number | null
 }
 
 const _mockInvoiceData: InvoiceRow[] = [
@@ -81,7 +82,7 @@ const partNames = [
   "Рычаг подвески передний нижний правый",
   "Опора амортизатора передняя",
   "Втулка стабилизатора переднего D23",
-  "Стойка стабилизатора переднего",
+  "Стойка стабилизатор�� переднего",
   "Шаровая опора нижняя",
   "Наконечник рулевой тяги правый",
 ]
