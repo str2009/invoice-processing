@@ -2458,7 +2458,7 @@ const handleSaveGlobal = useCallback(async () => {
                                 Про��ерка...
                               </>
                             ) : (
-                              "InReach"
+                              "Enrich"
                             )}
                           </Button>
                           
