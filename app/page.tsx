@@ -701,6 +701,22 @@ useEffect(() => {
     })
   }, [])
 
+  // Update Ship values for all rows based on costPerKg
+  const handleUpdateShip = useCallback((costPerKg: number) => {
+    setRows((prevRows) => {
+      const updatedRows = prevRows.map((row) => {
+        const weight = Number(row.weight ?? 0)
+        if (weight <= 0) {
+          return { ...row, ship: 0 }
+        }
+        const ship = weight * costPerKg
+        return { ...row, ship: Math.round(ship * 100) / 100 } // Round to 2 decimals
+      })
+      console.log("[v0] Updated Ship values, costPerKg:", costPerKg, "sample:", updatedRows.slice(0, 3).map(r => ({ weight: r.weight, ship: r.ship })))
+      return updatedRows
+    })
+  }, [])
+
   const handleRowClick = useCallback((row: InvoiceRow) => {
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
@@ -1112,6 +1128,7 @@ console.log("scenario active:", isScenarioActive)
   isEnriching={isEnriching}
   selectedInvoice={selectedInvoice}
   onUpdateMoot={handleUpdateMoot}
+  onUpdateShip={handleUpdateShip}
 />
               </div>
             )}

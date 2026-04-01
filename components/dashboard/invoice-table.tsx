@@ -289,10 +289,12 @@ const columns: ColumnDef<InvoiceRow>[] = [
       const now = row.original.now
       const isHigher = val > now
       const isLower = val < now && val > 0
+      // Show value if > 0, otherwise show "---"
+      const hasValue = val != null && val > 0
       return (
         <span
           className={`font-mono tabular-nums ${
-            val === 0
+            !hasValue
               ? "text-muted-foreground/40"
               : isHigher
                 ? "text-amber-600 dark:text-amber-400"
@@ -301,7 +303,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
                   : "text-foreground"
           }`}
         >
-          {val === 0 ? "---" : val.toFixed(2)}
+          {hasValue ? val.toFixed(2) : "---"}
         </span>
       )
     },

@@ -122,6 +122,7 @@ interface SimulationPanelProps {
   isEnriching?: boolean
   selectedInvoice?: string | null
   onUpdateMoot?: (updates: Map<string | number, number>) => void
+  onUpdateShip?: (costPerKg: number) => void
   }
 
 // ─── Column Resize Handle Component ───
@@ -395,6 +396,7 @@ export function SimulationPanel({
   isEnriching = false,
   selectedInvoice,
   onUpdateMoot,
+  onUpdateShip,
   }: SimulationPanelProps) {
   
   const [activeTab, setActiveTab] = useState("shipping")
@@ -1403,6 +1405,14 @@ useEffect(() => {
   }
 }, [mode, costPerKgRaw])
 
+// Update Ship values in table when costPerKg changes
+useEffect(() => {
+  const costPerKg = parseFloat(costPerKgRaw) || 0
+  if (costPerKg > 0 && onUpdateShip) {
+    onUpdateShip(costPerKg)
+  }
+}, [costPerKgRaw, onUpdateShip])
+
 // перерасчёт строк по правилам
 const previewData = useMemo(
   () => applyPricingRules(data, scenarioRules),
@@ -2357,7 +2367,7 @@ const handleSaveGlobal = useCallback(async () => {
                     )
                   }
 
-                  // ───────────── ACTIONS PANEL ─────────────
+                  // ────────��──── ACTIONS PANEL ─────────────
                   if (panel.type === "actions") {
                     return (
                       <GridPanel
