@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -2372,13 +2372,9 @@ const handleSaveGlobal = useCallback(async () => {
                             )}
                           </div>
                           
-{/* Enrich Button - same logic as Control Panel */}
+{/* Enrich Button - same styling as Control Panel */}
                           <Button
-                            variant="outline"
                             size="sm"
-                            className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
-                              isEnriching ? "opacity-70 cursor-progress" : ""
-                            }`}
                             onClick={() => {
                               // Same logic as Control Panel Enrich button
                               if (invoiceIds.length > 0) {
@@ -2390,15 +2386,14 @@ const handleSaveGlobal = useCallback(async () => {
                               }
                             }}
                             disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
+                            className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
                           >
                             {isEnriching ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                Enriching...
-                              </>
+                              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
                             ) : (
-                              "Enrich"
+                              <Sparkles className="h-3 w-3 shrink-0" />
                             )}
+                            {isEnriching ? "Enriching..." : "Enrich"}
                           </Button>
                           
                           <div className="border-t border-border/40 my-1" />
