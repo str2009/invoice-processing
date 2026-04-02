@@ -1751,7 +1751,7 @@ export function SimulationPanel({
 
           <div className="grid grid-cols-5 gap-3 h-full">
 
-            {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
+            {/* ──���────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
             <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
               {/* Header */}
               <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
@@ -2275,14 +2275,14 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            {/* Filter tabs */}
+                            {/* Filter tabs - minimal height */}
                             <div className="shrink-0 flex border-b border-border">
                               {(["all", "unlinked", "recent"] as const).map((filter) => (
                                 <button
                                   key={filter}
                                   onClick={() => setShipmentFilter(filter)}
-                                  className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
-                                    ? "text-primary border-b-2 border-primary"
+                                  className={`flex-1 py-0.5 text-[9px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
+                                    ? "text-primary border-b border-primary"
                                     : "text-muted-foreground/60 hover:text-muted-foreground"
                                     }`}
                                 >
@@ -2302,22 +2302,8 @@ export function SimulationPanel({
                               />
                             </div>
 
-                            {/* Shipment list with resizable columns */}
-                            <div className="flex flex-col">
-                              {/* Header row - flex wrap for responsive */}
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
-                                <div className="flex items-center gap-3 flex-1 min-w-[120px]">
-                                  <span className="flex-1">Company</span>
-                                  <span className="w-[45px] text-left">#</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="w-[80px] text-left">Date</span>
-                                  <span className="w-[50px] text-left">Type</span>
-                                </div>
-                              </div>
-
-                              {/* Scrollable rows */}
-                              <div className="max-h-[200px] overflow-y-auto overscroll-contain">
+                            {/* Shipment list with own scrolling */}
+                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                                 {filteredShipments.length === 0 && !isLoadingShipments ? (
                                   <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                                     {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -2364,7 +2350,6 @@ export function SimulationPanel({
                                     )
                                   })
                                 )}
-                              </div>
                             </div>
 
                           </GridPanel>
