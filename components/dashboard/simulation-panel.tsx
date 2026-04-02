@@ -1780,8 +1780,8 @@ export function SimulationPanel({
                     key={filter}
                     onClick={() => setShipmentFilter(filter)}
                     className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
-                        ? "text-primary border-b-2 border-primary"
-                        : "text-muted-foreground/60 hover:text-muted-foreground"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground/60 hover:text-muted-foreground"
                       }`}
                   >
                     {filter}
@@ -1833,7 +1833,7 @@ export function SimulationPanel({
                             } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                         >
                           {/* COL 1: Company with status dot */}
-                          <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                          <div className="flex items-center gap-1 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
                             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
                             {getTransportIcon(ship.transport_type, isSelected)}
                             <span className="text-[11px] font-medium text-foreground truncate">
@@ -1850,9 +1850,9 @@ export function SimulationPanel({
                           </span>
                           {/* COL 4: Type */}
                           <span className={`text-[10px] font-semibold uppercase text-center ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                              ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                                ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                  "text-amber-400"
+                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                "text-amber-400"
                             }`}>
                             {ship.transport_type || "—"}
                           </span>
@@ -2249,8 +2249,8 @@ export function SimulationPanel({
                                   key={filter}
                                   onClick={() => setShipmentFilter(filter)}
                                   className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
-                                      ? "text-primary border-b-2 border-primary"
-                                      : "text-muted-foreground/60 hover:text-muted-foreground"
+                                    ? "text-primary border-b-2 border-primary"
+                                    : "text-muted-foreground/60 hover:text-muted-foreground"
                                     }`}
                                 >
                                   {filter}
@@ -2319,9 +2319,9 @@ export function SimulationPanel({
                                         </span>
                                         {/* COL 4: Type */}
                                         <span className={`text-[10px] font-semibold uppercase text-center ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                                "text-amber-400"
+                                          ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                                            ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                              "text-amber-400"
                                           }`}>
                                           {ship.transport_type || "—"}
                                         </span>
@@ -2819,12 +2819,12 @@ function PreviewCard({
       </span>
       <span
         className={`font-mono text-sm font-semibold tabular-nums ${positive
-            ? "text-emerald-600 dark:text-emerald-400"
-            : negative
-              ? "text-red-600 dark:text-red-400"
-              : highlight
-                ? "text-foreground"
-                : "text-muted-foreground"
+          ? "text-emerald-600 dark:text-emerald-400"
+          : negative
+            ? "text-red-600 dark:text-red-400"
+            : highlight
+              ? "text-foreground"
+              : "text-muted-foreground"
           }`}
       >
         {value}
