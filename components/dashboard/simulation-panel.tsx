@@ -2276,12 +2276,12 @@ export function SimulationPanel({
                               {/* Header row - flex wrap for responsive */}
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
                                 <div className="flex items-center gap-3 flex-1 min-w-[120px]">
-                                  <span>Company</span>
-                                  <span>#</span>
+                                  <span className="flex-1">Company</span>
+                                  <span className="w-[45px] text-left">#</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <span>Date</span>
-                                  <span>Type</span>
+                                  <span className="w-[80px] text-left">Date</span>
+                                  <span className="w-[50px] text-left">Type</span>
                                 </div>
                               </div>
 
@@ -2312,16 +2312,16 @@ export function SimulationPanel({
                                               {ship.transport_company || "Unknown"}
                                             </span>
                                           </div>
-                                          <span className="text-[11px] font-mono text-muted-foreground/80 shrink-0">
+                                          <span className="text-[11px] font-mono text-muted-foreground/80 w-[45px] text-left">
                                             {ship.transport_invoice_number || "—"}
                                           </span>
                                         </div>
                                         {/* Row 2 (wraps when narrow): Date + Type */}
                                         <div className="flex items-center gap-3">
-                                          <span className="text-[11px] tabular-nums text-muted-foreground/70 whitespace-nowrap">
+                                          <span className="text-[11px] tabular-nums text-muted-foreground/70 w-[80px] text-left">
                                             {ship.transport_date || "—"}
                                           </span>
-                                          <span className={`text-[10px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                                          <span className={`text-[10px] font-semibold uppercase w-[50px] text-left ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
                                             ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
                                               ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
                                                 "text-amber-400"
@@ -2543,7 +2543,7 @@ export function SimulationPanel({
                                       Пропущено: {mootResults.skipped}
                                       {mootResults.skippedReasons.noWeight > 0 && (
                                         <span className="block text-[8px]">
-                                          — нет веса: {mootResults.skippedReasons.noWeight}
+                                          ��� нет веса: {mootResults.skippedReasons.noWeight}
                                         </span>
                                       )}
                                       {mootResults.skippedReasons.noPrice > 0 && (
