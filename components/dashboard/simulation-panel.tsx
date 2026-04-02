@@ -623,10 +623,10 @@ export function SimulationPanel({
     setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
   }, [])
 
-  // Grid template for shipments - Company flexible, others fixed
+  // Grid template for shipments - Company flexible with min width, others fixed
   // Status removed - now indicated via row styling (left border for unlinked)
-  // Widths: Company(1fr) | #(60px) | Date(110px) | Type(70px)
-  const shipmentGridTemplate = `minmax(0, 1fr) 60px 110px 70px`
+  // Widths: Company(min 80px, flex 1fr) | #(50px) | Date(85px) | Type(55px)
+  const shipmentGridTemplate = `minmax(80px, 1fr) 50px 85px 55px`
 
   // -------------------- Shipping form types --------------------
 
