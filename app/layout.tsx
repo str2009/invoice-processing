@@ -35,7 +35,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
-          themes={["light", "dark", "warm-dark", "graphite"]}
+          themes={["light", "soft", "dark", "warm-dark", "graphite"]}
           disableTransitionOnChange
         >
           {children}
