@@ -254,7 +254,7 @@ function GridPanel({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative bg-card border border-border rounded-xl flex flex-col ${collapsed ? "h-[44px]" : "min-h-[200px] max-h-[calc(100vh-200px)]"
+      className={`relative bg-card border border-border rounded-xl flex flex-col overflow-hidden ${collapsed ? "h-[44px]" : "h-full"
         } ${isDragging ? "shadow-xl ring-2 ring-primary/30" : ""}`}
     >
       {/* Draggable Header */}
@@ -2181,7 +2181,7 @@ export function SimulationPanel({
                     <li>Заполните данные о перевозке (компания, тип, дата)</li>
                     <li>Укажите стоимость и параметры груза</li>
                     <li>Привяжите инвойсы к поставке</li>
-                    <li>Нажмите "Create Shipment" для сохранени��</li>
+                    <li>Нажмите "Create Shipment" для сохранени����</li>
                   </ol>
                 </div>
                 <div className="space-y-1.5">
@@ -2214,7 +2214,7 @@ export function SimulationPanel({
         </TabsContent>
 
         {/* ─── Pricing Manager Tab (12-Column Grid Layout) ─── */}
-        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-0">
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-hidden p-0">
           <div className="relative flex h-full">
             {/* Left Edge Trigger - expands on hover */}
             <div className="group shrink-0 w-[8px] hover:w-[140px] transition-all duration-200 ease-out bg-transparent hover:bg-card border-r border-transparent hover:border-border hover:shadow-md">
@@ -2252,7 +2252,7 @@ export function SimulationPanel({
                 <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
                   {/* 12-Column Grid - NO wrapping, explicit positioning */}
                   <div
-                    className="grid gap-3"
+                    className="grid gap-3 h-[calc(100vh-140px)]"
                     style={{
                       gridTemplateColumns: "repeat(12, 1fr)",
                       gridAutoFlow: "column",
