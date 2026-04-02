@@ -1747,12 +1747,12 @@ export function SimulationPanel({
           </div>
         </TabsContent>
         {/* ─── Shipping Model Tab ��── */}
-        <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-4">
+        <TabsContent value="shipping" className="mt-0 flex-1 overflow-hidden p-4">
 
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 gap-3 h-full">
 
             {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+            <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
               {/* Header */}
               <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -1864,7 +1864,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
 
               {/* Row 1: Company, Type */}
               <div className="grid grid-cols-2 gap-3">
@@ -2004,7 +2004,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 2 — CARGO ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
 
               <div className="grid grid-cols-2 gap-6">
 
@@ -2111,7 +2111,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
 
               {/* Create Shipment Button - does NOT attach invoices */}
               <Button
@@ -2175,7 +2175,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 4 — NOTE ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+            <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
               {/* Header */}
               <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-3">
                 <FileText className="h-4 w-4 text-muted-foreground" />
