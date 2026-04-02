@@ -623,10 +623,10 @@ export function SimulationPanel({
     setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
   }, [])
 
-  // Grid template for shipments - 4 columns with equal spacing, left-aligned
-  // Company takes remaining space, others have fixed widths
-  // Widths: Company(1fr) | #(auto) | Date(auto) | Type(auto)
-  const shipmentGridTemplate = `1fr auto auto auto`
+  // Grid template for shipments - 4 columns with fixed widths, left-aligned
+  // Equal spacing between columns via gap-3
+  // Widths: Company(1fr) | #(45px) | Date(80px) | Type(50px)
+  const shipmentGridTemplate = `1fr 45px 80px 50px`
 
   // -------------------- Shipping form types --------------------
 
@@ -2275,7 +2275,7 @@ export function SimulationPanel({
                             <div className="flex flex-col">
                               {/* Header row */}
                               <div
-                                className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
+                                className="grid items-center gap-3 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
                                 style={{ gridTemplateColumns: shipmentGridTemplate }}
                               >
                                 <span>Company</span>
@@ -2300,7 +2300,7 @@ export function SimulationPanel({
                                         key={ship.shipment_id}
                                         onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
                                         style={{ gridTemplateColumns: shipmentGridTemplate }}
-                                        className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                        className={`grid items-center gap-3 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                                       >
                                         {/* COL 1: Company with status dot */}
