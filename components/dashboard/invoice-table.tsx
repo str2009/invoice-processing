@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from "react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -388,13 +388,27 @@ const columns: ColumnDef<InvoiceRow>[] = [
     id: "moot",
     accessorKey: "moot",
     header: "MOOT",
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const [value, setValue] = useState(row.original.moot ?? "")
+      const isManual = row.original.isManual ?? false
       
       // Sync when row.original.moot changes (from calculateMoot)
       useEffect(() => {
         setValue(row.original.moot ?? "")
       }, [row.original.moot])
+
+      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value
+        setValue(newValue)
+        // Mark as manual edit
+        const onUpdateRow = (table.options.meta as any)?.onUpdateRow
+        if (onUpdateRow) {
+          onUpdateRow(row.original.id, {
+            moot: newValue === "" ? undefined : parseFloat(newValue),
+            isManual: true
+          })
+        }
+      }
     
       return (
         <input
@@ -402,7 +416,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
           step="0.1"
           value={value}
           data-moot="true"
-          onChange={(e) => setValue(e.target.value)}
+          onChange={handleChange}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault()
@@ -417,7 +431,11 @@ const columns: ColumnDef<InvoiceRow>[] = [
               if (next) next.focus()
             }
           }}
-          className="w-full h-7 border rounded px-2 text-xs font-mono"
+          className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${
+            isManual 
+              ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40" 
+              : "bg-background border border-border"
+          }`}
         />
       )
     }
@@ -470,6 +488,7 @@ interface InvoiceTableProps {
   onRowCountChange?: (count: number) => void
   selectedRowId?: string | null
   onRowClick?: (row: InvoiceRow) => void
+  onUpdateRow?: (id: string, updates: Partial<InvoiceRow>) => void
 }
 
 export function InvoiceTable({
@@ -479,6 +498,7 @@ export function InvoiceTable({
   onRowCountChange,
   selectedRowId,
   onRowClick,
+  onUpdateRow,
 }: InvoiceTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(defaultColumnIds)
@@ -563,6 +583,9 @@ export function InvoiceTable({
     getFilteredRowModel: getFilteredRowModel(),
     columnResizeMode: "onChange",
     enableColumnResizing: true,
+    meta: {
+      onUpdateRow,
+    },
   })
 
   // Auto-fit column width to content

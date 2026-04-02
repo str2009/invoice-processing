@@ -122,6 +122,7 @@ interface SimulationPanelProps {
   isEnriching?: boolean
   selectedInvoice?: string | null
   onUpdateMoot?: (updates: Map<string | number, number>) => void
+  onClearMoot?: () => void
   onUpdateShip?: (updates: Map<string | number, number>) => void
 }
 
@@ -395,6 +396,7 @@ export function SimulationPanel({
   isEnriching = false,
   selectedInvoice,
   onUpdateMoot,
+  onClearMoot,
   onUpdateShip,
 }: SimulationPanelProps) {
 
@@ -2509,6 +2511,17 @@ export function SimulationPanel({
                                 ) : (
                                   "Предварительная цена"
                                 )}
+                              </Button>
+
+                              {/* Clear MOOT Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] w-full mt-1"
+                                onClick={onClearMoot}
+                                disabled={!onClearMoot}
+                              >
+                                Очистить MOOT
                               </Button>
 
                               {/* MOOT Results Feedback */}
