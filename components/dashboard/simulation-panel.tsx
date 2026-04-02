@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles, FileText } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -1747,9 +1747,9 @@ export function SimulationPanel({
           </div>
         </TabsContent>
         {/* ─── Shipping Model Tab ��── */}
-        <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
+        <TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-4">
 
-          <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-6">
+          <div className="grid grid-cols-5 gap-3">
 
             {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
             <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
@@ -1804,16 +1804,12 @@ export function SimulationPanel({
 
               {/* Shipment list with resizable columns */}
               <div ref={shipmentListRef} className="flex flex-col">
-                {/* Header row - flex wrap for responsive */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
-                  <div className="flex items-center gap-3 flex-1 min-w-[120px]">
-                    <span className="flex-1">Company</span>
-                    <span className="w-[45px] text-left">#</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-[80px] text-left">Date</span>
-                    <span className="w-[50px] text-left">Type</span>
-                  </div>
+                {/* Header row - grid for equal spacing */}
+                <div className="grid grid-cols-4 gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
+                  <span>Company</span>
+                  <span>#</span>
+                  <span>Date</span>
+                  <span>Type</span>
                 </div>
 
                 {/* Scrollable rows */}
@@ -1831,35 +1827,33 @@ export function SimulationPanel({
                         <div
                           key={ship.shipment_id}
                           onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                          className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          className={`grid grid-cols-4 gap-2 items-center px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                         >
-                          {/* Row 1: Company + Number */}
-                          <div className="flex items-center gap-3 flex-1 min-w-[120px]">
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-                              <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
-                              <span className="text-[11px] font-medium text-foreground truncate">
-                                {ship.transport_company || "Unknown"}
-                              </span>
-                            </div>
-                            <span className="text-[11px] font-mono text-muted-foreground/80 w-[45px] text-left">
-                              {ship.transport_invoice_number || "—"}
+                          {/* COL 1: Company with status dot */}
+                          <div className="flex items-center gap-1 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                            <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                            <span className="text-[10px] font-medium text-foreground truncate">
+                              {ship.transport_company || "Unknown"}
                             </span>
                           </div>
-                          {/* Row 2 (wraps when narrow): Date + Type */}
-                          <div className="flex items-center gap-3">
-                            <span className="text-[11px] tabular-nums text-muted-foreground/70 w-[80px] text-left">
-                              {ship.transport_date || "—"}
-                            </span>
-                            <span className={`text-[10px] font-semibold uppercase w-[50px] text-left ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                              ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                                ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                  "text-amber-400"
-                              }`}>
-                              {ship.transport_type || "—"}
-                            </span>
-                          </div>
+                          {/* COL 2: Invoice # */}
+                          <span className="text-[10px] font-mono text-muted-foreground/80 truncate">
+                            {ship.transport_invoice_number || "—"}
+                          </span>
+                          {/* COL 3: Date */}
+                          <span className="text-[10px] tabular-nums text-muted-foreground/70 truncate">
+                            {ship.transport_date || "—"}
+                          </span>
+                          {/* COL 4: Type */}
+                          <span className={`text-[9px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                "text-amber-400"
+                            }`}>
+                            {ship.transport_type || "—"}
+                          </span>
                         </div>
                       )
                     })
@@ -2178,6 +2172,52 @@ export function SimulationPanel({
                 </div>
               )}
 
+            </div>
+
+            {/* ───────────── COLUMN 4 — NOTE ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
+              {/* Header */}
+              <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-3">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Note
+                </span>
+              </div>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-3 text-[11px] text-muted-foreground space-y-3">
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">Инструкция для менеджеров:</p>
+                  <ol className="list-decimal list-inside space-y-1 pl-1">
+                    <li>Выберите поставку из списка слева или создайте новую</li>
+                    <li>Заполните данные о перевозке (компания, тип, дата)</li>
+                    <li>Укажите стоимость и параметры груза</li>
+                    <li>Привяжите инвойсы к поставке</li>
+                    <li>Нажмите "Create Shipment" для сохранения</li>
+                  </ol>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">Типы доставки:</p>
+                  <ul className="list-disc list-inside space-y-0.5 pl-1">
+                    <li><span className="text-sky-400 font-medium">AIR</span> — авиа</li>
+                    <li><span className="text-blue-400 font-medium">SEA</span> — морская</li>
+                    <li><span className="text-cyan-400 font-medium">RIVER</span> — речная</li>
+                    <li><span className="text-amber-400 font-medium">WINTER</span> — зимняя</li>
+                  </ul>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">Статусы:</p>
+                  <ul className="space-y-0.5 pl-1">
+                    <li className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      Инвойсы привязаны
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      Инвойсы не привязаны
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
           </div>
