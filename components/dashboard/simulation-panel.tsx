@@ -1747,9 +1747,9 @@ export function SimulationPanel({
           </div>
         </TabsContent>
         {/* ─── Shipping Model Tab ��── */}
-        <TabsContent value="shipping" className="mt-0 flex-1 overflow-hidden p-4 h-full">
+        <TabsContent value="shipping" className="mt-0 flex-1 overflow-hidden p-4">
 
-          <div className="grid grid-cols-5 gap-3 h-[calc(100vh-180px)]">
+          <div className="grid grid-cols-5 gap-3 h-full">
 
             {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
             <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
@@ -1803,9 +1803,9 @@ export function SimulationPanel({
               </div>
 
               {/* Shipment list with resizable columns */}
-              <div ref={shipmentListRef} className="flex flex-col flex-1 min-h-0">
+              <div ref={shipmentListRef} className="flex flex-col">
                 {/* Header row - grid for equal spacing */}
-                <div className="shrink-0 grid grid-cols-4 gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
+                <div className="grid grid-cols-4 gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
                   <span>Company</span>
                   <span>#</span>
                   <span>Date</span>
@@ -1813,7 +1813,7 @@ export function SimulationPanel({
                 </div>
 
                 {/* Scrollable rows */}
-                <div className="flex-1 overflow-y-auto overscroll-contain">
+                <div className="max-h-[200px] overflow-y-auto overscroll-contain">
                   {filteredShipments.length === 0 && !isLoadingShipments ? (
                     <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                       {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -1864,7 +1864,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full min-h-0 overflow-y-auto">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
 
               {/* Row 1: Company, Type */}
               <div className="grid grid-cols-2 gap-3">
@@ -2004,7 +2004,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 2 — CARGO ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full min-h-0 overflow-y-auto">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
 
               <div className="grid grid-cols-2 gap-6">
 
@@ -2111,7 +2111,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full min-h-0 overflow-y-auto">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
 
               {/* Create Shipment Button - does NOT attach invoices */}
               <Button
@@ -2175,7 +2175,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 4 — NOTE ───────────── */}
-            <div className="bg-card border border-border rounded-xl flex flex-col h-full min-h-0 overflow-hidden">
+            <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
               {/* Header */}
               <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-3">
                 <FileText className="h-4 w-4 text-muted-foreground" />
