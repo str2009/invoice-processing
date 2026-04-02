@@ -2402,7 +2402,7 @@ export function SimulationPanel({
                                           packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
                                           volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
                                           density: { id: "density", label: "Density", value: shippingForm.density || "0" },
-                                          bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(1)} kg` },
+                                          bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(2)} kg` },
                                           normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
                                           bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
                                           costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
