@@ -2181,7 +2181,7 @@ export function SimulationPanel({
                     <li>Заполните данные о перевозке (компания, тип, дата)</li>
                     <li>Укажите стоимость и параметры груза</li>
                     <li>Привяжите инвойсы к поставке</li>
-                    <li>Нажмите "Create Shipment" для сохранения</li>
+                    <li>Нажмите "Create Shipment" для сохранени��</li>
                   </ol>
                 </div>
                 <div className="space-y-1.5">
@@ -2370,6 +2370,7 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
+                            <div className="flex-1 min-h-0 overflow-y-auto">
                             {!selectedShipmentId ? (
                               <div className="flex-1 flex items-center justify-center p-4">
                                 <p className="text-sm text-muted-foreground/60 italic text-center">
@@ -2448,11 +2449,12 @@ export function SimulationPanel({
                                 </DndContext>
                               </div>
                             )}
+                            </div>
                           </GridPanel>
                         )
                       }
 
-                      // ────────��──── ACTIONS PANEL ─────────────
+                      // ───────────── ACTIONS PANEL ─────────────
                       if (panel.type === "actions") {
                         return (
                           <GridPanel
@@ -2467,7 +2469,8 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            <div className="flex-1 flex flex-col gap-1.5 p-2.5">
+                            <div className="flex-1 min-h-0 overflow-y-auto">
+                            <div className="flex flex-col gap-1.5 p-2.5">
                               {/* Active rows indicator - uses data prop (same as main table) */}
                               <div className="text-[9px] text-muted-foreground/70 mb-1">
                                 {data.length > 0 ? (
@@ -2577,6 +2580,7 @@ export function SimulationPanel({
                                 </div>
                               )}
                             </div>
+                            </div>
                           </GridPanel>
                         )
                       }
@@ -2603,7 +2607,7 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            <div className="flex-1 overflow-y-auto">
+                            <div className="flex-1 min-h-0 overflow-y-auto">
                               {!selectedShipmentId ? (
                                 <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                                   Select a shipment first
@@ -2659,7 +2663,7 @@ export function SimulationPanel({
                             onRemove={() => removePanel(panel.id)}
                             canRemove={true}
                           >
-                            <div className="flex-1 overflow-y-auto p-3 text-[11px] text-muted-foreground space-y-3">
+                            <div className="flex-1 min-h-0 overflow-y-auto p-3 text-[11px] text-muted-foreground space-y-3">
                               <div className="space-y-1.5">
                                 <p className="font-medium text-foreground">Инструкция для менеджера:</p>
                                 <ol className="list-decimal list-inside space-y-1 pl-1">
