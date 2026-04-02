@@ -1804,15 +1804,16 @@ export function SimulationPanel({
 
               {/* Shipment list with resizable columns */}
               <div ref={shipmentListRef} className="flex flex-col">
-                {/* Header row */}
-                <div
-                  className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
-                  style={{ gridTemplateColumns: shipmentGridTemplate }}
-                >
-                  <div className="truncate">Company</div>
-                  <div className="text-right">#</div>
-                  <div className="text-right">Date</div>
-                  <div className="text-center">Type</div>
+                {/* Header row - flex wrap for responsive */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
+                  <div className="flex items-center gap-3 flex-1 min-w-[120px]">
+                    <span className="flex-1">Company</span>
+                    <span className="w-[45px] text-left">#</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-[80px] text-left">Date</span>
+                    <span className="w-[50px] text-left">Type</span>
+                  </div>
                 </div>
 
                 {/* Scrollable rows */}
@@ -1830,34 +1831,35 @@ export function SimulationPanel({
                         <div
                           key={ship.shipment_id}
                           onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                          style={{ gridTemplateColumns: shipmentGridTemplate }}
-  className={`grid items-center gap-1.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-  } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                          className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                         >
-                          {/* COL 1: Company with status dot */}
-                          <div className="flex items-center gap-1 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-                            {getTransportIcon(ship.transport_type, isSelected)}
-                            <span className="text-[11px] font-medium text-foreground truncate">
-                              {ship.transport_company || "Unknown"}
+                          {/* Row 1: Company + Number */}
+                          <div className="flex items-center gap-3 flex-1 min-w-[120px]">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                              <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                              <span className="text-[11px] font-medium text-foreground truncate">
+                                {ship.transport_company || "Unknown"}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono text-muted-foreground/80 w-[45px] text-left">
+                              {ship.transport_invoice_number || "—"}
                             </span>
                           </div>
-                          {/* COL 2: Invoice # */}
-                          <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
-                            {ship.transport_invoice_number || "—"}
-                          </span>
-                          {/* COL 3: Date */}
-                          <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
-                            {ship.transport_date || "—"}
-                          </span>
-                          {/* COL 4: Type */}
-                          <span className={`text-[10px] font-semibold uppercase text-center ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                "text-amber-400"
-                            }`}>
-                            {ship.transport_type || "—"}
-                          </span>
+                          {/* Row 2 (wraps when narrow): Date + Type */}
+                          <div className="flex items-center gap-3">
+                            <span className="text-[11px] tabular-nums text-muted-foreground/70 w-[80px] text-left">
+                              {ship.transport_date || "—"}
+                            </span>
+                            <span className={`text-[10px] font-semibold uppercase w-[50px] text-left ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                              ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                                ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                  "text-amber-400"
+                              }`}>
+                              {ship.transport_type || "—"}
+                            </span>
+                          </div>
                         </div>
                       )
                     })
