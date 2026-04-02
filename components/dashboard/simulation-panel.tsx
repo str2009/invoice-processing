@@ -2303,23 +2303,23 @@ export function SimulationPanel({
                                         className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                                       >
-  {/* COL 1: Company with status dot */}
-> <div className="flex items-start gap-1.5 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-  <span className={`h-1.5 w-1.5 shrink-0 rounded-full mt-1 ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-  <span className="shrink-0 mt-0.5">{getTransportIcon(ship.transport_type, isSelected)}</span>
-  <span 
-    className="text-[11px] font-medium text-foreground leading-tight break-words line-clamp-2 lg:line-clamp-1"
-    title={ship.transport_company || "Unknown"}
-    style={{
-      display: "-webkit-box",
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: "vertical",
-      overflow: "hidden",
-    }}
-  >
-  {ship.transport_company || "Unknown"}
-  </span>
-  </div>
+                                        {/* COL 1: Company with status dot */}
+                                        <div className="flex items-start gap-1.5 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full mt-1 ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                                          <span className="shrink-0 mt-0.5">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                                          <span 
+                                            className="text-[11px] font-medium text-foreground leading-tight break-words"
+                                            title={ship.transport_company || "Unknown"}
+                                            style={{
+                                              display: "-webkit-box",
+                                              WebkitLineClamp: 2,
+                                              WebkitBoxOrient: "vertical",
+                                              overflow: "hidden",
+                                            }}
+                                          >
+                                            {ship.transport_company || "Unknown"}
+                                          </span>
+                                        </div>
                                         {/* COL 2: Invoice # */}
                                         <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
                                           {ship.transport_invoice_number || "—"}
