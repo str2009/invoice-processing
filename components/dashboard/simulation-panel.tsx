@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles, FileText } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles, FileText, Download } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -2549,6 +2549,55 @@ export function SimulationPanel({
                                 disabled={!onClearMoot}
                               >
                                 Очистить MOOT
+                              </Button>
+
+                              {/* Export to Excel Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] w-full mt-1 gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-600/10 hover:text-emerald-700 dark:border-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
+                                onClick={() => {
+                                  // Get all data rows and export to CSV/Excel
+                                  const headers = [
+                                    "Part Code", "Manufacturer", "Part Name", "Qty", "Cost", 
+                                    "Now", "Ship", "isBulky", "Delta %", "Stock", 
+                                    "Weight", "MOOT", "Group", "Sales 12m"
+                                  ]
+                                  const csvRows = [headers.join(",")]
+                                  
+                                  data.forEach(row => {
+                                    const values = [
+                                      `"${row.partCode || ""}"`,
+                                      `"${row.manufacturer || ""}"`,
+                                      `"${row.partName || ""}"`,
+                                      row.qty ?? "",
+                                      row.cost ?? "",
+                                      row.now ?? "",
+                                      row.ship ?? "",
+                                      row.isBulky ? "Yes" : "No",
+                                      row.deltaPercent ?? "",
+                                      row.stock ?? "",
+                                      row.weight ?? "",
+                                      row.moot ?? "",
+                                      `"${row.group || ""}"`,
+                                      row.sales12m ?? ""
+                                    ]
+                                    csvRows.push(values.join(","))
+                                  })
+                                  
+                                  const csvContent = csvRows.join("\n")
+                                  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
+                                  const url = URL.createObjectURL(blob)
+                                  const a = document.createElement("a")
+                                  a.href = url
+                                  a.download = `table-export-${new Date().toISOString().slice(0, 10)}.csv`
+                                  a.click()
+                                  URL.revokeObjectURL(url)
+                                }}
+                                disabled={data.length === 0}
+                              >
+                                <Download className="h-3 w-3 shrink-0" />
+                                Экспорт в Excel
                               </Button>
 
                               {/* MOOT Results Feedback */}
