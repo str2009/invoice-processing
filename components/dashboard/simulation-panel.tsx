@@ -39,18 +39,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles } from "lucide-react"
+import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles, FileText } from "lucide-react"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
   const className = `h-3.5 w-3.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`
   const t = type?.toLowerCase()
-  
+
   if (t === "air") return <Plane className={className} />
   if (t === "sea") return <Ship className={className} />
   if (t === "river") return <Anchor className={className} />
   if (t === "road" || t === "winter road") return <Truck className={className} />
-  
+
   return <Truck className={className} />
 }
 import { toast } from "sonner"
@@ -122,8 +122,9 @@ interface SimulationPanelProps {
   isEnriching?: boolean
   selectedInvoice?: string | null
   onUpdateMoot?: (updates: Map<string | number, number>) => void
+  onClearMoot?: () => void
   onUpdateShip?: (updates: Map<string | number, number>) => void
-  }
+}
 
 // ─── Column Resize Handle Component ───
 interface ResizeHandleProps {
@@ -134,27 +135,27 @@ interface ResizeHandleProps {
 function ResizeHandle({ onResize, onAutoFit }: ResizeHandleProps) {
   const startXRef = useRef(0)
   const currentWidthRef = useRef(0)
-  
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     startXRef.current = e.clientX
     currentWidthRef.current = 0
-    
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const totalDelta = moveEvent.clientX - startXRef.current
       const incrementalDelta = totalDelta - currentWidthRef.current
       currentWidthRef.current = totalDelta
       onResize(incrementalDelta)
     }
-    
+
     const handleMouseUp = () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
       document.body.style.cursor = ""
       document.body.style.userSelect = ""
     }
-    
+
     document.body.style.cursor = "col-resize"
     document.body.style.userSelect = "none"
     document.addEventListener("mousemove", handleMouseMove)
@@ -194,9 +195,9 @@ interface GridPanelProps {
   canRemove?: boolean
 }
 
-function GridPanel({ 
-  id, title, colStart, colSpan, maxColSpan, collapsed, icon, children, headerExtra, 
-  onResize, onToggleCollapse, onRemove, canRemove 
+function GridPanel({
+  id, title, colStart, colSpan, maxColSpan, collapsed, icon, children, headerExtra,
+  onResize, onToggleCollapse, onRemove, canRemove
 }: GridPanelProps) {
   const {
     attributes,
@@ -253,9 +254,8 @@ function GridPanel({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative bg-card border border-border rounded-xl flex flex-col ${
-        collapsed ? "h-[44px]" : "min-h-[200px] max-h-[calc(100vh-200px)]"
-      } ${isDragging ? "shadow-xl ring-2 ring-primary/30" : ""}`}
+      className={`relative bg-card border border-border rounded-xl flex flex-col overflow-hidden ${collapsed ? "h-[44px]" : "h-full"
+        } ${isDragging ? "shadow-xl ring-2 ring-primary/30" : ""}`}
     >
       {/* Draggable Header */}
       <div
@@ -396,12 +396,13 @@ export function SimulationPanel({
   isEnriching = false,
   selectedInvoice,
   onUpdateMoot,
+  onClearMoot,
   onUpdateShip,
-  }: SimulationPanelProps) {
-  
+}: SimulationPanelProps) {
+
   const [activeTab, setActiveTab] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
-const [normalPrice, setNormalPrice] = useState("115")
+  const [normalPrice, setNormalPrice] = useState("115")
 
   // ─── Draggable Metrics Widget Order ───
   const defaultMetricOrder = [
@@ -430,7 +431,7 @@ const [normalPrice, setNormalPrice] = useState("115")
           if (Array.isArray(parsed) && parsed.length > 0) {
             return parsed
           }
-        } catch {}
+        } catch { }
       }
     }
     return defaultPanels
@@ -457,14 +458,14 @@ const [normalPrice, setNormalPrice] = useState("115")
   const handlePanelResize = useCallback((panelId: string, newColSpan: number) => {
     setPanels((items) => {
       // Calculate total columns used by OTHER panels
-      const otherPanelsTotal = items.reduce((sum, p) => 
+      const otherPanelsTotal = items.reduce((sum, p) =>
         p.id === panelId ? sum : sum + p.colSpan, 0
       )
       // Max this panel can be is 12 - others, min is 2
       const maxAllowed = Math.max(2, 12 - otherPanelsTotal)
       const clampedSpan = Math.max(2, Math.min(maxAllowed, newColSpan))
-      
-      return items.map(p => 
+
+      return items.map(p =>
         p.id === panelId ? { ...p, colSpan: clampedSpan } : p
       )
     })
@@ -472,7 +473,7 @@ const [normalPrice, setNormalPrice] = useState("115")
 
   // Toggle panel collapse
   const togglePanelCollapse = useCallback((panelId: string) => {
-    setPanels((items) => items.map(p => 
+    setPanels((items) => items.map(p =>
       p.id === panelId ? { ...p, collapsed: !p.collapsed } : p
     ))
   }, [])
@@ -499,7 +500,7 @@ const [normalPrice, setNormalPrice] = useState("115")
     const maxSpans = new Map<string, number>()
     const totalUsed = panels.reduce((sum, p) => sum + p.colSpan, 0)
     const freeSpace = 12 - totalUsed
-    
+
     for (const panel of panels) {
       // This panel can expand into free space
       maxSpans.set(panel.id, panel.colSpan + freeSpace)
@@ -523,27 +524,27 @@ const [normalPrice, setNormalPrice] = useState("115")
       })
     }
   }, [])
-const weightStats = useMemo(() => {
-  let totalWeight = 0
-  let missingWeight = false
+  const weightStats = useMemo(() => {
+    let totalWeight = 0
+    let missingWeight = false
 
-  data.forEach((row) => {
-    const weight = Number(row.weight ?? 0)
-    const qty = Number(row.qty ?? 0)
+    data.forEach((row) => {
+      const weight = Number(row.weight ?? 0)
+      const qty = Number(row.qty ?? 0)
 
-    if (!weight) {
-      missingWeight = true
-      return
+      if (!weight) {
+        missingWeight = true
+        return
+      }
+
+      totalWeight += weight * qty
+    })
+
+    return {
+      totalWeight,
+      missingWeight,
     }
-
-    totalWeight += weight * qty
-  })
-
-  return {
-    totalWeight,
-    missingWeight,
-  }
-}, [data])
+  }, [data])
 
 
   // Default vs Scenario pricing rules
@@ -570,7 +571,7 @@ const weightStats = useMemo(() => {
       if (saved) {
         try {
           return JSON.parse(saved)
-        } catch {}
+        } catch { }
       }
     }
     return { company: 160, number: 60, date: 100, type: 80 }
@@ -597,11 +598,11 @@ const weightStats = useMemo(() => {
   // AutoFit column to content
   const handleAutoFitColumn = useCallback((col: keyof typeof shipmentColWidths) => {
     if (!shipmentListRef.current) return
-    
+
     // Find all cells for this column
     const cells = shipmentListRef.current.querySelectorAll(`[data-col="${col}"]`)
     let maxWidth = 0
-    
+
     cells.forEach((cell) => {
       // Create a temporary span to measure text width
       const span = document.createElement("span")
@@ -614,91 +615,91 @@ const weightStats = useMemo(() => {
       maxWidth = Math.max(maxWidth, span.offsetWidth)
       document.body.removeChild(span)
     })
-    
+
     // Add padding (20px) and clamp
     const finalWidth = Math.max(SHIPMENT_COL_MINS[col], maxWidth + 20)
     const clampedWidth = col === "company" ? Math.min(finalWidth, SHIPMENT_COL_MAX_COMPANY) : finalWidth
-    
+
     setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
   }, [])
 
-  // Grid template for shipments - Company flexible, others fixed
-  // Status removed - now indicated via row styling (left border for unlinked)
-  // Widths: Company(1fr) | #(60px) | Date(110px) | Type(70px)
-  const shipmentGridTemplate = `minmax(0, 1fr) 60px 110px 70px`
+  // Grid template for shipments - 4 columns with fixed widths, left-aligned
+  // Equal spacing between columns via gap-3
+  // Widths: Company(1fr) | #(45px) | Date(80px) | Type(50px)
+  const shipmentGridTemplate = `1fr 45px 80px 50px`
 
- // -------------------- Shipping form types --------------------
+  // -------------------- Shipping form types --------------------
 
-type ShippingForm = {
-  company: string
-  type: string
-  invoiceNumber: string
-  reference: string
-  transportDate: string
-  receivedDate: string
-  totalCost: string
-  packages: string
-  weight: string
-  volume: string
-  density: string
-  goodsTotalValue: string
-  goodsValuePerKg: string
-  comment: string
-  manager: string
-  warehouse: string
-}
-
-const EMPTY_SHIPPING: ShippingForm = {
-  company: "",
-  type: "",
-  invoiceNumber: "",
-  reference: "",
-  transportDate: "",
-  receivedDate: "",
-  totalCost: "",
-  packages: "",
-  weight: "",
-  volume: "",
-  density: "",
-  goodsTotalValue: "",
-  goodsValuePerKg: "",
-  comment: "",
-  manager: "",
-  warehouse: "",
-}
-
-// -------------------- Shipping UI state --------------------
-
-const [shippingForm, setShippingForm] = useState<ShippingForm>(EMPTY_SHIPPING)
-const [savedShipping, setSavedShipping] = useState<ShippingForm | null>(null)
-
-// -------------------- Shipment management state --------------------
-type ShipmentListItem = {
-  shipment_id: string
-  transport_company: string | null
-  transport_invoice_number: string | null
-  transport_date: string | null
-  transport_type: string | null
-  invoice_count?: number
+  type ShippingForm = {
+    company: string
+    type: string
+    invoiceNumber: string
+    reference: string
+    transportDate: string
+    receivedDate: string
+    totalCost: string
+    packages: string
+    weight: string
+    volume: string
+    density: string
+    goodsTotalValue: string
+    goodsValuePerKg: string
+    comment: string
+    manager: string
+    warehouse: string
   }
 
-type ShipmentInvoice = {
-  invoice_id: string
-  supplier: string | null
-  date: string | null
-  amount: number | null
-}
+  const EMPTY_SHIPPING: ShippingForm = {
+    company: "",
+    type: "",
+    invoiceNumber: "",
+    reference: "",
+    transportDate: "",
+    receivedDate: "",
+    totalCost: "",
+    packages: "",
+    weight: "",
+    volume: "",
+    density: "",
+    goodsTotalValue: "",
+    goodsValuePerKg: "",
+    comment: "",
+    manager: "",
+    warehouse: "",
+  }
 
-const [shipments, setShipments] = useState<ShipmentListItem[]>([])
-const [isLoadingShipments, setIsLoadingShipments] = useState(false)
-const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
+  // -------------------- Shipping UI state --------------------
+
+  const [shippingForm, setShippingForm] = useState<ShippingForm>(EMPTY_SHIPPING)
+  const [savedShipping, setSavedShipping] = useState<ShippingForm | null>(null)
+
+  // -------------------- Shipment management state --------------------
+  type ShipmentListItem = {
+    shipment_id: string
+    transport_company: string | null
+    transport_invoice_number: string | null
+    transport_date: string | null
+    transport_type: string | null
+    invoice_count?: number
+  }
+
+  type ShipmentInvoice = {
+    invoice_id: string
+    supplier: string | null
+    date: string | null
+    amount: number | null
+  }
+
+  const [shipments, setShipments] = useState<ShipmentListItem[]>([])
+  const [isLoadingShipments, setIsLoadingShipments] = useState(false)
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
   const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
-  
+
   // Pricing Manager: selected invoice and its items
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
-  
+
   // MOOT Calculation state
   const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
   const [mootResults, setMootResults] = useState<{
@@ -708,655 +709,471 @@ const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null
   } | null>(null)
   const [mootPrices, setMootPrices] = useState<Map<string | number, number>>(new Map())
 
-  
 
-const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
-// ─── Helper: Find markup from pricing rules based on cost and group ───
-const getMarkupFromRules = (cost: number, group: string): { markup: number; rule: PricingRule | null } => {
-  // Map row.productGroup to pricing_group in rules
-  // "parts" → "Запчасти", "fluids" → "Масло"
-  let pricingGroup = "Запчасти" // default
-  if (group === "fluids" || group === "oil" || group === "Масло") {
-    pricingGroup = "Масло"
-  } else if (group === "parts" || group === "Запчасти") {
-    pricingGroup = "Запчасти"
-  }
-  
-  // Find matching rule by pricing_group and cost range
-  const matchedRule = scenarioRules.find((rule) => {
-    const fromPrice = parseFloat(rule.fromPrice) || 0
-    const toPrice = parseFloat(rule.toPrice) || Infinity
-    const ruleGroup = rule.pricingGroup
-    
-    // Check if group matches and cost is within range [from, to)
-    return ruleGroup === pricingGroup && cost >= fromPrice && cost < toPrice
-  })
-  
-  if (!matchedRule) {
-    return { markup: -1, rule: null } // -1 indicates no rule found
-  }
-  
-  // Convert markup_pct to decimal (e.g., 105 → 1.05)
-  const markupPct = parseFloat(matchedRule.markupPct) || 0
-  const markup = markupPct / 100
-  
-  return { markup, rule: matchedRule }
-}
+  const [isLoadingShipmentInvoices, setIsLoadingShipmentInvoices] = useState(false)
 
-// ─── MOOT Calculation Function (uses data prop - same source as main table) ───
-const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
-  // Validate data exists
-  if (!data || data.length === 0) {
-    toast.error("Нет данных для расчёта")
-    setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
-    return
-  }
-  
-  // Validate pricing exists
-  if (costPerKgValue <= 0) {
-    toast.error("Ошибка: нет ₽/kg")
-    setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
-    return
-  }
-
-  setIsCalculatingMoot(true)
-  
-  let calculated = 0
-  let skippedNoWeight = 0
-  let skippedNoPrice = 0
-  let skippedNoRule = 0
-  const newMootPrices = new Map<string | number, number>()
-  const newShipValues = new Map<string | number, number>()
-
-  data.forEach((item) => {
-    const itemId = item.id || item.sku || item.article
-    const weight = Number(item.weight ?? 0)
-    // Use 'cost' field (actual purchase price in data)
-    const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
-    const isBulky = item.isBulky || item.is_bulky || item.bulky || false
-    const group = item.productGroup || item.group || "parts"
-    
-    // Calculate delivery cost per unit (Ship value)
-    const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
-    const delivery = weight * pricePerKg
-    const ship = Math.round(delivery * 100) / 100 // Round to 2 decimals
-    
-    // Always store Ship value if weight > 0
-    if (weight > 0) {
-      newShipValues.set(itemId, ship)
+  // ─── Helper: Find markup from pricing rules based on cost and group ───
+  const getMarkupFromRules = (cost: number, group: string): { markup: number; rule: PricingRule | null } => {
+    // Map row.productGroup to pricing_group in rules
+    // "parts" → "Запчасти", "fluids" → "Масло"
+    let pricingGroup = "Запчасти" // default
+    if (group === "fluids" || group === "oil" || group === "Масло") {
+      pricingGroup = "Масло"
+    } else if (group === "parts" || group === "Запчасти") {
+      pricingGroup = "Запчасти"
     }
-    
-    // Validation: skip MOOT if no weight
-    if (weight <= 0) {
-      skippedNoWeight++
+
+    // Find matching rule by pricing_group and cost range
+    const matchedRule = scenarioRules.find((rule) => {
+      const fromPrice = parseFloat(rule.fromPrice) || 0
+      const toPrice = parseFloat(rule.toPrice) || Infinity
+      const ruleGroup = rule.pricingGroup
+
+      // Check if group matches and cost is within range [from, to)
+      return ruleGroup === pricingGroup && cost >= fromPrice && cost < toPrice
+    })
+
+    if (!matchedRule) {
+      return { markup: -1, rule: null } // -1 indicates no rule found
+    }
+
+    // Convert markup_pct to decimal (e.g., 105 → 1.05)
+    const markupPct = parseFloat(matchedRule.markupPct) || 0
+    const markup = markupPct / 100
+
+    return { markup, rule: matchedRule }
+  }
+
+  // ─── MOOT Calculation Function (uses data prop - same source as main table) ───
+  const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
+    // Validate data exists
+    if (!data || data.length === 0) {
+      toast.error("Нет данных для расчёта")
+      setMootResults({ calculated: 0, skipped: 0, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
       return
     }
-    
-    // Validation: skip MOOT if no cost (purchase price)
-    if (cost <= 0) {
-      skippedNoPrice++
+
+    // Validate pricing exists
+    if (costPerKgValue <= 0) {
+      toast.error("Ошибка: нет ₽/kg")
+      setMootResults({ calculated: 0, skipped: data.length, skippedReasons: { noWeight: 0, noPrice: 0, noRule: 0 } })
       return
     }
-    
-    // Get markup from pricing rules based on cost and group
-    const { markup, rule } = getMarkupFromRules(cost, group)
-    
-    // Debug logging for first few items
-    if (calculated < 3) {
-      console.log("[v0] MOOT calc:", {
-        cost,
-        group,
-        matchedRule: rule,
-        markupPct: rule?.markupPct,
-        markup,
-        delivery,
-        formula: `${cost} * (1 + ${markup}) + ${delivery.toFixed(2)}`
-      })
-    }
-    
-    // Skip if no matching rule found
-    if (markup < 0 || !rule) {
-      console.warn(`[v0] No pricing rule for cost=${cost}, group=${group}`)
-      skippedNoRule++
-      return
-    }
-    
-    // Final MOOT price = cost * (1 + markup) + delivery
-    // markup is from pricing_rules (e.g., 105 → 1.05)
-    const finalPrice = cost * (1 + markup) + delivery
-    
-    newMootPrices.set(itemId, Math.round(finalPrice))
-    calculated++
-  })
 
-  setMootPrices(newMootPrices)
-  setMootResults({
-    calculated,
-    skipped: skippedNoWeight + skippedNoPrice + skippedNoRule,
-    skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice, noRule: skippedNoRule }
-  })
-  
-  // Update Ship values in parent (writes to "ship" column)
-  if (onUpdateShip && newShipValues.size > 0) {
-    onUpdateShip(newShipValues)
-  }
-  
-  // Update MOOT values in parent (writes to "moot" column)
-  if (onUpdateMoot && newMootPrices.size > 0) {
-    onUpdateMoot(newMootPrices)
-  }
-  
-  // Brief delay to show loading state, then show toast
-  setTimeout(() => {
-    setIsCalculatingMoot(false)
-    if (calculated > 0) {
-      toast.success(`Готово: ${calculated} строк обработано`)
-    } else if (skippedNoWeight + skippedNoPrice > 0) {
-      toast.warning(`Пропущено: ${skippedNoWeight + skippedNoPrice} строк`)
-    }
-  }, 400)
-}
+    setIsCalculatingMoot(true)
 
-const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
-const [isAttaching, setIsAttaching] = useState(false)
-const [isCreatingShipment, setIsCreatingShipment] = useState(false)
-const [shipmentSearch, setShipmentSearch] = useState("")
+    let calculated = 0
+    let skippedNoWeight = 0
+    let skippedNoPrice = 0
+    let skippedNoRule = 0
+    const newMootPrices = new Map<string | number, number>()
+    const newShipValues = new Map<string | number, number>()
 
-// Filter shipments by search query
-const filteredShipments = useMemo(() => {
-  if (!shipmentSearch.trim()) return shipments
-  const q = shipmentSearch.toLowerCase()
-  return shipments.filter(s =>
-    s.transport_company?.toLowerCase().includes(q) ||
-    s.transport_invoice_number?.toString().toLowerCase().includes(q) ||
-    s.transport_type?.toLowerCase().includes(q)
-  )
-}, [shipments, shipmentSearch])
+    data.forEach((item) => {
+      const itemId = item.id || item.sku || item.article
+      const weight = Number(item.weight ?? 0)
+      // Use 'cost' field (actual purchase price in data)
+      const cost = Number(item.cost ?? item.price ?? item.purchase_price ?? 0)
+      const isBulky = item.isBulky || item.is_bulky || item.bulky || false
+      const group = item.productGroup || item.group || "parts"
 
-// Load shipments when shipping tab is active
-const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" = "all") => {
-  setIsLoadingShipments(true)
-  try {
-    const res = await fetch(`/api/shipment/list?filter=${filter}`)
-    if (res.ok) {
-      const data = await res.json()
-      setShipments(data)
-    }
-  } catch (e) {
-    console.error("Failed to load shipments:", e)
-  } finally {
-    setIsLoadingShipments(false)
-  }
-}, [])
+      // Calculate delivery cost per unit (Ship value)
+      const pricePerKg = isBulky ? bulkyPriceValue : costPerKgValue
+      const delivery = weight * pricePerKg
+      const ship = Math.round(delivery * 100) / 100 // Round to 2 decimals
 
-// Load shipments on tab change or filter change (for both Shipping Model and Pricing Manager)
-useEffect(() => {
-  if (activeTab === "shipping" || activeTab === "pricing-manager") {
-    loadShipments(shipmentFilter)
-  }
-}, [activeTab, shipmentFilter, loadShipments])
+      // Always store Ship value if weight > 0
+      if (weight > 0) {
+        newShipValues.set(itemId, ship)
+      }
 
-// Load shipment details when selected
-useEffect(() => {
-  if (!selectedShipmentId) {
-    setShipmentInvoices([])
-    return
-  }
-  
-  const loadShipmentData = async () => {
-    setIsLoadingShipmentInvoices(true)
-    try {
-      // Load shipment details
-      const detailsRes = await fetch(`/api/shipment/${selectedShipmentId}`)
-      if (detailsRes.ok) {
-        const details = await detailsRes.json()
-        // Fill form with shipment data
-        setShippingForm({
-          company: details.transport_company || "",
-          type: details.transport_type || "",
-          invoiceNumber: details.transport_invoice_number || "",
-          reference: "",
-          transportDate: details.transport_date || "",
-          receivedDate: details.received_date || "",
-          totalCost: String(details.total_shipping_cost || ""),
-          packages: String(details.packages_count || ""),
-          weight: String(details.total_weight || ""),
-          volume: String(details.total_volume || ""),
-          density: String(details.density || ""),
-          goodsTotalValue: String(details.goods_total_value || ""),
-          goodsValuePerKg: String(details.goods_value_per_kg || ""),
-          comment: details.comment || "",
-          manager: "",
-          warehouse: "",
+      // Validation: skip MOOT if no weight
+      if (weight <= 0) {
+        skippedNoWeight++
+        return
+      }
+
+      // Validation: skip MOOT if no cost (purchase price)
+      if (cost <= 0) {
+        skippedNoPrice++
+        return
+      }
+
+      // Get markup from pricing rules based on cost and group
+      const { markup, rule } = getMarkupFromRules(cost, group)
+
+      // Debug logging for first few items
+      if (calculated < 3) {
+        console.log("[v0] MOOT calc:", {
+          cost,
+          group,
+          matchedRule: rule,
+          markupPct: rule?.markupPct,
+          markup,
+          delivery,
+          formula: `${cost} * (1 + ${markup}) + ${delivery.toFixed(2)}`
         })
       }
 
-      // Load linked invoices
+      // Skip if no matching rule found
+      if (markup < 0 || !rule) {
+        console.warn(`[v0] No pricing rule for cost=${cost}, group=${group}`)
+        skippedNoRule++
+        return
+      }
+
+      // Final MOOT price = cost * (1 + markup) + delivery
+      // markup is from pricing_rules (e.g., 105 → 1.05)
+      const finalPrice = cost * (1 + markup) + delivery
+
+      newMootPrices.set(itemId, Math.round(finalPrice))
+      calculated++
+    })
+
+    setMootPrices(newMootPrices)
+    setMootResults({
+      calculated,
+      skipped: skippedNoWeight + skippedNoPrice + skippedNoRule,
+      skippedReasons: { noWeight: skippedNoWeight, noPrice: skippedNoPrice, noRule: skippedNoRule }
+    })
+
+    // Update Ship values in parent (writes to "ship" column)
+    if (onUpdateShip && newShipValues.size > 0) {
+      onUpdateShip(newShipValues)
+    }
+
+    // Update MOOT values in parent (writes to "moot" column)
+    if (onUpdateMoot && newMootPrices.size > 0) {
+      onUpdateMoot(newMootPrices)
+    }
+
+    // Brief delay to show loading state, then show toast
+    setTimeout(() => {
+      setIsCalculatingMoot(false)
+      if (calculated > 0) {
+        toast.success(`Готово: ${calculated} строк обработано`)
+      } else if (skippedNoWeight + skippedNoPrice > 0) {
+        toast.warning(`Пропущено: ${skippedNoWeight + skippedNoPrice} строк`)
+      }
+    }, 400)
+  }
+
+  const [shipmentFilter, setShipmentFilter] = useState<"all" | "unlinked" | "recent">("all")
+  const [isAttaching, setIsAttaching] = useState(false)
+  const [isCreatingShipment, setIsCreatingShipment] = useState(false)
+  const [shipmentSearch, setShipmentSearch] = useState("")
+
+  // Filter shipments by search query
+  const filteredShipments = useMemo(() => {
+    if (!shipmentSearch.trim()) return shipments
+    const q = shipmentSearch.toLowerCase()
+    return shipments.filter(s =>
+      s.transport_company?.toLowerCase().includes(q) ||
+      s.transport_invoice_number?.toString().toLowerCase().includes(q) ||
+      s.transport_type?.toLowerCase().includes(q)
+    )
+  }, [shipments, shipmentSearch])
+
+  // Load shipments when shipping tab is active
+  const loadShipments = useCallback(async (filter: "all" | "unlinked" | "recent" = "all") => {
+    setIsLoadingShipments(true)
+    try {
+      const res = await fetch(`/api/shipment/list?filter=${filter}`)
+      if (res.ok) {
+        const data = await res.json()
+        setShipments(data)
+      }
+    } catch (e) {
+      console.error("Failed to load shipments:", e)
+    } finally {
+      setIsLoadingShipments(false)
+    }
+  }, [])
+
+  // Load shipments on tab change or filter change (for both Shipping Model and Pricing Manager)
+  useEffect(() => {
+    if (activeTab === "shipping" || activeTab === "pricing-manager") {
+      loadShipments(shipmentFilter)
+    }
+  }, [activeTab, shipmentFilter, loadShipments])
+
+  // Load shipment details when selected
+  useEffect(() => {
+    if (!selectedShipmentId) {
+      setShipmentInvoices([])
+      return
+    }
+
+    const loadShipmentData = async () => {
+      setIsLoadingShipmentInvoices(true)
+      try {
+        // Load shipment details
+        const detailsRes = await fetch(`/api/shipment/${selectedShipmentId}`)
+        if (detailsRes.ok) {
+          const details = await detailsRes.json()
+          // Fill form with shipment data
+          setShippingForm({
+            company: details.transport_company || "",
+            type: details.transport_type || "",
+            invoiceNumber: details.transport_invoice_number || "",
+            reference: "",
+            transportDate: details.transport_date || "",
+            receivedDate: details.received_date || "",
+            totalCost: String(details.total_shipping_cost || ""),
+            packages: String(details.packages_count || ""),
+            weight: String(details.total_weight || ""),
+            volume: String(details.total_volume || ""),
+            density: String(details.density || ""),
+            goodsTotalValue: String(details.goods_total_value || ""),
+            goodsValuePerKg: String(details.goods_value_per_kg || ""),
+            comment: details.comment || "",
+            manager: "",
+            warehouse: "",
+          })
+        }
+
+        // Load linked invoices
+        const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
+
+        if (invoicesRes.ok) {
+          const rawData = await invoicesRes.json()
+          const invoices = Array.isArray(rawData) ? rawData : []
+
+          setShipmentInvoices(invoices)
+
+          // Update selected invoices in parent
+          if (onSetSelectedInvoices && invoices.length > 0) {
+            onSetSelectedInvoices(invoices.map((inv: ShipmentInvoice) => inv.invoice_id))
+          }
+        } else {
+          setShipmentInvoices([])
+        }
+      } catch (e) {
+        console.error("Failed to load shipment data:", e)
+      } finally {
+        setIsLoadingShipmentInvoices(false)
+      }
+    }
+
+    loadShipmentData()
+  }, [selectedShipmentId, onSetSelectedInvoices])
+
+  // Auto-select invoice if only one exists
+  useEffect(() => {
+    if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
+      setSelectedInvoiceId(shipmentInvoices[0].invoice_id)
+    }
+    // Clear selection when shipment changes
+    if (shipmentInvoices.length === 0) {
+      setSelectedInvoiceId(null)
+      setInvoiceItems([])
+    }
+  }, [shipmentInvoices, selectedInvoiceId])
+
+  // Load invoice items when invoice is selected
+  useEffect(() => {
+    if (!selectedInvoiceId) {
+      setInvoiceItems([])
+      setMootResults(null)
+      setMootPrices(new Map())
+      return
+    }
+
+    // Clear results when invoice changes
+    setMootResults(null)
+    setMootPrices(new Map())
+
+    const loadInvoiceItems = async () => {
+      setIsLoadingInvoiceItems(true)
+      try {
+        const res = await fetch(`/api/invoice-items?invoiceId=${selectedInvoiceId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setInvoiceItems(Array.isArray(data) ? data : [])
+        } else {
+          setInvoiceItems([])
+        }
+      } catch (e) {
+        console.error("Failed to load invoice items:", e)
+        setInvoiceItems([])
+      } finally {
+        setIsLoadingInvoiceItems(false)
+      }
+    }
+
+    loadInvoiceItems()
+  }, [selectedInvoiceId])
+
+  // Attach invoices to shipment
+  const handleAttachInvoices = useCallback(async () => {
+    if (!selectedShipmentId || !invoiceIds.length) return
+
+    setIsAttaching(true)
+    const toastId = toast.loading("Attaching invoices...")
+
+    try {
+      const res = await fetch("/api/shipment/attach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shipment_id: selectedShipmentId,
+          invoice_ids: invoiceIds,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        toast.error(err.error || "Failed to attach invoices", { id: toastId })
+        return
+      }
+
+      toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
+
+      // Reload shipment invoices
       const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
-      
       if (invoicesRes.ok) {
         const rawData = await invoicesRes.json()
         const invoices = Array.isArray(rawData) ? rawData : []
-        
         setShipmentInvoices(invoices)
-        
-        // Update selected invoices in parent
-        if (onSetSelectedInvoices && invoices.length > 0) {
-          onSetSelectedInvoices(invoices.map((inv: ShipmentInvoice) => inv.invoice_id))
-        }
-      } else {
-        setShipmentInvoices([])
-      }
-    } catch (e) {
-      console.error("Failed to load shipment data:", e)
-    } finally {
-      setIsLoadingShipmentInvoices(false)
-    }
-  }
-  
-  loadShipmentData()
-}, [selectedShipmentId, onSetSelectedInvoices])
-
-// Auto-select invoice if only one exists
-useEffect(() => {
-  if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
-    setSelectedInvoiceId(shipmentInvoices[0].invoice_id)
-  }
-  // Clear selection when shipment changes
-  if (shipmentInvoices.length === 0) {
-    setSelectedInvoiceId(null)
-    setInvoiceItems([])
-  }
-}, [shipmentInvoices, selectedInvoiceId])
-
-// Load invoice items when invoice is selected
-useEffect(() => {
-  if (!selectedInvoiceId) {
-    setInvoiceItems([])
-    setMootResults(null)
-    setMootPrices(new Map())
-    return
-  }
-  
-  // Clear results when invoice changes
-  setMootResults(null)
-  setMootPrices(new Map())
-  
-  const loadInvoiceItems = async () => {
-    setIsLoadingInvoiceItems(true)
-    try {
-      const res = await fetch(`/api/invoice-items?invoiceId=${selectedInvoiceId}`)
-      if (res.ok) {
-        const data = await res.json()
-        setInvoiceItems(Array.isArray(data) ? data : [])
-      } else {
-        setInvoiceItems([])
-      }
-    } catch (e) {
-      console.error("Failed to load invoice items:", e)
-      setInvoiceItems([])
-    } finally {
-      setIsLoadingInvoiceItems(false)
-    }
-  }
-  
-  loadInvoiceItems()
-}, [selectedInvoiceId])
-
-// Attach invoices to shipment
-const handleAttachInvoices = useCallback(async () => {
-  if (!selectedShipmentId || !invoiceIds.length) return
-  
-  setIsAttaching(true)
-  const toastId = toast.loading("Attaching invoices...")
-  
-  try {
-    const res = await fetch("/api/shipment/attach", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        shipment_id: selectedShipmentId,
-        invoice_ids: invoiceIds,
-      }),
-    })
-    
-    if (!res.ok) {
-      const err = await res.json()
-      toast.error(err.error || "Failed to attach invoices", { id: toastId })
-      return
-    }
-    
-    toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
-    
-    // Reload shipment invoices
-    const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
-    if (invoicesRes.ok) {
-      const rawData = await invoicesRes.json()
-      const invoices = Array.isArray(rawData) ? rawData : []
-      setShipmentInvoices(invoices)
-    }
-  } catch {
-    toast.error("Failed to attach invoices", { id: toastId })
-  } finally {
-    setIsAttaching(false)
-  }
-}, [selectedShipmentId, invoiceIds])
-
-// Clear form for new shipment entry
-const handleNewShipment = useCallback(() => {
-  setSelectedShipmentId(null)
-  setShippingForm(EMPTY_SHIPPING)
-  setShipmentInvoices([])
-}, [])
-
-// -------------------- Invoice vs Goods check --------------------
-
-const invoiceTotal = data.reduce(
-  (sum, row) => sum + Number(row.cost || 0) * Number(row.qty || 0),
-  0
-)
-
-const goodsTotal = Number(shippingForm.goodsTotalValue || 0)
-
-const isMismatch =
-  Math.abs(invoiceTotal - goodsTotal) > 0.01
-
-const normalCargoPrice = Number(normalPrice) || 0
-
-const model = useMemo(() => {
-  let normalWeight = 0
-  let bulkyWeight = 0
-  let missingWeight = false
-
-  const totalCost = Number(shippingForm.totalCost) || 0
-
-  data.forEach((row) => {
-    const weight = Number(row.weight ?? 0)
-    const qty = Number(row.qty ?? 0)
-
-    if (!weight) {
-      missingWeight = true
-      return
-    }
-
-    // In Normal mode, treat ALL items as normal (no bulky separation)
-    if (mode === "normal") {
-      normalWeight += weight * qty
-    } else {
-      // Hybrid mode: separate bulky and normal
-      if (row.isBulky) {
-        bulkyWeight += weight * qty
-      } else {
-        normalWeight += weight * qty
-      }
-    }
-  })
-
-  // Normal mode: all shipping goes to normal, no bulky calculations
-  if (mode === "normal") {
-    return {
-      normalWeight,
-      bulkyWeight: 0,
-      normalShipping: totalCost, // All cost is normal shipping
-      bulkyShipping: 0,
-      bulkyPrice: 0,
-      missingWeight,
-    }
-  }
-
-  // Hybrid mode: calculate bulky separately
-  const normalShipping = normalWeight * normalCargoPrice
-  const bulkyShipping = Math.max(0, totalCost - normalShipping) // Prevent negative
-
-  const bulkyPrice =
-    bulkyWeight > 0
-      ? Math.max(0, bulkyShipping / bulkyWeight) // Prevent negative
-      : 0
-
-  return {
-    normalWeight,
-    bulkyWeight,
-    normalShipping,
-    bulkyShipping,
-    bulkyPrice,
-    missingWeight,
-  }
-}, [data, shippingForm.totalCost, normalCargoPrice, mode])
-
-const hasBulky = model.bulkyWeight > 0
-
-const [isSavingShipping, setIsSavingShipping] = useState(false)
-const [isLoadingShipping, setIsLoadingShipping] = useState(false)
-
-// -------------------- Validation --------------------
-
-const requiredFields: (keyof ShippingForm)[] = [
-  "company",
-  "type",
-  "invoiceNumber",
-  "transportDate",
-  "receivedDate",
-  "totalCost",
-  "packages",
-  "weight",
-  "volume",
-  "density",
-  "goodsTotalValue",
-]
-
-const validationErrors = useMemo(() => {
-  return requiredFields
-  .filter((key) => {
-    const value = shippingForm[key]
-  
-    if (value === null || value === undefined) return true
-  
-    if (typeof value === "string") return value.trim() === ""
-  
-    return false
-  })
-    .map((key) => `${key} is required`)
-}, [shippingForm])
-
-const isFormValid = validationErrors.length === 0
-
-// Create shipment WITHOUT attaching invoices (defined after model)
-const handleCreateShipment = useCallback(async () => {
-  if (!isFormValid) return
-  
-  setIsCreatingShipment(true)
-  const toastId = toast.loading("Creating shipment...")
-  
-  try {
-    const res = await fetch("/api/shipment/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transport_company: shippingForm.company ?? null,
-        transport_type: shippingForm.type ?? null,
-        transport_invoice_number: shippingForm.invoiceNumber ?? null,
-        transport_date: shippingForm.transportDate ?? null,
-        received_date: shippingForm.receivedDate ?? null,
-        total_shipping_cost: Number(shippingForm.totalCost || 0),
-        total_weight: Number(shippingForm.weight || 0),
-        total_volume: Number(shippingForm.volume || 0),
-        density: Number(shippingForm.density || 0),
-        packages_count: Number(shippingForm.packages || 0),
-        comment: shippingForm.comment ?? null,
-        goods_total_value: Number(shippingForm.goodsTotalValue || 0),
-        goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
-        pricing_mode: mode, // "normal" or "hybrid"
-        normal_weight: Number(model.normalWeight || 0),
-        bulky_weight: mode === "normal" ? 0 : Number(model.bulkyWeight || 0),
-        normal_shipping: Number(model.normalShipping || 0),
-        bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
-        catalog_weight: Number(weightStats.totalWeight || 0),
-        bulky_price: mode === "normal" ? 0 : Number(model.bulkyPrice || 0),
-      }),
-    })
-    
-    const json = await res.json()
-    
-    if (!res.ok || !json?.success) {
-      toast.error(json?.error || "Failed to create shipment", { id: toastId })
-      return
-    }
-    
-    toast.success("Shipment created (no invoices attached)", { id: toastId })
-    
-    // Reload shipment list and switch to ALL tab
-    setShipmentFilter("all")
-    await loadShipments("all")
-    
-    // Select the newly created shipment
-    if (json.shipment?.shipment_id) {
-      setSelectedShipmentId(json.shipment.shipment_id)
-    }
-    
-  } catch {
-    toast.error("Failed to create shipment", { id: toastId })
-  } finally {
-    setIsCreatingShipment(false)
-  }
-}, [isFormValid, shippingForm, model, weightStats, loadShipments])
-
-const isShippingModified = useMemo(() => {
-  if (!savedShipping) {
-    return Object.values(shippingForm).some(
-      (v) => String(v ?? "").trim() !== ""
-    )
-  }
-
-  return JSON.stringify(shippingForm) !== JSON.stringify(savedShipping)
-}, [shippingForm, savedShipping])
-// -------------------- Load shipping --------------------
-useEffect(() => {
-  let cancelled = false
-
-  async function loadPricingRules() {
-    try {
-      const res = await fetch("/api/pricing-rules")
-
-      if (!res.ok) {
-        throw new Error("Failed to load pricing rules")
-      }
-
-      const data = await res.json()
-
-      const formatted: PricingRule[] = data.map((r: any) => ({
-        id: r.id,
-        fromPrice: String(r.from_price),
-        toPrice: String(r.to_price),
-        markupPct: String(r.markup_pct),
-        // Map Supabase pricing_group to UI format
-        pricingGroup: r.pricing_group === "parts" 
-          ? "Запчасти" 
-          : r.pricing_group === "fluids" 
-            ? "Масло" 
-            : r.pricing_group,
-      }))
-
-      console.log("[v0] Loaded pricing rules:", formatted)
-
-      if (!cancelled) {
-        setDefaultRules(formatted)
-        setScenarioRules(formatted)
-      }
-    } catch (err) {
-      console.error("Pricing rules load error:", err)
-    }
-  }
-
-  loadPricingRules()
-
-  return () => {
-    cancelled = true
-  }
-}, [])
-
-useEffect(() => {
-  if (!invoiceIds.length) return
-
-  let cancelled = false
-
-  const load = async () => {
-    setIsLoadingShipping(true)
-
-    try {
-      const res = await fetch(`/api/invoice/${invoiceIds[0]}/shipping`)
-
-      if (!res.ok) return
-
-      const json = await res.json()
-
-      const s = json?.shipping ?? null
-
-      if (cancelled) return
-
-      if (s) {
-        setShippingForm(s)
-        setSavedShipping(s)
-      } else {
-        setShippingForm(EMPTY_SHIPPING)
-        setSavedShipping(null)
       }
     } catch {
-      // ignore
+      toast.error("Failed to attach invoices", { id: toastId })
     } finally {
-      if (!cancelled) setIsLoadingShipping(false)
+      setIsAttaching(false)
     }
-  }
+  }, [selectedShipmentId, invoiceIds])
 
-  load()
+  // Clear form for new shipment entry
+  const handleNewShipment = useCallback(() => {
+    setSelectedShipmentId(null)
+    setShippingForm(EMPTY_SHIPPING)
+    setShipmentInvoices([])
+  }, [])
 
-  return () => {
-    cancelled = true
-  }
-}, [invoiceIds])
+  // -------------------- Invoice vs Goods check --------------------
 
-// -------------------- Reset --------------------
-const isModified = useMemo(
-  () => !rulesEqual(scenarioRules, defaultRules),
-  [scenarioRules, defaultRules]
-)
+  const invoiceTotal = data.reduce(
+    (sum, row) => sum + Number(row.cost || 0) * Number(row.qty || 0),
+    0
+  )
 
-const handleResetShipping = useCallback(() => {
-  setShippingForm(savedShipping ?? EMPTY_SHIPPING)
-}, [savedShipping])
+  const goodsTotal = Number(shippingForm.goodsTotalValue || 0)
 
-// -------------------- Save --------------------
+  const isMismatch =
+    Math.abs(invoiceTotal - goodsTotal) > 0.01
 
-const handleSaveShipping = useCallback(async () => {
-  // Normalize invoiceIds to always be an array of strings
-  const normalizedInvoiceIds = Array.isArray(invoiceIds)
-    ? invoiceIds.map(i => typeof i === "string" ? i : (i as any).invoice_id)
-    : []
+  const normalCargoPrice = Number(normalPrice) || 0
 
-  // Block submit if no invoices selected
-  if (normalizedInvoiceIds.length === 0) {
-    toast.error("No invoices selected")
-    return
-  }
+  const model = useMemo(() => {
+    let normalWeight = 0
+    let bulkyWeight = 0
+    let missingWeight = false
 
-  if (!isFormValid) return
+    const totalCost = Number(shippingForm.totalCost) || 0
 
-  const toastId = toast.loading("Saving shipment...")
+    data.forEach((row) => {
+      const weight = Number(row.weight ?? 0)
+      const qty = Number(row.qty ?? 0)
 
-  const prevSaved = savedShipping
-  setSavedShipping(shippingForm)
+      if (!weight) {
+        missingWeight = true
+        return
+      }
 
-  setIsSavingShipping(true)
+      // In Normal mode, treat ALL items as normal (no bulky separation)
+      if (mode === "normal") {
+        normalWeight += weight * qty
+      } else {
+        // Hybrid mode: separate bulky and normal
+        if (row.isBulky) {
+          bulkyWeight += weight * qty
+        } else {
+          normalWeight += weight * qty
+        }
+      }
+    })
 
-  try {
-    const res = await fetch("/api/shipment/save", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        invoiceIds: normalizedInvoiceIds,
-        shippingData: {
+    // Normal mode: all shipping goes to normal, no bulky calculations
+    if (mode === "normal") {
+      return {
+        normalWeight,
+        bulkyWeight: 0,
+        normalShipping: totalCost, // All cost is normal shipping
+        bulkyShipping: 0,
+        bulkyPrice: 0,
+        missingWeight,
+      }
+    }
+
+    // Hybrid mode: calculate bulky separately
+    const normalShipping = normalWeight * normalCargoPrice
+    const bulkyShipping = Math.max(0, totalCost - normalShipping) // Prevent negative
+
+    const bulkyPrice =
+      bulkyWeight > 0
+        ? Math.max(0, bulkyShipping / bulkyWeight) // Prevent negative
+        : 0
+
+    return {
+      normalWeight,
+      bulkyWeight,
+      normalShipping,
+      bulkyShipping,
+      bulkyPrice,
+      missingWeight,
+    }
+  }, [data, shippingForm.totalCost, normalCargoPrice, mode])
+
+  const hasBulky = model.bulkyWeight > 0
+
+  const [isSavingShipping, setIsSavingShipping] = useState(false)
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false)
+
+  // -------------------- Validation --------------------
+
+  const requiredFields: (keyof ShippingForm)[] = [
+    "company",
+    "type",
+    "invoiceNumber",
+    "transportDate",
+    "receivedDate",
+    "totalCost",
+    "packages",
+    "weight",
+    "volume",
+    "density",
+    "goodsTotalValue",
+  ]
+
+  const validationErrors = useMemo(() => {
+    return requiredFields
+      .filter((key) => {
+        const value = shippingForm[key]
+
+        if (value === null || value === undefined) return true
+
+        if (typeof value === "string") return value.trim() === ""
+
+        return false
+      })
+      .map((key) => `${key} is required`)
+  }, [shippingForm])
+
+  const isFormValid = validationErrors.length === 0
+
+  // Create shipment WITHOUT attaching invoices (defined after model)
+  const handleCreateShipment = useCallback(async () => {
+    if (!isFormValid) return
+
+    setIsCreatingShipment(true)
+    const toastId = toast.loading("Creating shipment...")
+
+    try {
+      const res = await fetch("/api/shipment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           transport_company: shippingForm.company ?? null,
           transport_type: shippingForm.type ?? null,
           transport_invoice_number: shippingForm.invoiceNumber ?? null,
@@ -1376,174 +1193,358 @@ const handleSaveShipping = useCallback(async () => {
           normal_shipping: Number(model.normalShipping || 0),
           bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
           catalog_weight: Number(weightStats.totalWeight || 0),
-          bulky_price: Number(model.bulkyPrice || 0),
+          bulky_price: mode === "normal" ? 0 : Number(model.bulkyPrice || 0),
+        }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || "Failed to create shipment", { id: toastId })
+        return
+      }
+
+      toast.success("Shipment created (no invoices attached)", { id: toastId })
+
+      // Reload shipment list and switch to ALL tab
+      setShipmentFilter("all")
+      await loadShipments("all")
+
+      // Select the newly created shipment
+      if (json.shipment?.shipment_id) {
+        setSelectedShipmentId(json.shipment.shipment_id)
+      }
+
+    } catch {
+      toast.error("Failed to create shipment", { id: toastId })
+    } finally {
+      setIsCreatingShipment(false)
+    }
+  }, [isFormValid, shippingForm, model, weightStats, loadShipments])
+
+  const isShippingModified = useMemo(() => {
+    if (!savedShipping) {
+      return Object.values(shippingForm).some(
+        (v) => String(v ?? "").trim() !== ""
+      )
+    }
+
+    return JSON.stringify(shippingForm) !== JSON.stringify(savedShipping)
+  }, [shippingForm, savedShipping])
+  // -------------------- Load shipping --------------------
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPricingRules() {
+      try {
+        const res = await fetch("/api/pricing-rules")
+
+        if (!res.ok) {
+          throw new Error("Failed to load pricing rules")
+        }
+
+        const data = await res.json()
+
+        const formatted: PricingRule[] = data.map((r: any) => ({
+          id: r.id,
+          fromPrice: String(r.from_price),
+          toPrice: String(r.to_price),
+          markupPct: String(r.markup_pct),
+          // Map Supabase pricing_group to UI format
+          pricingGroup: r.pricing_group === "parts"
+            ? "Запчасти"
+            : r.pricing_group === "fluids"
+              ? "Масло"
+              : r.pricing_group,
+        }))
+
+        console.log("[v0] Loaded pricing rules:", formatted)
+
+        if (!cancelled) {
+          setDefaultRules(formatted)
+          setScenarioRules(formatted)
+        }
+      } catch (err) {
+        console.error("Pricing rules load error:", err)
+      }
+    }
+
+    loadPricingRules()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!invoiceIds.length) return
+
+    let cancelled = false
+
+    const load = async () => {
+      setIsLoadingShipping(true)
+
+      try {
+        const res = await fetch(`/api/invoice/${invoiceIds[0]}/shipping`)
+
+        if (!res.ok) return
+
+        const json = await res.json()
+
+        const s = json?.shipping ?? null
+
+        if (cancelled) return
+
+        if (s) {
+          setShippingForm(s)
+          setSavedShipping(s)
+        } else {
+          setShippingForm(EMPTY_SHIPPING)
+          setSavedShipping(null)
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setIsLoadingShipping(false)
+      }
+    }
+
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [invoiceIds])
+
+  // -------------------- Reset --------------------
+  const isModified = useMemo(
+    () => !rulesEqual(scenarioRules, defaultRules),
+    [scenarioRules, defaultRules]
+  )
+
+  const handleResetShipping = useCallback(() => {
+    setShippingForm(savedShipping ?? EMPTY_SHIPPING)
+  }, [savedShipping])
+
+  // -------------------- Save --------------------
+
+  const handleSaveShipping = useCallback(async () => {
+    // Normalize invoiceIds to always be an array of strings
+    const normalizedInvoiceIds = Array.isArray(invoiceIds)
+      ? invoiceIds.map(i => typeof i === "string" ? i : (i as any).invoice_id)
+      : []
+
+    // Block submit if no invoices selected
+    if (normalizedInvoiceIds.length === 0) {
+      toast.error("No invoices selected")
+      return
+    }
+
+    if (!isFormValid) return
+
+    const toastId = toast.loading("Saving shipment...")
+
+    const prevSaved = savedShipping
+    setSavedShipping(shippingForm)
+
+    setIsSavingShipping(true)
+
+    try {
+      const res = await fetch("/api/shipment/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      }),
-    })
+        body: JSON.stringify({
+          invoiceIds: normalizedInvoiceIds,
+          shippingData: {
+            transport_company: shippingForm.company ?? null,
+            transport_type: shippingForm.type ?? null,
+            transport_invoice_number: shippingForm.invoiceNumber ?? null,
+            transport_date: shippingForm.transportDate ?? null,
+            received_date: shippingForm.receivedDate ?? null,
+            total_shipping_cost: Number(shippingForm.totalCost || 0),
+            total_weight: Number(shippingForm.weight || 0),
+            total_volume: Number(shippingForm.volume || 0),
+            density: Number(shippingForm.density || 0),
+            packages_count: Number(shippingForm.packages || 0),
+            comment: shippingForm.comment ?? null,
+            goods_total_value: Number(shippingForm.goodsTotalValue || 0),
+            goods_value_per_kg: shippingForm.goodsValuePerKg === "" ? null : Number(shippingForm.goodsValuePerKg),
+            pricing_mode: mode, // "normal" or "hybrid"
+            normal_weight: Number(model.normalWeight || 0),
+            bulky_weight: mode === "normal" ? 0 : Number(model.bulkyWeight || 0),
+            normal_shipping: Number(model.normalShipping || 0),
+            bulky_shipping: mode === "normal" ? 0 : Number(model.bulkyShipping || 0),
+            catalog_weight: Number(weightStats.totalWeight || 0),
+            bulky_price: Number(model.bulkyPrice || 0),
+          },
+        }),
+      })
 
-    const json = await res.json().catch(() => ({}))
+      const json = await res.json().catch(() => ({}))
 
-    if (!res.ok || !json?.success) {
-      toast.error(json?.error || "Failed to save shipment", { id: toastId })
-      throw new Error(json?.error || "Failed to save shipment")
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || "Failed to save shipment", { id: toastId })
+        throw new Error(json?.error || "Failed to save shipment")
+      }
+
+      toast.success(`Shipment saved for ${normalizedInvoiceIds.length} invoice(s)`, { id: toastId })
+
+    } catch {
+      toast.error("Error saving shipment", { id: toastId })
+
+      // откат если ошибка
+      setSavedShipping(prevSaved)
+    } finally {
+      setIsSavingShipping(false)
     }
-
-    toast.success(`Shipment saved for ${normalizedInvoiceIds.length} invoice(s)`, { id: toastId })
-
-  } catch {
-    toast.error("Error saving shipment", { id: toastId })
-
-    // откат если ошибка
-    setSavedShipping(prevSaved)
-  } finally {
-    setIsSavingShipping(false)
-  }
-}, [
-  invoiceIds,
-  isFormValid,
-  savedShipping,
-  shippingForm,
-  isShippingModified,
-  model,
-  weightStats,
-])
-// ─── Pricing rules actions & calculations ──────────────────────────────────
-
-// добавить н��вое правило
-const addRule = useCallback(() => {
-  setScenarioRules((prev) => [
-    ...prev,
-    {
-      id: String(Date.now()),
-      fromPrice: "",
-      toPrice: "",
-      markupPct: "",
-      pricingGroup: "Standard",
-    },
+  }, [
+    invoiceIds,
+    isFormValid,
+    savedShipping,
+    shippingForm,
+    isShippingModified,
+    model,
+    weightStats,
   ])
-}, [])
+  // ─── Pricing rules actions & calculations ──────────────────────────────────
 
-// удалить правило
-const removeRule = useCallback((id: string) => {
-  setScenarioRules((prev) => prev.filter((r) => r.id !== id))
-}, [])
-
-// обновить поле правила
-const updateRule = useCallback(
-  (id: string, field: keyof PricingRule, value: string) => {
-    setScenarioRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-    )
-  },
-  []
-)
-
-// расчет общего веса по каталогу (weight * qty)
-const catalogWeight = useMemo(() => {
-  if (!data || !data.length) return 0
-
-  return data.reduce((sum, row) => {
-    const weight = Number(row.weight ?? 0)
-    const qty = Number(row.qty ?? row.quantity ?? 0)
-
-    return sum + weight * qty
-  }, 0)
-}, [data])
-
-// проверка отсутствующего веса
-const missingCatalogWeight = useMemo(() => {
-  return data.some((row) => !Number(row.weight))
-}, [data])
-
-const goodsValuePerKg = useMemo(() => {
-  const total = Number(shippingForm.goodsTotalValue || 0)
-  const weight = Number(shippingForm.weight || 0)
-  
-  if (!weight) return ""
-  
-  return (total / weight).toFixed(2)
-}, [shippingForm.goodsTotalValue, shippingForm.weight])
-
-// Cost per kg (raw) = total_cost / weight
-const costPerKgRaw = useMemo(() => {
-  const totalCost = Number(shippingForm.totalCost || 0)
-  const weight = Number(shippingForm.weight || 0)
-  
-  if (!weight) return "0.00"
-  
-  return (totalCost / weight).toFixed(2)
-}, [shippingForm.totalCost, shippingForm.weight])
-
-// Sync normalPrice with costPerKgRaw when mode is "normal"
-useEffect(() => {
-  if (mode === "normal") {
-    setNormalPrice(costPerKgRaw)
-  }
-}, [mode, costPerKgRaw])
-
-// перерасчёт строк по правилам
-const previewData = useMemo(
-  () => applyPricingRules(data, scenarioRules),
-  [data, scenarioRules]
-)
-
-// агрегированная сводка
-const summary = useMemo(() => {
-  const origTotal = data.reduce((s, r) => s + r.now * r.qty, 0)
-  const origCostTotal = data.reduce((s, r) => s + r.cost * r.qty, 0)
-  const newTotal = previewData.reduce((s, r) => s + r.now * r.qty, 0)
-
-  const origMargin =
-    origCostTotal > 0 ? ((origTotal - origCostTotal) / origTotal) * 100 : 0
-
-  const newMargin =
-    origCostTotal > 0 ? ((newTotal - origCostTotal) / newTotal) * 100 : 0
-
-  const diff = newTotal - origTotal
-
-  return { origTotal, newTotal, origMargin, newMargin, diff }
-}, [data, previewData])
-
-// применить сценарий
-const handleApply = useCallback(() => {
-  onApplyScenario(previewData)
-}, [onApplyScenario, previewData])
-
-// сбросить pricing rules
-const handleResetPricing = useCallback(() => {
-  setScenarioRules([...defaultRules])
-  onResetScenario()
-}, [defaultRules, onResetScenario])
-
-// сохранить правила как глобальные
-const handleSaveGlobal = useCallback(async () => {
-  try {
-    const res = await fetch("/api/pricing-rules", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+  // добавить н��вое правило
+  const addRule = useCallback(() => {
+    setScenarioRules((prev) => [
+      ...prev,
+      {
+        id: String(Date.now()),
+        fromPrice: "",
+        toPrice: "",
+        markupPct: "",
+        pricingGroup: "Standard",
       },
-      body: JSON.stringify({
-        rules: scenarioRules,
-      }),
-    })
+    ])
+  }, [])
 
-    if (!res.ok) {
-      throw new Error("Failed to save pricing rules")
+  // удалить правило
+  const removeRule = useCallback((id: string) => {
+    setScenarioRules((prev) => prev.filter((r) => r.id !== id))
+  }, [])
+
+  // обновить поле правила
+  const updateRule = useCallback(
+    (id: string, field: keyof PricingRule, value: string) => {
+      setScenarioRules((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+      )
+    },
+    []
+  )
+
+  // расчет общего веса по каталогу (weight * qty)
+  const catalogWeight = useMemo(() => {
+    if (!data || !data.length) return 0
+
+    return data.reduce((sum, row) => {
+      const weight = Number(row.weight ?? 0)
+      const qty = Number(row.qty ?? row.quantity ?? 0)
+
+      return sum + weight * qty
+    }, 0)
+  }, [data])
+
+  // проверка отсутствующего веса
+  const missingCatalogWeight = useMemo(() => {
+    return data.some((row) => !Number(row.weight))
+  }, [data])
+
+  const goodsValuePerKg = useMemo(() => {
+    const total = Number(shippingForm.goodsTotalValue || 0)
+    const weight = Number(shippingForm.weight || 0)
+
+    if (!weight) return ""
+
+    return (total / weight).toFixed(2)
+  }, [shippingForm.goodsTotalValue, shippingForm.weight])
+
+  // Cost per kg (raw) = total_cost / weight
+  const costPerKgRaw = useMemo(() => {
+    const totalCost = Number(shippingForm.totalCost || 0)
+    const weight = Number(shippingForm.weight || 0)
+
+    if (!weight) return "0.00"
+
+    return (totalCost / weight).toFixed(2)
+  }, [shippingForm.totalCost, shippingForm.weight])
+
+  // Sync normalPrice with costPerKgRaw when mode is "normal"
+  useEffect(() => {
+    if (mode === "normal") {
+      setNormalPrice(costPerKgRaw)
     }
+  }, [mode, costPerKgRaw])
 
-    setDefaultRules([...scenarioRules])
-    setShowSaveDialog(false)
-    setShowSaveSuccess(true)
+  // перерасчёт строк по правилам
+  const previewData = useMemo(
+    () => applyPricingRules(data, scenarioRules),
+    [data, scenarioRules]
+  )
 
-    setTimeout(() => setShowSaveSuccess(false), 3000)
+  // агрегированная сводка
+  const summary = useMemo(() => {
+    const origTotal = data.reduce((s, r) => s + r.now * r.qty, 0)
+    const origCostTotal = data.reduce((s, r) => s + r.cost * r.qty, 0)
+    const newTotal = previewData.reduce((s, r) => s + r.now * r.qty, 0)
 
+    const origMargin =
+      origCostTotal > 0 ? ((origTotal - origCostTotal) / origTotal) * 100 : 0
+
+    const newMargin =
+      origCostTotal > 0 ? ((newTotal - origCostTotal) / newTotal) * 100 : 0
+
+    const diff = newTotal - origTotal
+
+    return { origTotal, newTotal, origMargin, newMargin, diff }
+  }, [data, previewData])
+
+  // применить сценарий
+  const handleApply = useCallback(() => {
     onApplyScenario(previewData)
+  }, [onApplyScenario, previewData])
 
-  } catch (err) {
-    console.error("Save pricing rules error:", err)
-  }
-}, [scenarioRules, previewData, onApplyScenario])
+  // сбросить pricing rules
+  const handleResetPricing = useCallback(() => {
+    setScenarioRules([...defaultRules])
+    onResetScenario()
+  }, [defaultRules, onResetScenario])
+
+  // сохранить правила как глобальные
+  const handleSaveGlobal = useCallback(async () => {
+    try {
+      const res = await fetch("/api/pricing-rules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rules: scenarioRules,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to save pricing rules")
+      }
+
+      setDefaultRules([...scenarioRules])
+      setShowSaveDialog(false)
+      setShowSaveSuccess(true)
+
+      setTimeout(() => setShowSaveSuccess(false), 3000)
+
+      onApplyScenario(previewData)
+
+    } catch (err) {
+      console.error("Save pricing rules error:", err)
+    }
+  }, [scenarioRules, previewData, onApplyScenario])
 
   // Row highlight: check if rule changed for a given cost value
   const isRowModified = useCallback(
@@ -1586,13 +1587,19 @@ const handleSaveGlobal = useCallback(async () => {
             >
               Pricing Manager
             </TabsTrigger>
-            <TabsTrigger
-              value="summary"
-              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            >
-              Summary Impact
-            </TabsTrigger>
-          </TabsList>
+  <TabsTrigger
+  value="summary"
+  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+  >
+  Summary Impact
+  </TabsTrigger>
+  <TabsTrigger
+  value="manual"
+  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+  >
+  Manual
+  </TabsTrigger>
+  </TabsList>
 
           {/* Scenario indicator */}
           {(isModified || isScenarioActive) && (
@@ -1630,9 +1637,8 @@ const handleSaveGlobal = useCallback(async () => {
                 return (
                   <div
                     key={rule.id}
-                    className={`grid grid-cols-[90px_90px_60px_140px_36px] gap-1.5 rounded-sm ${
-                      changed ? "bg-amber-500/5 ring-1 ring-amber-500/20" : ""
-                    }`}
+                    className={`grid grid-cols-[90px_90px_60px_140px_36px] gap-1.5 rounded-sm ${changed ? "bg-amber-500/5 ring-1 ring-amber-500/20" : ""
+                      }`}
                   >
                     <Input
                       value={rule.fromPrice}
@@ -1660,10 +1666,10 @@ const handleSaveGlobal = useCallback(async () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                      <SelectItem value="Запчасти">Запчасти</SelectItem>
-<SelectItem value="Масло">Масло</SelectItem>
-<SelectItem value="Economy">Economy</SelectItem>
-<SelectItem value="Bulk">Bulk</SelectItem>
+                        <SelectItem value="Запчасти">Запчасти</SelectItem>
+                        <SelectItem value="Масло">Масло</SelectItem>
+                        <SelectItem value="Economy">Economy</SelectItem>
+                        <SelectItem value="Bulk">Bulk</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1746,448 +1752,475 @@ const handleSaveGlobal = useCallback(async () => {
             )}
           </div>
         </TabsContent>
-{/* ─── Shipping Model Tab ��── */}
-<TabsContent value="shipping" className="mt-0 flex-1 overflow-auto p-6">
+        {/* ─── Shipping Model Tab ��── */}
+        <TabsContent value="shipping" className="mt-0 flex-1 overflow-hidden p-4">
 
-  <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-6">
+          <div className="grid grid-cols-5 gap-3 h-full">
 
-  {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
-  <div className="bg-card border border-border rounded-xl flex flex-col max-h-[calc(100vh-200px)]">
-    {/* Header */}
-    <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
-      <div className="flex items-center gap-2">
-        <Truck className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Shipments
-        </span>
-        {isLoadingShipments && (
-          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-        )}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleNewShipment}
-        className="h-6 px-2 text-[10px]"
-      >
-        <Plus className="h-3 w-3 mr-1" />
-        New
-      </Button>
-    </div>
-
-    {/* Filter tabs */}
-    <div className="shrink-0 flex border-b border-border">
-      {(["all", "unlinked", "recent"] as const).map((filter) => (
-        <button
-          key={filter}
-          onClick={() => setShipmentFilter(filter)}
-          className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-            shipmentFilter === filter
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground/60 hover:text-muted-foreground"
-          }`}
-        >
-          {filter}
-        </button>
-      ))}
-    </div>
-
-    {/* Search input */}
-    <div className="shrink-0 px-3 py-2 border-b border-border">
-      <input
-        type="text"
-        placeholder="Search company, number, type..."
-        value={shipmentSearch}
-        onChange={(e) => setShipmentSearch(e.target.value)}
-        className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-    </div>
-
-    {/* Shipment list with resizable columns */}
-    <div ref={shipmentListRef} className="flex flex-col">
-      {/* Header row */}
-      <div
-        className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
-        style={{ gridTemplateColumns: shipmentGridTemplate }}
-      >
-        <div className="truncate">Company</div>
-        <div className="text-right">#</div>
-        <div className="text-right">Date</div>
-        <div className="text-center">Type</div>
-      </div>
-
-      {/* Scrollable rows */}
-      <div className="max-h-[200px] overflow-y-auto overscroll-contain">
-        {filteredShipments.length === 0 && !isLoadingShipments ? (
-          <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-            {shipmentSearch ? "No matching shipments" : "No shipments found"}
-          </p>
-        ) : (
-          filteredShipments.map((ship) => {
-            const isSelected = selectedShipmentId === ship.shipment_id
-            const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
-            const hasInvoices = invoiceCount > 0
-            return (
-              <div
-                key={ship.shipment_id}
-                onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                style={{ gridTemplateColumns: shipmentGridTemplate }}
-                className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${
-                  isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-              >
-                {/* COL 1: Company with status dot */}
-                <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-                  {getTransportIcon(ship.transport_type, isSelected)}
-                  <span className="text-[11px] font-medium text-foreground truncate">
-                    {ship.transport_company || "Unknown"}
+            {/* ──���────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
+              {/* Header */}
+              <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Shipments
                   </span>
+                  {isLoadingShipments && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
                 </div>
-                {/* COL 2: Invoice # */}
-                <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
-                  {ship.transport_invoice_number || "—"}
-                </span>
-                {/* COL 3: Date */}
-                <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
-                  {ship.transport_date || "—"}
-                </span>
-                {/* COL 4: Type */}
-                <span className={`text-[10px] font-semibold uppercase text-center ${
-                  ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                  ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                  ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                  "text-amber-400"
-                }`}>
-                  {ship.transport_type || "—"}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNewShipment}
+                  className="h-6 px-2 text-[10px]"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  New
+                </Button>
+              </div>
+
+              {/* Filter tabs */}
+              <div className="shrink-0 flex border-b border-border">
+                {(["all", "unlinked", "recent"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setShipmentFilter(filter)}
+                    className={`flex-1 py-0.5 text-[9px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
+                      ? "text-primary border-b border-primary"
+                      : "text-muted-foreground/60 hover:text-muted-foreground"
+                      }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search input */}
+              <div className="shrink-0 px-3 py-2 border-b border-border">
+                <input
+                  type="text"
+                  placeholder="Search company, number, type..."
+                  value={shipmentSearch}
+                  onChange={(e) => setShipmentSearch(e.target.value)}
+                  className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Shipment list with scrolling */}
+              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  {filteredShipments.length === 0 && !isLoadingShipments ? (
+                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                      {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                    </p>
+                  ) : (
+                    filteredShipments.map((ship) => {
+                      const isSelected = selectedShipmentId === ship.shipment_id
+                      const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                      const hasInvoices = invoiceCount > 0
+                      return (
+                        <div
+                          key={ship.shipment_id}
+                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                          className={`grid grid-cols-4 gap-2 items-center px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                        >
+                          {/* COL 1: Company with status dot */}
+                          <div className="flex items-center gap-1 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                            <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                            <span className="text-[10px] font-medium text-foreground truncate">
+                              {ship.transport_company || "Unknown"}
+                            </span>
+                          </div>
+                          {/* COL 2: Invoice # */}
+                          <span className="text-[10px] font-mono text-muted-foreground/80 truncate">
+                            {ship.transport_invoice_number || "—"}
+                          </span>
+                          {/* COL 3: Date */}
+                          <span className="text-[10px] tabular-nums text-muted-foreground/70 truncate">
+                            {ship.transport_date || "—"}
+                          </span>
+                          {/* COL 4: Type */}
+                          <span className={`text-[9px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                "text-amber-400"
+                            }`}>
+                            {ship.transport_type || "—"}
+                          </span>
+                        </div>
+                      )
+                    })
+                  )}
+              </div>
+
+            </div>
+
+            {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
+
+              {/* Row 1: Company, Type */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Company" compact>
+                  <Select
+                    value={shippingForm.company}
+                    onValueChange={(v) =>
+                      setShippingForm((p) => ({ ...p, company: v }))
+                    }
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="aviamir">Aviamir</SelectItem>
+                      <SelectItem value="greenline">Green Line</SelectItem>
+                      <SelectItem value="transriver">Trans River</SelectItem>
+                      <SelectItem value="northcargo">North Cargo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                <Field label="Type" compact>
+                  <Select
+                    value={shippingForm.type}
+                    onValueChange={(v) =>
+                      setShippingForm((p) => ({ ...p, type: v }))
+                    }
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="air">Air</SelectItem>
+                      <SelectItem value="sea">Sea</SelectItem>
+                      <SelectItem value="river">River</SelectItem>
+                      <SelectItem value="winter">Winter Road</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              {/* Row 2: Invoice №, Manager */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Invoice №" compact>
+                  <Input
+                    value={shippingForm.invoiceNumber}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        invoiceNumber: e.target.value,
+                      }))
+                    }
+                    className="h-7 text-xs font-mono"
+                  />
+                </Field>
+
+                <Field label="Manager" compact>
+                  <Select
+                    value={shippingForm.manager}
+                    onValueChange={(v) =>
+                      setShippingForm((p) => ({ ...p, manager: v }))
+                    }
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Select manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ivan">Ivan Petrov</SelectItem>
+                      <SelectItem value="maria">Maria Sokolova</SelectItem>
+                      <SelectItem value="alexey">Alexey Ivanov</SelectItem>
+                      <SelectItem value="elena">Elena Kozlova</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              {/* Row 3: Transport Date, Received Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Transport Date" compact>
+                  <Input
+                    type="date"
+                    value={shippingForm.transportDate}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        transportDate: e.target.value,
+                      }))
+                    }
+                    className="h-7 text-xs"
+                  />
+                </Field>
+
+                <Field label="Received Date" compact>
+                  <Input
+                    type="date"
+                    value={shippingForm.receivedDate}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        receivedDate: e.target.value,
+                      }))
+                    }
+                    className="h-7 text-xs"
+                  />
+                </Field>
+              </div>
+
+              {/* Row 4: Reference (full width) */}
+              <Field label="Reference" compact>
+                <Input
+                  value={shippingForm.reference}
+                  onChange={(e) =>
+                    setShippingForm((p) => ({
+                      ...p,
+                      reference: e.target.value,
+                    }))
+                  }
+                  className="h-7 text-xs"
+                />
+              </Field>
+
+              {/* Row 5: Comment (full width, resizable) */}
+              <Field label="Comment" compact>
+                <textarea
+                  value={shippingForm.comment}
+                  onChange={(e) =>
+                    setShippingForm((p) => ({
+                      ...p,
+                      comment: e.target.value,
+                    }))
+                  }
+                  className="w-full min-h-[60px] rounded-md border border-border bg-background px-2 py-1.5 text-xs resize-y"
+                />
+              </Field>
+
+            </div>
+
+            {/* ───────────── COLUMN 2 — CARGO ───────────── */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
+
+              <div className="grid grid-cols-2 gap-6">
+
+                <Field label="Total Cost">
+                  <Input
+                    value={shippingForm.totalCost}
+                    onChange={(e) => {
+                      setShippingForm((p) => ({
+                        ...p,
+                        totalCost: e.target.value,
+                      }))
+
+                    }}
+
+                    className="h-8 text-xs font-mono"
+                  />
+                </Field>
+
+                <Field label="Packages">
+                  <Input
+                    type="number"
+                    value={shippingForm.packages}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        packages: e.target.value,
+                      }))
+                    }
+                    className="h-8 text-xs font-mono"
+                  />
+                </Field>
+
+                <Field label="Weight (kg)">
+                  <Input
+                    value={shippingForm.weight}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        weight: e.target.value,
+                      }))
+                    }
+                    className="h-8 text-xs font-mono"
+                  />
+                </Field>
+
+                <Field label="Volume (m³)">
+                  <Input
+                    value={shippingForm.volume}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        volume: e.target.value,
+                      }))
+                    }
+                    className="h-8 text-xs font-mono"
+                  />
+                </Field>
+
+                <Field label="Density">
+                  <Input
+                    value={shippingForm.density}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        density: e.target.value,
+                      }))
+                    }
+                    className="h-8 text-xs font-mono"
+                  />
+                </Field>
+
+                <Field label="Goods Total Value">
+                  <Input
+                    value={shippingForm.goodsTotalValue}
+                    onChange={(e) =>
+                      setShippingForm((p) => ({
+                        ...p,
+                        goodsTotalValue: e.target.value,
+                      }))
+                    }
+                    className={`h-8 text-xs font-mono ${isMismatch ? "border-red-500 text-red-600" : "border-border"
+                      }`}
+                  />
+                </Field>
+
+                <Field label="Cost per kg (raw)">
+                  <Input
+                    value={`${costPerKgRaw} ₽ / kg`}
+                    readOnly
+                    className="h-8 text-xs font-mono bg-muted/50"
+                  />
+                </Field>
+
+                <Field label="Goods Value per kg">
+                  <Input
+                    value={goodsValuePerKg}
+                    readOnly
+                    className="h-8 text-xs font-mono"
+                  />
+                </Field>
+
+              </div>
+
+            </div>
+
+            {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
+
+              {/* Create Shipment Button - does NOT attach invoices */}
+              <Button
+                className="w-full h-8 text-xs"
+                disabled={isCreatingShipment || !isFormValid}
+                onClick={handleCreateShipment}
+              >
+                {isCreatingShipment ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-3 w-3" />
+                    Create Shipment
+                  </>
+                )}
+              </Button>
+
+              {/* Attach Invoices Button - separate action */}
+              {selectedShipmentId && invoiceIds.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full h-8 text-xs"
+                  disabled={isAttaching}
+                  onClick={handleAttachInvoices}
+                >
+                  {isAttaching ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Attaching...
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="mr-2 h-3 w-3" />
+                      Attach {invoiceIds.length} Invoice(s)
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {!isFormValid && (
+                <div className="text-xs text-red-500 space-y-1">
+                  {validationErrors.map((e) => (
+                    <div key={e}>• {e}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* Status indicator */}
+              {selectedShipmentId && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={`h-2 w-2 rounded-full ${shipmentInvoices.length > 0 ? "bg-green-500" : "bg-amber-500"}`} />
+                  {shipmentInvoices.length > 0
+                    ? `${shipmentInvoices.length} invoice(s) linked`
+                    : "No invoices linked"}
+                </div>
+              )}
+
+            </div>
+
+            {/* ───────────── COLUMN 4 — NOTE ───────────── */}
+            <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
+              {/* Header */}
+              <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-3">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Note
                 </span>
               </div>
-            )
-          })
-        )}
-      </div>
-    </div>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-3 text-[11px] text-muted-foreground space-y-3">
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">Инструкция для менеджеров:</p>
+                  <ol className="list-decimal list-inside space-y-1 pl-1">
+                    <li>Выберите поставку из списка слева или создайте новую</li>
+                    <li>Заполните данные о перевозке (компания, тип, дата)</li>
+                    <li>Укажите стоимость и параметры груза</li>
+                    <li>Привяжите инвойсы к поставке</li>
+                    <li>Нажмите "Create Shipment" для сохранени����</li>
+                  </ol>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">Типы доставки:</p>
+                  <ul className="list-disc list-inside space-y-0.5 pl-1">
+                    <li><span className="text-sky-400 font-medium">AIR</span> — авиа</li>
+                    <li><span className="text-blue-400 font-medium">SEA</span> — морская</li>
+                    <li><span className="text-cyan-400 font-medium">RIVER</span> — речная</li>
+                    <li><span className="text-amber-400 font-medium">WINTER</span> — зимняя</li>
+                  </ul>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">Статусы:</p>
+                  <ul className="space-y-0.5 pl-1">
+                    <li className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      Инвойсы привязаны
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      Инвойсы не привязаны
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
 
-    </div>
+          </div>
 
-    {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
-    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        </TabsContent>
 
-      {/* Row 1: Company, Type */}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Company" compact>
-          <Select
-            value={shippingForm.company}
-            onValueChange={(v) =>
-              setShippingForm((p) => ({ ...p, company: v }))
-            }
-          >
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue placeholder="Select company" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="aviamir">Aviamir</SelectItem>
-              <SelectItem value="greenline">Green Line</SelectItem>
-              <SelectItem value="transriver">Trans River</SelectItem>
-              <SelectItem value="northcargo">North Cargo</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field label="Type" compact>
-          <Select
-            value={shippingForm.type}
-            onValueChange={(v) =>
-              setShippingForm((p) => ({ ...p, type: v }))
-            }
-          >
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="air">Air</SelectItem>
-              <SelectItem value="sea">Sea</SelectItem>
-              <SelectItem value="river">River</SelectItem>
-              <SelectItem value="winter">Winter Road</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
-
-      {/* Row 2: Invoice №, Manager */}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Invoice №" compact>
-          <Input
-            value={shippingForm.invoiceNumber}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                invoiceNumber: e.target.value,
-              }))
-            }
-            className="h-7 text-xs font-mono"
-          />
-        </Field>
-
-        <Field label="Manager" compact>
-          <Select
-            value={shippingForm.manager}
-            onValueChange={(v) =>
-              setShippingForm((p) => ({ ...p, manager: v }))
-            }
-          >
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue placeholder="Select manager" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ivan">Ivan Petrov</SelectItem>
-              <SelectItem value="maria">Maria Sokolova</SelectItem>
-              <SelectItem value="alexey">Alexey Ivanov</SelectItem>
-              <SelectItem value="elena">Elena Kozlova</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
-
-      {/* Row 3: Transport Date, Received Date */}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Transport Date" compact>
-          <Input
-            type="date"
-            value={shippingForm.transportDate}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                transportDate: e.target.value,
-              }))
-            }
-            className="h-7 text-xs"
-          />
-        </Field>
-
-        <Field label="Received Date" compact>
-          <Input
-            type="date"
-            value={shippingForm.receivedDate}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                receivedDate: e.target.value,
-              }))
-            }
-            className="h-7 text-xs"
-          />
-        </Field>
-      </div>
-
-      {/* Row 4: Reference (full width) */}
-      <Field label="Reference" compact>
-        <Input
-          value={shippingForm.reference}
-          onChange={(e) =>
-            setShippingForm((p) => ({
-              ...p,
-              reference: e.target.value,
-            }))
-          }
-          className="h-7 text-xs"
-        />
-      </Field>
-
-      {/* Row 5: Comment (full width, resizable) */}
-      <Field label="Comment" compact>
-        <textarea
-          value={shippingForm.comment}
-          onChange={(e) =>
-            setShippingForm((p) => ({
-              ...p,
-              comment: e.target.value,
-            }))
-          }
-          className="w-full min-h-[60px] rounded-md border border-border bg-background px-2 py-1.5 text-xs resize-y"
-        />
-      </Field>
-
-    </div>
-
-    {/* ───────────── COLUMN 2 — CARGO ───────────── */}
-    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-
-      <div className="grid grid-cols-2 gap-6">
-
-        <Field label="Total Cost">
-          <Input
-            value={shippingForm.totalCost}
-            onChange={(e) => {
-              setShippingForm((p) => ({
-                ...p,
-                totalCost: e.target.value,
-              }))
-              
-            }}
-            
-            className="h-8 text-xs font-mono"
-          />
-        </Field>
-
-        <Field label="Packages">
-          <Input
-            type="number"
-            value={shippingForm.packages}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                packages: e.target.value,
-              }))
-            }
-            className="h-8 text-xs font-mono"
-          />
-        </Field>
-
-        <Field label="Weight (kg)">
-          <Input
-            value={shippingForm.weight}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                weight: e.target.value,
-              }))
-            }
-            className="h-8 text-xs font-mono"
-          />
-        </Field>
-
-        <Field label="Volume (m³)">
-          <Input
-            value={shippingForm.volume}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                volume: e.target.value,
-              }))
-            }
-            className="h-8 text-xs font-mono"
-          />
-        </Field>
-
-        <Field label="Density">
-          <Input
-            value={shippingForm.density}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                density: e.target.value,
-              }))
-            }
-            className="h-8 text-xs font-mono"
-          />
-        </Field>
-
-        <Field label="Goods Total Value">
-          <Input
-            value={shippingForm.goodsTotalValue}
-            onChange={(e) =>
-              setShippingForm((p) => ({
-                ...p,
-                goodsTotalValue: e.target.value,
-              }))
-            }
-            className={`h-8 text-xs font-mono ${
-              isMismatch ? "border-red-500 text-red-600" : "border-border"
-            }`}
-          />
-        </Field>
-
-        <Field label="Cost per kg (raw)">
-          <Input
-            value={`${costPerKgRaw} ₽ / kg`}
-            readOnly
-            className="h-8 text-xs font-mono bg-muted/50"
-          />
-        </Field>
-
-        <Field label="Goods Value per kg">
-          <Input
-            value={goodsValuePerKg}
-            readOnly
-            className="h-8 text-xs font-mono"
-          />
-        </Field>
-
-      </div>
-
-    </div>
-
-    {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
-    <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-
-      {/* Create Shipment Button - does NOT attach invoices */}
-      <Button
-        className="w-full h-8 text-xs"
-        disabled={isCreatingShipment || !isFormValid}
-        onClick={handleCreateShipment}
-      >
-        {isCreatingShipment ? (
-          <>
-            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-            Creating...
-          </>
-        ) : (
-          <>
-            <Plus className="mr-2 h-3 w-3" />
-            Create Shipment
-          </>
-        )}
-      </Button>
-
-      {/* Attach Invoices Button - separate action */}
-      {selectedShipmentId && invoiceIds.length > 0 && (
-        <Button
-          variant="outline"
-          className="w-full h-8 text-xs"
-          disabled={isAttaching}
-          onClick={handleAttachInvoices}
-        >
-          {isAttaching ? (
-            <>
-              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              Attaching...
-            </>
-          ) : (
-            <>
-              <Link2 className="mr-2 h-3 w-3" />
-              Attach {invoiceIds.length} Invoice(s)
-            </>
-          )}
-        </Button>
-      )}
-
-      {!isFormValid && (
-        <div className="text-xs text-red-500 space-y-1">
-          {validationErrors.map((e) => (
-            <div key={e}>• {e}</div>
-          ))}
-        </div>
-      )}
-
-      {/* Status indicator */}
-      {selectedShipmentId && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className={`h-2 w-2 rounded-full ${shipmentInvoices.length > 0 ? "bg-green-500" : "bg-amber-500"}`} />
-          {shipmentInvoices.length > 0 
-            ? `${shipmentInvoices.length} invoice(s) linked`
-            : "No invoices linked"}
-        </div>
-      )}
-
-    </div>
-
-  </div>
-
-</TabsContent>
-
-{/* ─── Pricing Manager Tab (12-Column Grid Layout) ─── */}
-        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-auto p-0">
+        {/* ─── Pricing Manager Tab (12-Column Grid Layout) ─── */}
+        <TabsContent value="pricing-manager" className="mt-0 flex-1 overflow-hidden p-0">
           <div className="relative flex h-full">
             {/* Left Edge Trigger - expands on hover */}
             <div className="group shrink-0 w-[8px] hover:w-[140px] transition-all duration-200 ease-out bg-transparent hover:bg-card border-r border-transparent hover:border-border hover:shadow-md">
@@ -2218,515 +2251,516 @@ const handleSaveGlobal = useCallback(async () => {
             {/* Main Grid Area */}
             <div className="flex-1 p-4 overflow-auto">
               <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handlePanelDragEnd}
-          >
-            <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
-              {/* 12-Column Grid - NO wrapping, explicit positioning */}
-              <div 
-                className="grid gap-3"
-                style={{ 
-                  gridTemplateColumns: "repeat(12, 1fr)",
-                  gridAutoFlow: "column",
-                }}
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handlePanelDragEnd}
               >
-                {panels.map((panel) => {
-                  // ─��─────────── SHIPMENTS PANEL ─────────────
-                  if (panel.type === "shipments") {
-                    return (
-                      <GridPanel
-                        key={panel.id}
-                        id={panel.id}
-                        title="Shipments"
-                        colStart={panelPositions.get(panel.id) || 1}
-                        colSpan={panel.colSpan}
-                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
-                        collapsed={panel.collapsed}
-                        icon={<Truck className="h-3.5 w-3.5 text-muted-foreground" />}
-                        headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
-                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
-                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
-                      >
-                        {/* Filter tabs */}
-                <div className="shrink-0 flex border-b border-border">
-                  {(["all", "unlinked", "recent"] as const).map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setShipmentFilter(filter)}
-                      className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                        shipmentFilter === filter
-                          ? "text-primary border-b-2 border-primary"
-                          : "text-muted-foreground/60 hover:text-muted-foreground"
-                      }`}
-                    >
-                      {filter}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Search input */}
-                <div className="shrink-0 px-3 py-2 border-b border-border">
-                  <input
-                    type="text"
-                    placeholder="Search company, number, type..."
-                    value={shipmentSearch}
-                    onChange={(e) => setShipmentSearch(e.target.value)}
-                    className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-
-                {/* Shipment list with resizable columns */}
-                <div className="flex flex-col">
-                  {/* Header row */}
+                <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
+                  {/* 12-Column Grid - NO wrapping, explicit positioning */}
                   <div
-                    className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
-                    style={{ gridTemplateColumns: shipmentGridTemplate }}
+                    className="grid gap-3 h-[calc(100vh-140px)]"
+                    style={{
+                      gridTemplateColumns: "repeat(12, 1fr)",
+                      gridAutoFlow: "column",
+                    }}
                   >
-                    <div className="truncate">Company</div>
-                    <div className="text-right">#</div>
-                    <div className="text-right">Date</div>
-                    <div className="text-center">Type</div>
-                  </div>
-
-                  {/* Scrollable rows */}
-                  <div className="max-h-[200px] overflow-y-auto overscroll-contain">
-                    {filteredShipments.length === 0 && !isLoadingShipments ? (
-                      <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                        {shipmentSearch ? "No matching shipments" : "No shipments found"}
-                      </p>
-                    ) : (
-                      filteredShipments.map((ship) => {
-                        const isSelected = selectedShipmentId === ship.shipment_id
-                        const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
-                        const hasInvoices = invoiceCount > 0
+                    {panels.map((panel) => {
+                      // ─��─────────── SHIPMENTS PANEL ─────────────
+                      if (panel.type === "shipments") {
                         return (
-                          <div
-                            key={ship.shipment_id}
-                            onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                            style={{ gridTemplateColumns: shipmentGridTemplate }}
-                            className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${
-                              isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                            } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                          <GridPanel
+                            key={panel.id}
+                            id={panel.id}
+                            title="Shipments"
+                            colStart={panelPositions.get(panel.id) || 1}
+                            colSpan={panel.colSpan}
+                            maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                            collapsed={panel.collapsed}
+                            icon={<Truck className="h-3.5 w-3.5 text-muted-foreground" />}
+                            headerExtra={isLoadingShipments ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
+                            onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                            onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            {/* COL 1: Company with status dot */}
-                            <div className="flex items-center gap-1.5 min-w-0 overflow-hidden" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-                              {getTransportIcon(ship.transport_type, isSelected)}
-                              <span className="text-[11px] font-medium text-foreground truncate">
-                                {ship.transport_company || "Unknown"}
-                              </span>
+                            {/* Filter tabs - minimal height */}
+                            <div className="shrink-0 flex border-b border-border">
+                              {(["all", "unlinked", "recent"] as const).map((filter) => (
+                                <button
+                                  key={filter}
+                                  onClick={() => setShipmentFilter(filter)}
+                                  className={`flex-1 py-0.5 text-[9px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
+                                    ? "text-primary border-b border-primary"
+                                    : "text-muted-foreground/60 hover:text-muted-foreground"
+                                    }`}
+                                >
+                                  {filter}
+                                </button>
+                              ))}
                             </div>
-                            {/* COL 2: Invoice # */}
-                            <span className="text-[11px] font-mono text-muted-foreground/80 truncate text-right">
-                              {ship.transport_invoice_number || "—"}
-                            </span>
-                            {/* COL 3: Date */}
-                            <span className="text-[11px] tabular-nums text-muted-foreground/70 text-right whitespace-nowrap">
-                              {ship.transport_date || "—"}
-                            </span>
-                            {/* COL 4: Type */}
-                            <span className={`text-[10px] font-semibold uppercase text-center ${
-                              ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                              ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                              "text-amber-400"
-                            }`}>
-                              {ship.transport_type || "—"}
-                            </span>
-                          </div>
+
+                            {/* Search input */}
+                            <div className="shrink-0 px-3 py-2 border-b border-border">
+                              <input
+                                type="text"
+                                placeholder="Search company, number, type..."
+                                value={shipmentSearch}
+                                onChange={(e) => setShipmentSearch(e.target.value)}
+                                className="w-full h-7 px-2 text-[11px] bg-muted/50 border border-border rounded-md placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+
+                            {/* Shipment list with own scrolling */}
+                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                                {filteredShipments.length === 0 && !isLoadingShipments ? (
+                                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                    {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                                  </p>
+                                ) : (
+                                  filteredShipments.map((ship) => {
+                                    const isSelected = selectedShipmentId === ship.shipment_id
+                                    const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                                    const hasInvoices = invoiceCount > 0
+                                    return (
+                                      <div
+                                        key={ship.shipment_id}
+                                        onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                                        className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                                      >
+                                        {/* Row 1: Company + Number (flex-1 so it takes available space) */}
+                                        <div className="flex items-center gap-3 flex-1 min-w-[120px]">
+                                          <div className="flex items-center gap-1.5 min-w-0 flex-1" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                                            <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                                            <span className="text-[11px] font-medium text-foreground truncate">
+                                              {ship.transport_company || "Unknown"}
+                                            </span>
+                                          </div>
+                                          <span className="text-[11px] font-mono text-muted-foreground/80 w-[45px] text-left">
+                                            {ship.transport_invoice_number || "—"}
+                                          </span>
+                                        </div>
+                                        {/* Row 2 (wraps when narrow): Date + Type */}
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-[11px] tabular-nums text-muted-foreground/70 w-[80px] text-left">
+                                            {ship.transport_date || "—"}
+                                          </span>
+                                          <span className={`text-[10px] font-semibold uppercase w-[50px] text-left ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                                "text-amber-400"
+                                            }`}>
+                                            {ship.transport_type || "—"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )
+                                  })
+                                )}
+                            </div>
+
+                          </GridPanel>
                         )
-                      })
-                    )}
-</div>
-                </div>
+                      }
 
-                      </GridPanel>
-                    )
-                  }
+                      // ───────────── METRICS PANEL ─────────────
+                      if (panel.type === "metrics") {
+                        return (
+                          <GridPanel
+                            key={panel.id}
+                            id={panel.id}
+                            title="Metrics"
+                            colStart={panelPositions.get(panel.id) || 1}
+                            colSpan={panel.colSpan}
+                            maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                            collapsed={panel.collapsed}
+                            onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                            onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                          >
+                            <div className="flex-1 min-h-0 overflow-y-auto">
+                            {!selectedShipmentId ? (
+                              <div className="flex-1 flex items-center justify-center p-4">
+                                <p className="text-sm text-muted-foreground/60 italic text-center">
+                                  Select a shipment to view metrics
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="p-2">
+                                {/* Fixed Mode Selector */}
+                                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+                                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
+                                  <select
+                                    value={mode}
+                                    onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                                    className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
+                                  >
+                                    <option value="normal">Normal</option>
+                                    <option value="hybrid">Hybrid</option>
+                                  </select>
+                                  {mode === "hybrid" && (
+                                    <div className="flex items-center gap-1 ml-2">
+                                      <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
+                                      <Input
+                                        value={normalPrice}
+                                        onChange={(e) => setNormalPrice(e.target.value)}
+                                        className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
 
-                  // ───────────── METRICS PANEL ─────────────
-                  if (panel.type === "metrics") {
-                    return (
-                      <GridPanel
-                        key={panel.id}
-                        id={panel.id}
-                        title="Metrics"
-                        colStart={panelPositions.get(panel.id) || 1}
-                        colSpan={panel.colSpan}
-                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
-                        collapsed={panel.collapsed}
-                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
-                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
-                      >
-                        {!selectedShipmentId ? (
-                          <div className="flex-1 flex items-center justify-center p-4">
-                            <p className="text-sm text-muted-foreground/60 italic text-center">
-                              Select a shipment to view metrics
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="p-2">
-                            {/* Fixed Mode Selector */}
-                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
-                              <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
-                              <select
-                                value={mode}
-                                onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                                className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
+                                {/* Draggable Metric Widgets Grid */}
+                                <DndContext
+                                  sensors={sensors}
+                                  collisionDetection={closestCenter}
+                                  onDragEnd={handleMetricDragEnd}
+                                >
+                                  <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
+                                    <div
+                                      className="grid gap-2"
+                                      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+                                    >
+                                      {metricOrder.map((metricId) => {
+                                        const metricData: Record<string, MetricWidget> = {
+                                          totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
+                                          costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
+                                          weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
+                                          catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
+                                          bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                                          packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
+                                          volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
+                                          density: { id: "density", label: "Density", value: shippingForm.density || "0" },
+                                          bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(2)} kg` },
+                                          normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
+                                          bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                                          costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
+                                          goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
+                                          manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
+                                          test1: {
+                                            id: "test1",
+                                            label: "Normal wt",
+                                            value: mode === "hybrid"
+                                              ? `${Math.max(0, (Number(shippingForm.weight) || 0) - model.bulkyWeight).toFixed(2)} kg`
+                                              : "—"
+                                          },
+                                          test2: { id: "test2", label: "Test 2", value: "456" },
+                                          test3: { id: "test3", label: "Test 3", value: "789" },
+                                          test4: { id: "test4", label: "Test 4", value: "000" },
+                                        }
+                                        const metric = metricData[metricId]
+                                        if (!metric) return null
+                                        return <SortableMetricBlock key={metric.id} {...metric} />
+                                      })}
+                                    </div>
+                                  </SortableContext>
+                                </DndContext>
+                              </div>
+                            )}
+                            </div>
+                          </GridPanel>
+                        )
+                      }
+
+                      // ───────────── ACTIONS PANEL ─────────────
+                      if (panel.type === "actions") {
+                        return (
+                          <GridPanel
+                            key={panel.id}
+                            id={panel.id}
+                            title="Actions"
+                            colStart={panelPositions.get(panel.id) || 1}
+                            colSpan={panel.colSpan}
+                            maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                            collapsed={panel.collapsed}
+                            headerExtra={<span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
+                            onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                            onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                          >
+                            <div className="flex-1 min-h-0 overflow-y-auto">
+                            <div className="flex flex-col gap-1.5 p-2.5">
+                              {/* Active rows indicator - uses data prop (same as main table) */}
+                              <div className="text-[9px] text-muted-foreground/70 mb-1">
+                                {data.length > 0 ? (
+                                  <span className="text-green-500">{data.length} строк в таблице</span>
+                                ) : (
+                                  <span className="text-muted-foreground/50">Нет данных</span>
+                                )}
+                              </div>
+
+                              {/* Enrich Button - same styling as Control Panel */}
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  // Same logic as Control Panel Enrich button
+                                  if (invoiceIds.length > 0) {
+                                    onEnrichSelected?.(invoiceIds)
+                                  } else if (selectedInvoice) {
+                                    onEnrich?.()
+                                  } else {
+                                    toast.error("Выберите инвойс")
+                                  }
+                                }}
+                                disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
+                                className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
                               >
-                                <option value="normal">Normal</option>
-                                <option value="hybrid">Hybrid</option>
-                              </select>
-                              {mode === "hybrid" && (
-                                <div className="flex items-center gap-1 ml-2">
-                                  <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
-                                  <Input
-                                    value={normalPrice}
-                                    onChange={(e) => setNormalPrice(e.target.value)}
-                                    className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
-                                  />
+                                {isEnriching ? (
+                                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                                ) : (
+                                  <Sparkles className="h-3 w-3 shrink-0" />
+                                )}
+                                {isEnriching ? "Enriching..." : "Enrich"}
+                              </Button>
+
+                              <div className="border-t border-border/40 my-1" />
+
+                              {/* Предварительная цена Button */}
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className={`h-7 text-[10px] w-full justify-center gap-1 transition-all ${isCalculatingMoot ? "opacity-70 cursor-progress" : ""
+                                  }`}
+                                onClick={() => {
+                                  // Get pricing from current mode/metrics
+                                  const costPerKg = mode === "hybrid" && normalPrice
+                                    ? parseFloat(normalPrice)
+                                    : parseFloat(costPerKgRaw) || 0
+                                  const bulkyPriceKg = model.bulkyPrice || costPerKg
+
+                                  // Pass pricing to calculation function
+                                  calculateMoot(costPerKg, bulkyPriceKg)
+                                }}
+                                disabled={isCalculatingMoot}
+                              >
+                                {isCalculatingMoot ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    Расчёт...
+                                  </>
+                                ) : (
+                                  "Предварительная цена"
+                                )}
+                              </Button>
+
+                              {/* Clear MOOT Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] w-full mt-1"
+                                onClick={onClearMoot}
+                                disabled={!onClearMoot}
+                              >
+                                Очистить MOOT
+                              </Button>
+
+                              {/* MOOT Results Feedback */}
+                              {mootResults && !isCalculatingMoot && (
+                                <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                                  {mootResults.calculated > 0 ? (
+                                    <div className="text-green-500">
+                                      Рассчитано: {mootResults.calculated} поз.
+                                    </div>
+                                  ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 && mootResults.skippedReasons.noRule === 0 ? (
+                                    <div className="text-red-500">
+                                      Ошибка: нет ₽/kg
+                                    </div>
+                                  ) : null}
+                                  {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0 || mootResults.skippedReasons.noRule > 0) && (
+                                    <div className="text-amber-500">
+                                      Пропущено: {mootResults.skipped}
+                                      {mootResults.skippedReasons.noWeight > 0 && (
+                                        <span className="block text-[8px]">
+                                          ��� нет веса: {mootResults.skippedReasons.noWeight}
+                                        </span>
+                                      )}
+                                      {mootResults.skippedReasons.noPrice > 0 && (
+                                        <span className="block text-[8px]">
+                                          — нет закупочной цены: {mootResults.skippedReasons.noPrice}
+                                        </span>
+                                      )}
+                                      {mootResults.skippedReasons.noRule > 0 && (
+                                        <span className="block text-[8px]">
+                                          — нет правила: {mootResults.skippedReasons.noRule}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
+                            </div>
+                          </GridPanel>
+                        )
+                      }
 
-                            {/* Draggable Metric Widgets Grid */}
-                            <DndContext
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={handleMetricDragEnd}
-                            >
-                              <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
-                                <div 
-                                  className="grid gap-2"
-                                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
-                                >
-                                  {metricOrder.map((metricId) => {
-                                    const metricData: Record<string, MetricWidget> = {
-                                      totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
-                                      costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
-                                      weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
-                                      catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
-                                      bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
-                                      packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
-                                      volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
-                                      density: { id: "density", label: "Density", value: shippingForm.density || "0" },
-                                      bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(1)} kg` },
-                                      normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
-                                      bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
-                                      costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
-                                      goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
-                                      manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
-                                      test1: { id: "test1", label: "Test 1", value: "123" },
-                                      test2: { id: "test2", label: "Test 2", value: "456" },
-                                      test3: { id: "test3", label: "Test 3", value: "789" },
-                                      test4: { id: "test4", label: "Test 4", value: "000" },
-                                    }
-                                    const metric = metricData[metricId]
-                                    if (!metric) return null
-                                    return <SortableMetricBlock key={metric.id} {...metric} />
+                      // ───────────── INVOICES PANEL ─────────────
+                      if (panel.type === "invoices") {
+                        return (
+                          <GridPanel
+                            key={panel.id}
+                            id={panel.id}
+                            title="Invoices"
+                            colStart={panelPositions.get(panel.id) || 1}
+                            colSpan={panel.colSpan}
+                            maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                            collapsed={panel.collapsed}
+                            headerExtra={
+                              <>
+                                {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
+                                  {shipmentInvoices.length} linked
+                                </span>
+                              </>
+                            }
+                            onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                            onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                          >
+                            <div className="flex-1 min-h-0 overflow-y-auto">
+                              {!selectedShipmentId ? (
+                                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                  Select a shipment first
+                                </p>
+                              ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                  No invoices linked to this shipment
+                                </p>
+                              ) : (
+                                <div className="divide-y divide-border/40">
+                                  {shipmentInvoices.map((inv) => {
+                                    const isSelected = selectedInvoiceId === inv.invoice_id
+                                    return (
+                                      <div
+                                        key={inv.invoice_id}
+                                        onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                                        className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                          }`}
+                                      >
+                                        <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                                        <div className="min-w-0 flex-1">
+                                          <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                            {inv.invoice_id}
+                                          </div>
+                                        </div>
+                                        {isSelected && isLoadingInvoiceItems && (
+                                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                        )}
+                                      </div>
+                                    )
                                   })}
                                 </div>
-                              </SortableContext>
-                            </DndContext>
-                          </div>
-                        )}
-                      </GridPanel>
-                    )
-                  }
-
-                  // ────────��──── ACTIONS PANEL ─────────────
-                  if (panel.type === "actions") {
-                    return (
-                      <GridPanel
-                        key={panel.id}
-                        id={panel.id}
-                        title="Actions"
-                        colStart={panelPositions.get(panel.id) || 1}
-                        colSpan={panel.colSpan}
-                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
-                        collapsed={panel.collapsed}
-                        headerExtra={<span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
-                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
-                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
-                      >
-                        <div className="flex-1 flex flex-col gap-1.5 p-2.5">
-                          {/* Active rows indicator - uses data prop (same as main table) */}
-                          <div className="text-[9px] text-muted-foreground/70 mb-1">
-                            {data.length > 0 ? (
-                              <span className="text-green-500">{data.length} строк в таблице</span>
-                            ) : (
-                              <span className="text-muted-foreground/50">Нет данных</span>
-                            )}
-                          </div>
-                          
-{/* Enrich Button - same styling as Control Panel */}
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              // Same logic as Control Panel Enrich button
-                              if (invoiceIds.length > 0) {
-                                onEnrichSelected?.(invoiceIds)
-                              } else if (selectedInvoice) {
-                                onEnrich?.()
-                              } else {
-                                toast.error("Выберите инвойс")
-                              }
-                            }}
-                            disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
-                            className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
-                          >
-                            {isEnriching ? (
-                              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-3 w-3 shrink-0" />
-                            )}
-                            {isEnriching ? "Enriching..." : "Enrich"}
-                          </Button>
-                          
-                          <div className="border-t border-border/40 my-1" />
-                          
-                          {/* Предварительная цена Button */}
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className={`h-7 text-[10px] w-full justify-start gap-1 transition-all ${
-                              isCalculatingMoot ? "opacity-70 cursor-progress" : ""
-                            }`}
-                            onClick={() => {
-                              // Get pricing from current mode/metrics
-                              const costPerKg = mode === "hybrid" && normalPrice 
-                                ? parseFloat(normalPrice) 
-                                : parseFloat(costPerKgRaw) || 0
-                              const bulkyPriceKg = model.bulkyPrice || costPerKg
-                              
-                              // Pass pricing to calculation function
-                              calculateMoot(costPerKg, bulkyPriceKg)
-                            }}
-                            disabled={isCalculatingMoot}
-                          >
-                            {isCalculatingMoot ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                Расчёт...
-                              </>
-                            ) : (
-                              "Предварительная цена"
-                            )}
-                          </Button>
-                          
-                          {/* MOOT Results Feedback */}
-                          {mootResults && !isCalculatingMoot && (
-                            <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                              {mootResults.calculated > 0 ? (
-                                <div className="text-green-500">
-                                  Рассчитано: {mootResults.calculated} поз.
-                                </div>
-                              ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 && mootResults.skippedReasons.noRule === 0 ? (
-                                <div className="text-red-500">
-                                  Ошибка: нет ₽/kg
-                                </div>
-                              ) : null}
-                              {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0 || mootResults.skippedReasons.noRule > 0) && (
-                                <div className="text-amber-500">
-                                  Пропущено: {mootResults.skipped}
-                                  {mootResults.skippedReasons.noWeight > 0 && (
-                                    <span className="block text-[8px]">
-                                      — нет веса: {mootResults.skippedReasons.noWeight}
-                                    </span>
-                                  )}
-                                  {mootResults.skippedReasons.noPrice > 0 && (
-                                    <span className="block text-[8px]">
-                                      — нет закупочной цены: {mootResults.skippedReasons.noPrice}
-                                    </span>
-                                  )}
-                                  {mootResults.skippedReasons.noRule > 0 && (
-                                    <span className="block text-[8px]">
-                                      — нет правила: {mootResults.skippedReasons.noRule}
-                                    </span>
-                                  )}
-                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      </GridPanel>
-                    )
-                  }
+                          </GridPanel>
+                        )
+                      }
 
-                  // ───────────── INVOICES PANEL ─────────────
-                  if (panel.type === "invoices") {
-                    return (
-                      <GridPanel
-                        key={panel.id}
-                        id={panel.id}
-                        title="Invoices"
-                        colStart={panelPositions.get(panel.id) || 1}
-                        colSpan={panel.colSpan}
-                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
-                        collapsed={panel.collapsed}
-                        headerExtra={
-                          <>
-                            {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                            <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-                              {shipmentInvoices.length} linked
-                            </span>
-                          </>
-                        }
-                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
-                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
-                      >
-                        <div className="flex-1 overflow-y-auto">
-                          {!selectedShipmentId ? (
-                            <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                              Select a shipment first
-                            </p>
-                          ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-                            <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                              No invoices linked to this shipment
-                            </p>
-                          ) : (
-                            <div className="divide-y divide-border/40">
-                              {shipmentInvoices.map((inv) => {
-                                const isSelected = selectedInvoiceId === inv.invoice_id
-                                return (
-                                  <div
-                                    key={inv.invoice_id}
-                                    onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
-                                    className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
-                                      isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                                    }`}
-                                  >
-                                    <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
-                                    <div className="min-w-0 flex-1">
-                                      <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
-                                        {inv.invoice_id}
-                                      </div>
-                                    </div>
-                                    {isSelected && isLoadingInvoiceItems && (
-                                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                                    )}
-                                  </div>
-                                )
-                              })}
+                      // ───────────── EMPTY PANEL ─────────────
+                      if (panel.type === "empty") {
+                        return (
+                          <GridPanel
+                            key={panel.id}
+                            id={panel.id}
+                            title="Empty"
+                            colStart={panelPositions.get(panel.id) || 1}
+                            colSpan={panel.colSpan}
+                            maxColSpan={panelMaxColSpans.get(panel.id) || 12}
+                            collapsed={panel.collapsed}
+                            onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
+                            onToggleCollapse={() => togglePanelCollapse(panel.id)}
+                            onRemove={() => removePanel(panel.id)}
+                            canRemove={true}
+                          >
+                            <div className="flex-1 flex items-center justify-center p-4">
+                              <p className="text-[11px] text-muted-foreground/40 italic text-center">
+                                Empty panel for spacing
+                              </p>
                             </div>
-                          )}
-                        </div>
-                      </GridPanel>
-                    )
-                  }
+                          </GridPanel>
+                        )
+                      }
 
-                  // ───────────── EMPTY PANEL ─────────────
-                  if (panel.type === "empty") {
-                    return (
-                      <GridPanel
-                        key={panel.id}
-                        id={panel.id}
-                        title="Empty"
-                        colStart={panelPositions.get(panel.id) || 1}
-                        colSpan={panel.colSpan}
-                        maxColSpan={panelMaxColSpans.get(panel.id) || 12}
-                        collapsed={panel.collapsed}
-                        onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
-                        onToggleCollapse={() => togglePanelCollapse(panel.id)}
-                        onRemove={() => removePanel(panel.id)}
-                        canRemove={true}
-                      >
-                        <div className="flex-1 flex items-center justify-center p-4">
-                          <p className="text-[11px] text-muted-foreground/40 italic text-center">
-                            Empty panel for spacing
-                          </p>
-                        </div>
-                      </GridPanel>
-                    )
-                  }
-
-                  return null
-                })}
-              </div>
-            </SortableContext>
+                      return null
+                    })}
+                  </div>
+                </SortableContext>
               </DndContext>
 
               {/* ─── Invoice Items Table ─── */}
-          {selectedInvoiceId && (
-            <div className="mt-4 bg-card border border-border rounded-xl">
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Invoice Items
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground/70">
-                    {selectedInvoiceId}
-                  </span>
-                </div>
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                  {invoiceItems.length} item(s)
-                </span>
-              </div>
-              
-              {isLoadingInvoiceItems ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : invoiceItems.length === 0 ? (
-                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                  No items found for this invoice
-                </p>
-              ) : (
-                <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">SKU</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Name</th>
-                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
-                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
-                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
-                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
-                        <th className="px-3 py-2 text-right font-medium text-primary">MOOT</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {invoiceItems.map((item, idx) => {
-                        const itemId = item.id || item.sku || item.article
-                        const mootPrice = mootPrices.get(itemId)
-                        const hasNoWeight = !Number(item.weight ?? 0)
-                        const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
-                        const isSkipped = hasNoWeight || hasNoPrice
-                        
-                        return (
-                          <tr 
-                            key={item.id || idx} 
-                            className={`hover:bg-muted/30 transition-colors ${
-                              isSkipped && mootResults ? "bg-amber-500/5" : ""
-                            }`}
-                          >
-                            <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
-                            <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
-                            <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
-                            <td className={`px-3 py-2 text-right font-mono ${hasNoWeight && mootResults ? "text-amber-500" : "text-muted-foreground"}`}>
-                              {item.weight ? `${item.weight} kg` : "—"}
-                            </td>
-                            <td className={`px-3 py-2 text-right font-mono ${hasNoPrice && mootResults ? "text-amber-500" : "text-foreground"}`}>
-                              {item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}
-                            </td>
-                            <td className="px-3 py-2 text-right font-mono font-medium text-foreground">
-                              {item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}
-                            </td>
-                            <td className={`px-3 py-2 text-right font-mono font-medium ${
-                              mootPrice ? "text-primary animate-pulse" : "text-muted-foreground/40"
-                            }`}>
-                              {mootPrice ? `${mootPrice.toLocaleString("ru-RU")} ₽` : "—"}
-                            </td>
+              {selectedInvoiceId && (
+                <div className="mt-4 bg-card border border-border rounded-xl">
+                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Invoice Items
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground/70">
+                        {selectedInvoiceId}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {invoiceItems.length} item(s)
+                    </span>
+                  </div>
+
+                  {isLoadingInvoiceItems ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : invoiceItems.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                      No items found for this invoice
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">SKU</th>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Name</th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
+                            <th className="px-3 py-2 text-right font-medium text-primary">MOOT</th>
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {invoiceItems.map((item, idx) => {
+                            const itemId = item.id || item.sku || item.article
+                            const mootPrice = mootPrices.get(itemId)
+                            const hasNoWeight = !Number(item.weight ?? 0)
+                            const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
+                            const isSkipped = hasNoWeight || hasNoPrice
+
+                            return (
+                              <tr
+                                key={item.id || idx}
+                                className={`hover:bg-muted/30 transition-colors ${isSkipped && mootResults ? "bg-amber-500/5" : ""
+                                  }`}
+                              >
+                                <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
+                                <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
+                                <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
+                                <td className={`px-3 py-2 text-right font-mono ${hasNoWeight && mootResults ? "text-amber-500" : "text-muted-foreground"}`}>
+                                  {item.weight ? `${item.weight} kg` : "—"}
+                                </td>
+                                <td className={`px-3 py-2 text-right font-mono ${hasNoPrice && mootResults ? "text-amber-500" : "text-foreground"}`}>
+                                  {item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}
+                                </td>
+                                <td className="px-3 py-2 text-right font-mono font-medium text-foreground">
+                                  {item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}
+                                </td>
+                                <td className={`px-3 py-2 text-right font-mono font-medium ${mootPrice ? "text-primary animate-pulse" : "text-muted-foreground/40"
+                                  }`}>
+                                  {mootPrice ? `${mootPrice.toLocaleString("ru-RU")} ₽` : "—"}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
             </div>
           </div>
         </TabsContent>
@@ -2775,6 +2809,173 @@ const handleSaveGlobal = useCallback(async () => {
             </span>
           </div>
         </TabsContent>
+
+        {/* ─── Manual Tab ─── */}
+        <TabsContent value="manual" className="mt-0 flex-1 overflow-auto p-6">
+          <div className="max-w-4xl space-y-8">
+            {/* Header */}
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Руководство пользователя
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Полная инструкция по работе с системой Pricing & Simulation
+              </p>
+            </div>
+
+            {/* Section 1: Overview */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                1. Обзор системы
+              </h3>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                Система Pricing & Simulation предназначена для управления ценообразованием и расчёта стоимости доставки товаров. 
+                Она позволяет создавать правила ценообразования, привязывать инвойсы к поставкам и рассчитывать итоговые цены.
+              </p>
+            </div>
+
+            {/* Section 2: Tabs Description */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                2. Описание вкладок
+              </h3>
+              <div className="grid gap-3">
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Pricing Rules</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Настройка правил ценообразования: базовые наценки, коэффициенты для типов доставки, 
+                    весовые категории и специальные условия.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Shipping Model</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Создание и редактирование поставок. Укажите компанию-перевозчика, тип доставки, 
+                    даты, стоимость и параметры груза.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Pricing Manager</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Основной рабочий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов, 
+                    расчёт цен и обогащение данных.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Summary Impact</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Сводка по изменениям: сравнение итогов до и после применения правил, 
+                    разница в маржинальности.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Workflow */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                3. Порядок работы
+              </h3>
+              <ol className="space-y-2 text-[13px] text-muted-foreground">
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">1</span>
+                  <span>Перейдите во вкладку <span className="font-medium text-foreground">Shipping Model</span> и создайте новую поставку или выберите существующую</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">2</span>
+                  <span>Заполните данные о перевозке: компания, тип (AIR/SEA/RIVER/WINTER), даты, стоимость</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">3</span>
+                  <span>Перейдите в <span className="font-medium text-foreground">Pricing Manager</span> и выберите поставку из списка SHIPMENTS</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">4</span>
+                  <span>Проверьте метрики в блоке METRICS и выберите режим расчёта (Hybrid или Override)</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">5</span>
+                  <span>Используйте кнопку <span className="text-green-500 font-medium">Enrich</span> для обогащения данных из внешних источников</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">6</span>
+                  <span>Привяжите инвойсы к поставке в блоке INVOICES</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">7</span>
+                  <span>Нажмите <span className="text-amber-400 font-medium">Предварительная цена</span> для расчёта MOOT</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Section 4: Calculation Modes */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                4. Режимы расчёта
+              </h3>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
+                  <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary">Hybrid</span>
+                  <p className="text-[12px] text-muted-foreground">
+                    Автоматический расчёт с возможностью ручных корректировок. Система рассчитывает базовую цену 
+                    на основе правил, но вы можете изменить отдельные параметры.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
+                  <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-sky-400/20 text-sky-400">Override</span>
+                  <p className="text-[12px] text-muted-foreground">
+                    Фиксированная цена за килограмм. Введите значение Override P/kg, и система 
+                    рассчитает все остальные метрики на его основе.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 5: Delivery Types */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                5. Типы доставки
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-sky-400 font-semibold text-xs">AIR</span>
+                  <span className="text-[12px] text-muted-foreground">Авиадоставка</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-blue-400 font-semibold text-xs">SEA</span>
+                  <span className="text-[12px] text-muted-foreground">Морская доставка</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-cyan-400 font-semibold text-xs">RIVER</span>
+                  <span className="text-[12px] text-muted-foreground">Речная доставка</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-amber-400 font-semibold text-xs">WINTER</span>
+                  <span className="text-[12px] text-muted-foreground">Зимняя доставка (автозимник)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 6: Statuses */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                6. Статусы поставок
+              </h3>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-[13px] text-muted-foreground">Инвойсы привязаны к поставке</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-[13px] text-muted-foreground">Инвойсы не привязаны (требуется действие)</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* ─── Save Confirmation Dialog ─── */}
@@ -2810,7 +3011,7 @@ const handleSaveGlobal = useCallback(async () => {
   )
 }
 
-// ─── Sub-components ──────────────────────────────────��───────────────────────
+// ─── Sub-components ─────────────────────────��────────��───────────────────────
 
 function PreviewCard({
   label,
@@ -2831,15 +3032,14 @@ function PreviewCard({
         {label}
       </span>
       <span
-        className={`font-mono text-sm font-semibold tabular-nums ${
-          positive
-            ? "text-emerald-600 dark:text-emerald-400"
-            : negative
-              ? "text-red-600 dark:text-red-400"
-              : highlight
-                ? "text-foreground"
-                : "text-muted-foreground"
-        }`}
+        className={`font-mono text-sm font-semibold tabular-nums ${positive
+          ? "text-emerald-600 dark:text-emerald-400"
+          : negative
+            ? "text-red-600 dark:text-red-400"
+            : highlight
+              ? "text-foreground"
+              : "text-muted-foreground"
+          }`}
       >
         {value}
       </span>
@@ -2865,9 +3065,8 @@ function SummaryCard({
       </span>
       <div className="flex items-baseline gap-1">
         <span
-          className={`font-mono text-lg font-semibold tabular-nums ${
-            muted ? "text-muted-foreground/40" : "text-foreground"
-          }`}
+          className={`font-mono text-lg font-semibold tabular-nums ${muted ? "text-muted-foreground/40" : "text-foreground"
+            }`}
         >
           {value}
         </span>

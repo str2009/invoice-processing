@@ -685,18 +685,28 @@ useEffect(() => {
   }, [])
 
   // Update rows with calculated MOOT prices (writes to "moot" column)
+  // isManual: false for automatic calculation
   const handleUpdateMoot = useCallback((updates: Map<string | number, number>) => {
     setRows((prevRows) => {
       const updatedRows = prevRows.map((row) => {
         const itemId = row.id || row.sku || row.article
         const mootPrice = updates.get(itemId)
         if (mootPrice !== undefined) {
-          return { ...row, moot: mootPrice }
+          return { ...row, moot: mootPrice, isManual: false }
         }
         return row
       })
       return updatedRows
     })
+  }, [])
+
+  // Clear all MOOT values
+  const handleClearMoot = useCallback(() => {
+    setRows((prevRows) => prevRows.map((row) => ({
+      ...row,
+      moot: undefined,
+      isManual: false
+    })))
   }, [])
 
   // Update Ship values for all rows based on calculated delivery costs
@@ -716,6 +726,13 @@ useEffect(() => {
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
+  }, [])
+
+  // Update a single row (used for manual MOOT edits)
+  const handleUpdateRow = useCallback((id: string, updates: Partial<InvoiceRow>) => {
+    setRows((prevRows) => prevRows.map((row) => 
+      row.id === id ? { ...row, ...updates } : row
+    ))
   }, [])
 
   const handleCloseAnalytics = useCallback(() => {
@@ -1025,15 +1042,16 @@ console.log("scenario active:", isScenarioActive)
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Table takes remaining space */}
             <div className="min-w-0 flex-1 overflow-hidden transition-all duration-300 ease-in-out">
-              <InvoiceTable
-                key={dataVersion}
-                data={data}
-                globalFilter={globalFilter}
-                onGlobalFilterChange={setGlobalFilter}
-                onRowCountChange={setRowCount}
-                selectedRowId={selectedRow?.id}
-                onRowClick={handleRowClick}
-              />
+<InvoiceTable
+  key={dataVersion}
+  data={data}
+  globalFilter={globalFilter}
+  onGlobalFilterChange={setGlobalFilter}
+  onRowCountChange={setRowCount}
+  selectedRowId={selectedRow?.id}
+  onRowClick={handleRowClick}
+  onUpdateRow={handleUpdateRow}
+  />
             </div>
 
             {/* Right analytics panel - pinned, resizable */}
@@ -1125,6 +1143,7 @@ console.log("scenario active:", isScenarioActive)
   isEnriching={isEnriching}
   selectedInvoice={selectedInvoice}
   onUpdateMoot={handleUpdateMoot}
+  onClearMoot={handleClearMoot}
   onUpdateShip={handleUpdateShip}
 />
               </div>
