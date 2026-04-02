@@ -1747,9 +1747,9 @@ export function SimulationPanel({
           </div>
         </TabsContent>
         {/* ─── Shipping Model Tab ��── */}
-        <TabsContent value="shipping" className="mt-0 flex-1 overflow-hidden p-4">
+        <TabsContent value="shipping" className="mt-0 flex-1 overflow-hidden p-4 h-full">
 
-          <div className="grid grid-cols-5 gap-3 h-full">
+          <div className="grid grid-cols-5 gap-3 h-[calc(100vh-180px)]">
 
             {/* ───────────── COLUMN 0 — SHIPMENT SELECTOR ───────────── */}
             <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
