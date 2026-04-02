@@ -2408,7 +2408,13 @@ export function SimulationPanel({
                                           costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
                                           goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
                                           manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
-                                          test1: { id: "test1", label: "Normal wt", value: "123" },
+                                          test1: {
+                                            id: "test1",
+                                            label: "Normal wt",
+                                            value: mode === "hybrid"
+                                              ? `${Math.max(0, (Number(shippingForm.weight) || 0) - model.bulkyWeight).toFixed(2)} kg`
+                                              : "—"
+                                          },
                                           test2: { id: "test2", label: "Test 2", value: "456" },
                                           test3: { id: "test3", label: "Test 3", value: "789" },
                                           test4: { id: "test4", label: "Test 4", value: "000" },
