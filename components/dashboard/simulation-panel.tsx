@@ -2657,13 +2657,14 @@ export function SimulationPanel({
                         )
                       }
 
-                      // ───────────── EMPTY PANEL ─────────────
+                      // ───────────── NOTE_1 PANEL (Instructions for Pricing Manager) ─────────────
                       if (panel.type === "empty") {
                         return (
                           <GridPanel
                             key={panel.id}
                             id={panel.id}
-                            title="Empty"
+                            title="Note"
+                            icon={<FileText className="h-3.5 w-3.5 text-muted-foreground" />}
                             colStart={panelPositions.get(panel.id) || 1}
                             colSpan={panel.colSpan}
                             maxColSpan={panelMaxColSpans.get(panel.id) || 12}
@@ -2673,10 +2674,39 @@ export function SimulationPanel({
                             onRemove={() => removePanel(panel.id)}
                             canRemove={true}
                           >
-                            <div className="flex-1 flex items-center justify-center p-4">
-                              <p className="text-[11px] text-muted-foreground/40 italic text-center">
-                                Empty panel for spacing
-                              </p>
+                            <div className="flex-1 overflow-y-auto p-3 text-[11px] text-muted-foreground space-y-3">
+                              <div className="space-y-1.5">
+                                <p className="font-medium text-foreground">Инструкция для менеджера:</p>
+                                <ol className="list-decimal list-inside space-y-1 pl-1">
+                                  <li>Выберите поставку из списка SHIPMENTS</li>
+                                  <li>Проверьте метрики в блоке METRICS</li>
+                                  <li>Выберите режим расчёта (Hybrid/Override)</li>
+                                  <li>Используйте Enrich для обогащения данных</li>
+                                  <li>Рассчитайте предварительную цену</li>
+                                  <li>Привяжите инвойсы к поставке</li>
+                                </ol>
+                              </div>
+                              <div className="space-y-1.5">
+                                <p className="font-medium text-foreground">Режимы расчёта:</p>
+                                <ul className="list-disc list-inside space-y-0.5 pl-1">
+                                  <li><span className="text-primary font-medium">Hybrid</span> — авто + ручные корректировки</li>
+                                  <li><span className="text-sky-400 font-medium">Override</span> — фиксированная цена P/kg</li>
+                                </ul>
+                              </div>
+                              <div className="space-y-1.5">
+                                <p className="font-medium text-foreground">Действия:</p>
+                                <ul className="space-y-0.5 pl-1">
+                                  <li className="flex items-center gap-1.5">
+                                    <span className="text-green-500 font-medium">Enrich</span> — обогатить данные
+                                  </li>
+                                  <li className="flex items-center gap-1.5">
+                                    <span className="text-amber-400 font-medium">Предварительная цена</span> — расчёт MOOT
+                                  </li>
+                                  <li className="flex items-center gap-1.5">
+                                    <span className="text-muted-foreground font-medium">Очистить MOOT</span> — сброс расчётов
+                                  </li>
+                                </ul>
+                              </div>
                             </div>
                           </GridPanel>
                         )
