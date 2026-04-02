@@ -1781,8 +1781,8 @@ export function SimulationPanel({
                   <button
                     key={filter}
                     onClick={() => setShipmentFilter(filter)}
-                    className={`flex-1 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
-                      ? "text-primary border-b-2 border-primary"
+                    className={`flex-1 py-0.5 text-[9px] font-medium uppercase tracking-wider transition-colors ${shipmentFilter === filter
+                      ? "text-primary border-b border-primary"
                       : "text-muted-foreground/60 hover:text-muted-foreground"
                       }`}
                   >
@@ -1802,18 +1802,8 @@ export function SimulationPanel({
                 />
               </div>
 
-              {/* Shipment list with resizable columns */}
-              <div ref={shipmentListRef} className="flex flex-col">
-                {/* Header row - grid for equal spacing */}
-                <div className="grid grid-cols-4 gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5">
-                  <span>Company</span>
-                  <span>#</span>
-                  <span>Date</span>
-                  <span>Type</span>
-                </div>
-
-                {/* Scrollable rows */}
-                <div className="max-h-[200px] overflow-y-auto overscroll-contain">
+              {/* Shipment list with scrolling */}
+              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                   {filteredShipments.length === 0 && !isLoadingShipments ? (
                     <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                       {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -1858,7 +1848,6 @@ export function SimulationPanel({
                       )
                     })
                   )}
-                </div>
               </div>
 
             </div>
