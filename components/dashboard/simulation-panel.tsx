@@ -1587,13 +1587,19 @@ export function SimulationPanel({
             >
               Pricing Manager
             </TabsTrigger>
-            <TabsTrigger
-              value="summary"
-              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-            >
-              Summary Impact
-            </TabsTrigger>
-          </TabsList>
+  <TabsTrigger
+  value="summary"
+  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+  >
+  Summary Impact
+  </TabsTrigger>
+  <TabsTrigger
+  value="manual"
+  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+  >
+  Manual
+  </TabsTrigger>
+  </TabsList>
 
           {/* Scenario indicator */}
           {(isModified || isScenarioActive) && (
@@ -2646,14 +2652,13 @@ export function SimulationPanel({
                         )
                       }
 
-                      // ───────────── NOTE_1 PANEL (Instructions for Pricing Manager) ─────────────
+                      // ───────────── EMPTY PANEL ─────────────
                       if (panel.type === "empty") {
                         return (
                           <GridPanel
                             key={panel.id}
                             id={panel.id}
-                            title="Note"
-                            icon={<FileText className="h-3.5 w-3.5 text-muted-foreground" />}
+                            title="Empty"
                             colStart={panelPositions.get(panel.id) || 1}
                             colSpan={panel.colSpan}
                             maxColSpan={panelMaxColSpans.get(panel.id) || 12}
@@ -2663,39 +2668,10 @@ export function SimulationPanel({
                             onRemove={() => removePanel(panel.id)}
                             canRemove={true}
                           >
-                            <div className="flex-1 min-h-0 overflow-y-auto p-3 text-[11px] text-muted-foreground space-y-3">
-                              <div className="space-y-1.5">
-                                <p className="font-medium text-foreground">Инструкция для менеджера:</p>
-                                <ol className="list-decimal list-inside space-y-1 pl-1">
-                                  <li>Выберите поставку из списка SHIPMENTS</li>
-                                  <li>Проверьте метрики в блоке METRICS</li>
-                                  <li>Выберите режим расчёта (Hybrid/Override)</li>
-                                  <li>Используйте Enrich для обогащения данных</li>
-                                  <li>Рассчитайте предварительную цену</li>
-                                  <li>Привяжите инвойсы к поставке</li>
-                                </ol>
-                              </div>
-                              <div className="space-y-1.5">
-                                <p className="font-medium text-foreground">Режимы расчёта:</p>
-                                <ul className="list-disc list-inside space-y-0.5 pl-1">
-                                  <li><span className="text-primary font-medium">Hybrid</span> — авто + ручные корректировки</li>
-                                  <li><span className="text-sky-400 font-medium">Override</span> — фиксированная цена P/kg</li>
-                                </ul>
-                              </div>
-                              <div className="space-y-1.5">
-                                <p className="font-medium text-foreground">Действия:</p>
-                                <ul className="space-y-0.5 pl-1">
-                                  <li className="flex items-center gap-1.5">
-                                    <span className="text-green-500 font-medium">Enrich</span> — обогатить данные
-                                  </li>
-                                  <li className="flex items-center gap-1.5">
-                                    <span className="text-amber-400 font-medium">Предварительная цена</span> — расчёт MOOT
-                                  </li>
-                                  <li className="flex items-center gap-1.5">
-                                    <span className="text-muted-foreground font-medium">Очистить MOOT</span> — сброс расчётов
-                                  </li>
-                                </ul>
-                              </div>
+                            <div className="flex-1 flex items-center justify-center p-4">
+                              <p className="text-[11px] text-muted-foreground/40 italic text-center">
+                                Empty panel for spacing
+                              </p>
                             </div>
                           </GridPanel>
                         )
@@ -2831,6 +2807,173 @@ export function SimulationPanel({
                 ? `Preview: ${data.filter((r) => isRowModified(r.cost)).length} rows will be recalculated.`
                 : "Configure pricing rules and shipping model, then apply to see impact."}
             </span>
+          </div>
+        </TabsContent>
+
+        {/* ─── Manual Tab ─── */}
+        <TabsContent value="manual" className="mt-0 flex-1 overflow-auto p-6">
+          <div className="max-w-4xl space-y-8">
+            {/* Header */}
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Руководство пользователя
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Полная инструкция по работе с системой Pricing & Simulation
+              </p>
+            </div>
+
+            {/* Section 1: Overview */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                1. Обзор системы
+              </h3>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                Система Pricing & Simulation предназначена для управления ценообразованием и расчёта стоимости доставки товаров. 
+                Она позволяет создавать правила ценообразования, привязывать инвойсы к поставкам и рассчитывать итоговые цены.
+              </p>
+            </div>
+
+            {/* Section 2: Tabs Description */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                2. Описание вкладок
+              </h3>
+              <div className="grid gap-3">
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Pricing Rules</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Настройка правил ценообразования: базовые наценки, коэффициенты для типов доставки, 
+                    весовые категории и специальные условия.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Shipping Model</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Создание и редактирование поставок. Укажите компанию-перевозчика, тип доставки, 
+                    даты, стоимость и параметры груза.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Pricing Manager</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Основной рабочий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов, 
+                    расчёт цен и обогащение данных.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <p className="text-[13px] font-medium text-foreground">Summary Impact</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Сводка по изменениям: сравнение итогов до и после применения правил, 
+                    разница в маржинальности.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Workflow */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                3. Порядок работы
+              </h3>
+              <ol className="space-y-2 text-[13px] text-muted-foreground">
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">1</span>
+                  <span>Перейдите во вкладку <span className="font-medium text-foreground">Shipping Model</span> и создайте новую поставку или выберите существующую</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">2</span>
+                  <span>Заполните данные о перевозке: компания, тип (AIR/SEA/RIVER/WINTER), даты, стоимость</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">3</span>
+                  <span>Перейдите в <span className="font-medium text-foreground">Pricing Manager</span> и выберите поставку из списка SHIPMENTS</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">4</span>
+                  <span>Проверьте метрики в блоке METRICS и выберите режим расчёта (Hybrid или Override)</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">5</span>
+                  <span>Используйте кнопку <span className="text-green-500 font-medium">Enrich</span> для обогащения данных из внешних источников</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">6</span>
+                  <span>Привяжите инвойсы к поставке в блоке INVOICES</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">7</span>
+                  <span>Нажмите <span className="text-amber-400 font-medium">Предварительная цена</span> для расчёта MOOT</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Section 4: Calculation Modes */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                4. Режимы расчёта
+              </h3>
+              <div className="grid gap-3">
+                <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
+                  <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary">Hybrid</span>
+                  <p className="text-[12px] text-muted-foreground">
+                    Автоматический расчёт с возможностью ручных корректировок. Система рассчитывает базовую цену 
+                    на основе правил, но вы можете изменить отдельные параметры.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
+                  <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-sky-400/20 text-sky-400">Override</span>
+                  <p className="text-[12px] text-muted-foreground">
+                    Фиксированная цена за килограмм. Введите значение Override P/kg, и система 
+                    рассчитает все остальные метрики на его основе.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 5: Delivery Types */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                5. Типы доставки
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-sky-400 font-semibold text-xs">AIR</span>
+                  <span className="text-[12px] text-muted-foreground">Авиадоставка</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-blue-400 font-semibold text-xs">SEA</span>
+                  <span className="text-[12px] text-muted-foreground">Морская доставка</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-cyan-400 font-semibold text-xs">RIVER</span>
+                  <span className="text-[12px] text-muted-foreground">Речная доставка</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                  <span className="text-amber-400 font-semibold text-xs">WINTER</span>
+                  <span className="text-[12px] text-muted-foreground">Зимняя доставка (автозимник)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 6: Statuses */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                6. Статусы поставок
+              </h3>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-[13px] text-muted-foreground">Инвойсы привязаны к поставке</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-[13px] text-muted-foreground">Инвойсы не привязаны (требуется действие)</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </TabsContent>
       </Tabs>
