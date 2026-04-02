@@ -623,10 +623,10 @@ export function SimulationPanel({
     setShipmentColWidths((prev: typeof shipmentColWidths) => ({ ...prev, [col]: clampedWidth }))
   }, [])
 
-  // Grid template for shipments - Company flexible with min width, others fixed
-  // Status removed - now indicated via row styling (left border for unlinked)
-  // Widths: Company(min 80px, flex 1fr) | #(50px) | Date(85px) | Type(55px)
-  const shipmentGridTemplate = `minmax(80px, 1fr) 50px 85px 55px`
+  // Grid template for shipments - 4 columns with equal spacing, left-aligned
+  // Company takes remaining space, others have fixed widths
+  // Widths: Company(1fr) | #(auto) | Date(auto) | Type(auto)
+  const shipmentGridTemplate = `1fr auto auto auto`
 
   // -------------------- Shipping form types --------------------
 
@@ -2275,18 +2275,13 @@ export function SimulationPanel({
                             <div className="flex flex-col">
                               {/* Header row */}
                               <div
-                                className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
+                                className="grid items-center gap-2 border-b border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 px-2 py-1.5"
+                                style={{ gridTemplateColumns: shipmentGridTemplate }}
                               >
-                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                  <span>Company</span>
-                                  <span className="text-muted-foreground/50">/</span>
-                                  <span>#</span>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span>Date</span>
-                                  <span className="text-muted-foreground/50">/</span>
-                                  <span>Type</span>
-                                </div>
+                                <span>Company</span>
+                                <span>#</span>
+                                <span>Date</span>
+                                <span>Type</span>
                               </div>
 
                               {/* Scrollable rows */}
@@ -2304,36 +2299,34 @@ export function SimulationPanel({
                                       <div
                                         key={ship.shipment_id}
                                         onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                                        className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                        style={{ gridTemplateColumns: shipmentGridTemplate }}
+                                        className={`grid items-center gap-2 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                                       >
-                                        {/* ROW 1: Status dot + Icon + Company + Number */}
-                                        <div className="flex items-center gap-1.5 min-w-0 flex-1" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                                        {/* COL 1: Company with status dot */}
+                                        <div className="flex items-center gap-1.5 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
                                           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
                                           <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
-                                          <span 
-                                            className="text-[11px] font-medium text-foreground truncate"
-                                            title={ship.transport_company || "Unknown"}
-                                          >
+                                          <span className="text-[11px] font-medium text-foreground truncate">
                                             {ship.transport_company || "Unknown"}
                                           </span>
-                                          <span className="text-[11px] font-mono text-muted-foreground/80 shrink-0">
-                                            {ship.transport_invoice_number || "—"}
-                                          </span>
                                         </div>
-                                        {/* ROW 2 (wraps when narrow): Date + Type */}
-                                        <div className="flex items-center gap-2 shrink-0">
-                                          <span className="text-[11px] tabular-nums text-muted-foreground/70 whitespace-nowrap">
-                                            {ship.transport_date || "—"}
-                                          </span>
-                                          <span className={`text-[10px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                                "text-amber-400"
-                                            }`}>
-                                            {ship.transport_type || "—"}
-                                          </span>
-                                        </div>
+                                        {/* COL 2: Invoice # */}
+                                        <span className="text-[11px] font-mono text-muted-foreground/80 truncate">
+                                          {ship.transport_invoice_number || "—"}
+                                        </span>
+                                        {/* COL 3: Date */}
+                                        <span className="text-[11px] tabular-nums text-muted-foreground/70 whitespace-nowrap">
+                                          {ship.transport_date || "—"}
+                                        </span>
+                                        {/* COL 4: Type */}
+                                        <span className={`text-[10px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                                          ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                                            ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                              "text-amber-400"
+                                          }`}>
+                                          {ship.transport_type || "—"}
+                                        </span>
                                       </div>
                                     )
                                   })
@@ -2823,7 +2816,7 @@ export function SimulationPanel({
   )
 }
 
-// ─── Sub-components ──────────────────────────────────��───────────────────────
+// ─── Sub-components ─────────────────────────��────────��───────────────────────
 
 function PreviewCard({
   label,
