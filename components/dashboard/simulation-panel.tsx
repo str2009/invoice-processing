@@ -1860,7 +1860,14 @@ export function SimulationPanel({
                       return (
                         <div
                           key={ship.shipment_id}
-                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                          onClick={() => {
+                            const newId = isSelected ? null : ship.shipment_id
+                            setSelectedShipmentId(newId)
+                            // Reset invoice selection when shipment changes
+                            if (newId !== selectedShipmentId) {
+                              setSelectedInvoiceId(null)
+                            }
+                          }}
                           className={`grid grid-cols-4 gap-2 items-center px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                         >
@@ -1896,6 +1903,20 @@ export function SimulationPanel({
 
             </div>
 
+            {/* ───────────── COLUMNS 1-3: EMPTY STATE OR FORM ───────────── */}
+            {!selectedShipmentId ? (
+              /* Empty state when no shipment selected - spans columns 1-3 */
+              <div className="col-span-4 bg-card border border-border rounded-xl flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <Truck className="h-8 w-8 mx-auto text-muted-foreground/30" />
+                  <p className="text-sm font-medium text-muted-foreground">Выберите поставку</p>
+                  <p className="text-xs text-muted-foreground/60">
+                    Выберите поставку из списка слева для просмотра и редактирования данных
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
             {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto" data-form-container>
 
@@ -2214,6 +2235,8 @@ export function SimulationPanel({
               )}
 
             </div>
+              </>
+            )}
 
             {/* ───────────── COLUMN 4 — NOTE ───────────── */}
             <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
@@ -2368,9 +2391,16 @@ export function SimulationPanel({
                                     return (
                                       <div
                                         key={ship.shipment_id}
-                                        onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+onClick={() => {
+                                          const newId = isSelected ? null : ship.shipment_id
+                                          setSelectedShipmentId(newId)
+                                          // Reset invoice selection when shipment changes
+                                          if (newId !== selectedShipmentId) {
+                                            setSelectedInvoiceId(null)
+                                          }
+                                        }}
                                         className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                                        } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
                                       >
                                         {/* Row 1: Company + Number (flex-1 so it takes available space) */}
                                         <div className="flex items-center gap-3 flex-1 min-w-[120px]">
@@ -2546,8 +2576,8 @@ export function SimulationPanel({
                                     toast.error("Выберите инвойс")
                                   }
                                 }}
-                                disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
-                                className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
+                                disabled={!selectedShipmentId || isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
+                                className={`h-8 gap-1.5 rounded-md px-3 text-[11px] w-full ${!selectedShipmentId ? "opacity-50 cursor-not-allowed" : ""}`}
                               >
                                 {isEnriching ? (
                                   <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
@@ -2559,12 +2589,11 @@ export function SimulationPanel({
 
                               <div className="border-t border-border/40 my-1" />
 
-                              {/* Предварител��ная цена Button */}
+                              {/* Предварительная цена Button */}
                               <Button
                                 variant="default"
                                 size="sm"
-                                className={`h-7 text-[10px] w-full justify-center gap-1 transition-all ${isCalculatingMoot ? "opacity-70 cursor-progress" : ""
-                                  }`}
+                                className={`h-7 text-[10px] w-full justify-center gap-1 transition-all ${isCalculatingMoot ? "opacity-70 cursor-progress" : ""} ${!selectedShipmentId ? "opacity-50 cursor-not-allowed" : ""}`}
                                 onClick={() => {
                                   // Get pricing from current mode/metrics
                                   const costPerKg = mode === "hybrid" && normalPrice
@@ -2575,7 +2604,7 @@ export function SimulationPanel({
                                   // Pass pricing to calculation function
                                   calculateMoot(costPerKg, bulkyPriceKg)
                                 }}
-                                disabled={isCalculatingMoot}
+                                disabled={!selectedShipmentId || isCalculatingMoot}
                               >
                                 {isCalculatingMoot ? (
                                   <>
@@ -2591,9 +2620,9 @@ export function SimulationPanel({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 text-[10px] w-full mt-1"
+                                className={`h-7 text-[10px] w-full mt-1 ${!selectedShipmentId ? "opacity-50 cursor-not-allowed" : ""}`}
                                 onClick={onClearMoot}
-                                disabled={!onClearMoot}
+                                disabled={!selectedShipmentId || !onClearMoot}
                               >
                                 Очистить MOOT
                               </Button>
@@ -2602,7 +2631,7 @@ export function SimulationPanel({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 text-[10px] w-full mt-1 gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-600/10 hover:text-emerald-700 dark:border-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
+                                className={`h-7 text-[10px] w-full mt-1 gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-600/10 hover:text-emerald-700 dark:border-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300 ${!selectedShipmentId ? "opacity-50 cursor-not-allowed" : ""}`}
                                 onClick={() => {
                                   // Get all data rows and export to CSV/Excel
                                   const headers = [
@@ -2641,7 +2670,7 @@ export function SimulationPanel({
                                   a.click()
                                   URL.revokeObjectURL(url)
                                 }}
-                                disabled={data.length === 0}
+                                disabled={!selectedShipmentId || data.length === 0}
                               >
                                 <Download className="h-3 w-3 shrink-0" />
                                 Экспорт в Excel
@@ -3023,7 +3052,7 @@ export function SimulationPanel({
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Shipping Model</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Создание и редактирование поставок. Укажите компанию-перевозчика, тип доставки, 
+                    Создание и редактирование поставок. Укажите компанию-перевозчик��, тип доставки, 
                     даты, стоимость и параметры груза.
                   </p>
                 </div>
