@@ -725,6 +725,18 @@ export function SimulationPanel({
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
+  
+  // Invoice panel mode: "linked" (to shipment) or "all" (searchable list)
+  const [invoiceMode, setInvoiceMode] = useState<"linked" | "all">("linked")
+  const [invoiceSearch, setInvoiceSearch] = useState("")
+  
+  // Filtered all invoices based on search
+  const filteredAllInvoices = useMemo(() => {
+    if (!invoiceSearch.trim()) return invoiceIds
+    return invoiceIds.filter(id => 
+      id.toLowerCase().includes(invoiceSearch.toLowerCase())
+    )
+  }, [invoiceIds, invoiceSearch])
 
   // MOOT Calculation state
   const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
@@ -2547,7 +2559,7 @@ export function SimulationPanel({
 
                               <div className="border-t border-border/40 my-1" />
 
-                              {/* Предварительная цена Button */}
+                              {/* Предварител��ная цена Button */}
                               <Button
                                 variant="default"
                                 size="sm"
@@ -2689,48 +2701,124 @@ export function SimulationPanel({
                             headerExtra={
                               <>
                                 {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                                <span className={`font-mono text-[10px] tabular-nums ${shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50"}`}>
-                                  {shipmentInvoices.length} linked
+                                <span className={`font-mono text-[10px] tabular-nums ${invoiceMode === "linked" 
+                                  ? (shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50")
+                                  : (filteredAllInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50")
+                                }`}>
+                                  {invoiceMode === "linked" 
+                                    ? `${shipmentInvoices.length} linked` 
+                                    : `${filteredAllInvoices.length} total`}
                                 </span>
                               </>
                             }
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            <div className="flex-1 min-h-0 overflow-y-auto">
-                              {!selectedShipmentId ? (
-                                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                                  Select a shipment first
-                                </p>
-                              ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
-                                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                                  No invoices linked to this shipment
-                                </p>
-                              ) : (
-                                <div className="divide-y divide-border/40">
-                                  {shipmentInvoices.map((inv) => {
-                                    const isSelected = selectedInvoiceId === inv.invoice_id
-                                    return (
-                                      <div
-                                        key={inv.invoice_id}
-                                        onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
-                                        className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                                          }`}
-                                      >
-                                        <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
-                                        <div className="min-w-0 flex-1">
-                                          <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
-                                            {inv.invoice_id}
-                                          </div>
-                                        </div>
-                                        {isSelected && isLoadingInvoiceItems && (
-                                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                                        )}
-                                      </div>
-                                    )
-                                  })}
+                            <div className="flex flex-col h-full">
+                              {/* Mode toggle tabs */}
+                              <div className="shrink-0 flex border-b border-border">
+                                {(["linked", "all"] as const).map((m) => (
+                                  <button
+                                    key={m}
+                                    onClick={() => setInvoiceMode(m)}
+                                    className={`flex-1 py-0.5 text-[9px] font-medium uppercase tracking-wider transition-colors ${invoiceMode === m
+                                      ? "text-primary border-b border-primary"
+                                      : "text-muted-foreground/60 hover:text-muted-foreground"
+                                    }`}
+                                  >
+                                    {m === "linked" ? "Linked" : "All"}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Search input for "all" mode */}
+                              {invoiceMode === "all" && (
+                                <div className="shrink-0 px-2 py-1.5 border-b border-border">
+                                  <Input
+                                    placeholder="Search invoice ID..."
+                                    value={invoiceSearch}
+                                    onChange={(e) => setInvoiceSearch(e.target.value)}
+                                    className="h-6 text-[11px]"
+                                  />
                                 </div>
                               )}
+
+                              {/* Invoice list */}
+                              <div className="flex-1 min-h-0 overflow-y-auto">
+                                {invoiceMode === "linked" ? (
+                                  // ─── LINKED MODE (existing logic) ───
+                                  !selectedShipmentId ? (
+                                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                      Select a shipment first
+                                    </p>
+                                  ) : shipmentInvoices.length === 0 && !isLoadingShipmentInvoices ? (
+                                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                      No invoices linked to this shipment
+                                    </p>
+                                  ) : (
+                                    <div className="divide-y divide-border/40">
+                                      {shipmentInvoices.map((inv) => {
+                                        const isSelected = selectedInvoiceId === inv.invoice_id
+                                        return (
+                                          <div
+                                            key={inv.invoice_id}
+                                            onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                                            className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                            }`}
+                                          >
+                                            <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                                            <div className="min-w-0 flex-1">
+                                              <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                                {inv.invoice_id}
+                                              </div>
+                                            </div>
+                                            {isSelected && isLoadingInvoiceItems && (
+                                              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )
+                                ) : (
+                                  // ─── ALL MODE (new searchable list) ───
+                                  filteredAllInvoices.length === 0 ? (
+                                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                      {invoiceSearch ? "No invoices match search" : "No invoices available"}
+                                    </p>
+                                  ) : (
+                                    <div className="divide-y divide-border/40">
+                                      {filteredAllInvoices.map((invoiceId) => {
+                                        const isSelected = selectedInvoiceId === invoiceId
+                                        return (
+                                          <div
+                                            key={invoiceId}
+                                            onClick={() => {
+                                              setSelectedInvoiceId(isSelected ? null : invoiceId)
+                                              // Update parent's selected invoices to show this one in table
+                                              if (!isSelected && onSetSelectedInvoices) {
+                                                onSetSelectedInvoices([invoiceId])
+                                              }
+                                            }}
+                                            className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                            }`}
+                                          >
+                                            <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
+                                            <div className="min-w-0 flex-1">
+                                              <div className={`font-mono text-[11px] font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                                {invoiceId}
+                                              </div>
+                                            </div>
+                                            {isSelected && isLoadingInvoiceItems && (
+                                              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )
+                                )}
+                              </div>
                             </div>
                           </GridPanel>
                         )
@@ -3009,7 +3097,7 @@ export function SimulationPanel({
                 <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
                   <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-sky-400/20 text-sky-400">Override</span>
                   <p className="text-[12px] text-muted-foreground">
-                    Фиксированная цена за килограмм. Введите значение Override P/kg, и система 
+                    Фиксированная цена за килограмм. ��ведите значение Override P/kg, и система 
                     рассчитает все остальные метрики на его основе.
                   </p>
                 </div>
