@@ -745,7 +745,9 @@ export function SimulationPanel({
   const shipmentInvoices = useMemo(() => {
     if (!selectedShipmentId) return []
     const shipment = shipments.find(s => s.shipment_id === selectedShipmentId)
-    return shipment?.invoices ?? []
+    const invoices = shipment?.invoices ?? []
+    console.log("[v0] shipmentInvoices derived:", { selectedShipmentId, shipment, invoices })
+    return invoices
   }, [selectedShipmentId, shipments])
   
   // Wrapper to sync shipment selection with parent
@@ -2237,7 +2239,7 @@ export function SimulationPanel({
                     <li>Выберите поставку из списка слева или создайте новую</li>
                     <li>Заполните данные о перевозке (компания, тип, дата)</li>
                     <li>Укажите стоимость и параметры груза</li>
-                    <li>Привяжите инвойсы к поставке</li>
+                    <li>Привяжите и��войсы к поставке</li>
                     <li>Нажмите "Create Shipment" для сохранени����</li>
                   </ol>
                 </div>
@@ -2769,6 +2771,7 @@ export function SimulationPanel({
                                             key={inv.invoice_id}
                                             onClick={() => {
                                               const newId = isSelected ? null : inv.invoice_id
+                                              console.log("[v0] Invoice clicked:", { newId, inv, onInvoiceSelect: !!onInvoiceSelect })
                                               setSelectedInvoiceId(newId)
                                               // Load invoice data in parent
                                               if (newId && onInvoiceSelect) {

@@ -267,6 +267,7 @@ useEffect(() => {
   // Handle invoice selection change
   const handleInvoiceChange = useCallback(
     (invoiceId: string) => {
+      console.log("[v0] handleInvoiceChange called:", invoiceId)
       setSelectedInvoice(invoiceId)
       setSelectedRow(null)
       setIsEnriched(false)
