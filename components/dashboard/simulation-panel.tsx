@@ -409,7 +409,7 @@ export function SimulationPanel({
   const [activeTab, setActiveTabInternal] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
   const [normalPrice, setNormalPrice] = useState("115")
-  
+
   // Tab change handler with full reset
   const setActiveTab = useCallback((newTab: string) => {
     setActiveTabInternal(newTab)
@@ -496,19 +496,19 @@ export function SimulationPanel({
   // ─── Enter Key Navigation (Excel-like) ───
   const handleEnterNavigation = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     if (e.key !== "Enter") return
-    
+
     e.preventDefault()
-    
+
     const form = (e.target as HTMLElement).closest("[data-form-container]")
     if (!form) return
-    
+
     const focusable = Array.from(
       form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")
     ).filter(el => !el.hasAttribute("disabled") && el.type !== "hidden")
-    
+
     const currentIndex = focusable.indexOf(e.target as HTMLInputElement)
     const nextElement = focusable[currentIndex + 1]
-    
+
     if (nextElement) {
       nextElement.focus()
       // Move cursor to end of input
@@ -740,14 +740,14 @@ export function SimulationPanel({
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
-  
+
   // Derived state: invoices for selected shipment (instant, no async)
   const shipmentInvoices = useMemo(() => {
     if (!selectedShipmentId) return []
     const shipment = shipments.find(s => s.shipment_id === selectedShipmentId)
     return shipment?.invoices ?? []
   }, [selectedShipmentId, shipments])
-  
+
   // Wrapper to sync shipment selection with parent
   const setSelectedShipmentId = useCallback((id: string | null) => {
     setSelectedInvoiceId(null)
@@ -755,15 +755,15 @@ export function SimulationPanel({
     setSelectedShipmentIdInternal(id)
     onShipmentSelect?.(id)
   }, [onShipmentSelect])
-  
+
   // Invoice panel mode: "linked" (to shipment) or "all" (searchable list)
   const [invoiceMode, setInvoiceMode] = useState<"linked" | "all">("linked")
   const [invoiceSearch, setInvoiceSearch] = useState("")
-  
+
   // Filtered all invoices based on search
   const filteredAllInvoices = useMemo(() => {
     if (!invoiceSearch.trim()) return invoiceIds
-    return invoiceIds.filter(id => 
+    return invoiceIds.filter(id =>
       id.toLowerCase().includes(invoiceSearch.toLowerCase())
     )
   }, [invoiceIds, invoiceSearch])
@@ -995,7 +995,7 @@ export function SimulationPanel({
             warehouse: "",
           })
         }
-        
+
         // Update selected invoices in parent from derived shipmentInvoices
         if (onSetSelectedInvoices && shipmentInvoices.length > 0) {
           onSetSelectedInvoices(shipmentInvoices.map(inv => inv.invoice_id))
@@ -1077,22 +1077,22 @@ export function SimulationPanel({
         return
       }
 
-  toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
-  
-  // Reload shipments to update derived invoices
-  loadShipments(shipmentFilter)
-  } catch {
-  toast.error("Failed to attach invoices", { id: toastId })
-  } finally {
-  setIsAttaching(false)
-  }
+      toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
+
+      // Reload shipments to update derived invoices
+      loadShipments(shipmentFilter)
+    } catch {
+      toast.error("Failed to attach invoices", { id: toastId })
+    } finally {
+      setIsAttaching(false)
+    }
   }, [selectedShipmentId, invoiceIds, loadShipments, shipmentFilter])
 
   // Clear form for new shipment entry
   const handleNewShipment = useCallback(() => {
-  setSelectedShipmentId(null)
-  setShippingForm(EMPTY_SHIPPING)
-  // shipmentInvoices is derived from selectedShipmentId, no need to clear
+    setSelectedShipmentId(null)
+    setShippingForm(EMPTY_SHIPPING)
+    // shipmentInvoices is derived from selectedShipmentId, no need to clear
   }, [])
 
   // -------------------- Invoice vs Goods check --------------------
@@ -1631,19 +1631,19 @@ export function SimulationPanel({
             >
               Pricing Manager
             </TabsTrigger>
-  <TabsTrigger
-  value="summary"
-  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-  >
-  Summary Impact
-  </TabsTrigger>
-  <TabsTrigger
-  value="manual"
-  className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-  >
-  Manual
-  </TabsTrigger>
-  </TabsList>
+            <TabsTrigger
+              value="summary"
+              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Summary Impact
+            </TabsTrigger>
+            <TabsTrigger
+              value="manual"
+              className="h-7 rounded-none border-b-2 border-transparent px-3 py-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Manual
+            </TabsTrigger>
+          </TabsList>
 
           {/* Scenario indicator */}
           {(isModified || isScenarioActive) && (
@@ -1854,50 +1854,50 @@ export function SimulationPanel({
 
               {/* Shipment list with scrolling */}
               <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                  {filteredShipments.length === 0 && !isLoadingShipments ? (
-                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                      {shipmentSearch ? "No matching shipments" : "No shipments found"}
-                    </p>
-                  ) : (
-                    filteredShipments.map((ship) => {
-                      const isSelected = selectedShipmentId === ship.shipment_id
-                      const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
-                      const hasInvoices = invoiceCount > 0
-                      return (
-                        <div
-                          key={ship.shipment_id}
-                          onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                          className={`grid grid-cols-4 gap-2 items-center px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                {filteredShipments.length === 0 && !isLoadingShipments ? (
+                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                    {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                  </p>
+                ) : (
+                  filteredShipments.map((ship) => {
+                    const isSelected = selectedShipmentId === ship.shipment_id
+                    const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                    const hasInvoices = invoiceCount > 0
+                    return (
+                      <div
+                        key={ship.shipment_id}
+                        onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                        className={`grid grid-cols-4 gap-2 items-center px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                           } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-                        >
-                          {/* COL 1: Company with status dot */}
-                          <div className="flex items-center gap-1 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-                            <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
-                            <span className="text-[10px] font-medium text-foreground truncate">
-                              {ship.transport_company || "Unknown"}
-                            </span>
-                          </div>
-                          {/* COL 2: Invoice # */}
-                          <span className="text-[10px] font-mono text-muted-foreground/80 truncate">
-                            {ship.transport_invoice_number || "—"}
-                          </span>
-                          {/* COL 3: Date */}
-                          <span className="text-[10px] tabular-nums text-muted-foreground/70 truncate">
-                            {ship.transport_date || "—"}
-                          </span>
-                          {/* COL 4: Type */}
-                          <span className={`text-[9px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                "text-amber-400"
-                            }`}>
-                            {ship.transport_type || "—"}
+                      >
+                        {/* COL 1: Company with status dot */}
+                        <div className="flex items-center gap-1 min-w-0" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                          <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                          <span className="text-[10px] font-medium text-foreground truncate">
+                            {ship.transport_company || "Unknown"}
                           </span>
                         </div>
-                      )
-                    })
-                  )}
+                        {/* COL 2: Invoice # */}
+                        <span className="text-[10px] font-mono text-muted-foreground/80 truncate">
+                          {ship.transport_invoice_number || "—"}
+                        </span>
+                        {/* COL 3: Date */}
+                        <span className="text-[10px] tabular-nums text-muted-foreground/70 truncate">
+                          {ship.transport_date || "—"}
+                        </span>
+                        {/* COL 4: Type */}
+                        <span className={`text-[9px] font-semibold uppercase ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                          ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                            ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                              "text-amber-400"
+                          }`}>
+                          {ship.transport_type || "—"}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
               </div>
 
             </div>
@@ -2362,52 +2362,52 @@ export function SimulationPanel({
 
                             {/* Shipment list with own scrolling */}
                             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                                {filteredShipments.length === 0 && !isLoadingShipments ? (
-                                  <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                                    {shipmentSearch ? "No matching shipments" : "No shipments found"}
-                                  </p>
-                                ) : (
-                                  filteredShipments.map((ship) => {
-                                    const isSelected = selectedShipmentId === ship.shipment_id
-                                    const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
-                                    const hasInvoices = invoiceCount > 0
-                                    return (
-                                      <div
-                                        key={ship.shipment_id}
-                                        onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
-                                        className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                                          } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
-                                      >
-                                        {/* Row 1: Company + Number (flex-1 so it takes available space) */}
-                                        <div className="flex items-center gap-3 flex-1 min-w-[120px]">
-                                          <div className="flex items-center gap-1.5 min-w-0 flex-1" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
-                                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
-                                            <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
-                                            <span className="text-[11px] font-medium text-foreground truncate">
-                                              {ship.transport_company || "Unknown"}
-                                            </span>
-                                          </div>
-                                          <span className="text-[11px] font-mono text-muted-foreground/80 w-[45px] text-left">
-                                            {ship.transport_invoice_number || "—"}
+                              {filteredShipments.length === 0 && !isLoadingShipments ? (
+                                <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
+                                  {shipmentSearch ? "No matching shipments" : "No shipments found"}
+                                </p>
+                              ) : (
+                                filteredShipments.map((ship) => {
+                                  const isSelected = selectedShipmentId === ship.shipment_id
+                                  const invoiceCount = isSelected ? shipmentInvoices.length : (ship.invoice_count ?? 0)
+                                  const hasInvoices = invoiceCount > 0
+                                  return (
+                                    <div
+                                      key={ship.shipment_id}
+                                      onClick={() => setSelectedShipmentId(isSelected ? null : ship.shipment_id)}
+                                      className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1.5 border-b border-border/40 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
+                                        } ${!hasInvoices && !isSelected ? "border-l-2 border-l-amber-500/40" : ""}`}
+                                    >
+                                      {/* Row 1: Company + Number (flex-1 so it takes available space) */}
+                                      <div className="flex items-center gap-3 flex-1 min-w-[120px]">
+                                        <div className="flex items-center gap-1.5 min-w-0 flex-1" title={hasInvoices ? `${invoiceCount} invoice(s) linked` : "No invoices linked"}>
+                                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${hasInvoices ? "bg-green-500" : "bg-amber-500"}`} />
+                                          <span className="shrink-0">{getTransportIcon(ship.transport_type, isSelected)}</span>
+                                          <span className="text-[11px] font-medium text-foreground truncate">
+                                            {ship.transport_company || "Unknown"}
                                           </span>
                                         </div>
-                                        {/* Row 2 (wraps when narrow): Date + Type */}
-                                        <div className="flex items-center gap-3">
-                                          <span className="text-[11px] tabular-nums text-muted-foreground/70 w-[80px] text-left">
-                                            {ship.transport_date || "—"}
-                                          </span>
-                                          <span className={`text-[10px] font-semibold uppercase w-[50px] text-left ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
-                                            ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
-                                              ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
-                                                "text-amber-400"
-                                            }`}>
-                                            {ship.transport_type || "—"}
-                                          </span>
-                                        </div>
+                                        <span className="text-[11px] font-mono text-muted-foreground/80 w-[45px] text-left">
+                                          {ship.transport_invoice_number || "—"}
+                                        </span>
                                       </div>
-                                    )
-                                  })
-                                )}
+                                      {/* Row 2 (wraps when narrow): Date + Type */}
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-[11px] tabular-nums text-muted-foreground/70 w-[80px] text-left">
+                                          {ship.transport_date || "—"}
+                                        </span>
+                                        <span className={`text-[10px] font-semibold uppercase w-[50px] text-left ${ship.transport_type?.toLowerCase() === "air" ? "text-sky-400" :
+                                          ship.transport_type?.toLowerCase() === "sea" ? "text-blue-400" :
+                                            ship.transport_type?.toLowerCase() === "river" ? "text-cyan-400" :
+                                              "text-amber-400"
+                                          }`}>
+                                          {ship.transport_type || "—"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )
+                                })
+                              )}
                             </div>
 
                           </GridPanel>
@@ -2429,85 +2429,85 @@ export function SimulationPanel({
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
                             <div className="flex-1 min-h-0 overflow-y-auto">
-                            {!selectedShipmentId ? (
-                              <div className="flex-1 flex items-center justify-center p-4">
-                                <p className="text-sm text-muted-foreground/60 italic text-center">
-                                  Select a shipment to view metrics
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="p-2">
-                                {/* Fixed Mode Selector */}
-                                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
-                                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
-                                  <select
-                                    value={mode}
-                                    onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
-                                    className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
-                                  >
-                                    <option value="normal">Normal</option>
-                                    <option value="hybrid">Hybrid</option>
-                                  </select>
-                                  {mode === "hybrid" && (
-                                    <div className="flex items-center gap-1 ml-2" data-form-container>
-                                      <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
-                                      <Input
-                                        value={normalPrice}
-                                        onChange={(e) => setNormalPrice(e.target.value)}
-                                        onKeyDown={handleEnterNavigation}
-                                        className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
-                                      />
-                                    </div>
-                                  )}
+                              {!selectedShipmentId ? (
+                                <div className="flex-1 flex items-center justify-center p-4">
+                                  <p className="text-sm text-muted-foreground/60 italic text-center">
+                                    Select a shipment to view metrics
+                                  </p>
                                 </div>
-
-                                {/* Draggable Metric Widgets Grid */}
-                                <DndContext
-                                  sensors={sensors}
-                                  collisionDetection={closestCenter}
-                                  onDragEnd={handleMetricDragEnd}
-                                >
-                                  <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
-                                    <div
-                                      className="grid gap-2"
-                                      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+                              ) : (
+                                <div className="p-2">
+                                  {/* Fixed Mode Selector */}
+                                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+                                    <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wider font-medium">Mode</span>
+                                    <select
+                                      value={mode}
+                                      onChange={(e) => setMode(e.target.value as "normal" | "hybrid")}
+                                      className="border rounded px-2 py-1 text-[12px] bg-background font-semibold"
                                     >
-                                      {metricOrder.map((metricId) => {
-                                        const metricData: Record<string, MetricWidget> = {
-                                          totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
-                                          costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
-                                          weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
-                                          catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
-                                          bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
-                                          packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
-                                          volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
-                                          density: { id: "density", label: "Density", value: shippingForm.density || "0" },
-                                          bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(2)} kg` },
-                                          normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
-                                          bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
-                                          costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
-                                          goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
-                                          manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
-                                          test1: {
-                                            id: "test1",
-                                            label: "Normal wt",
-                                            value: mode === "hybrid"
-                                              ? `${Math.max(0, (Number(shippingForm.weight) || 0) - model.bulkyWeight).toFixed(2)} kg`
-                                              : "—"
-                                          },
-                                          test2: { id: "test2", label: "Test 2", value: "456" },
-                                          test3: { id: "test3", label: "Test 3", value: "789" },
-                                          test4: { id: "test4", label: "Test 4", value: "000" },
-                                        }
-                                        const metric = metricData[metricId]
-                                        if (!metric) return null
-                                        return <SortableMetricBlock key={metric.id} {...metric} />
-                                      })}
-                                    </div>
-                                  </SortableContext>
-                                </DndContext>
-                              </div>
-                            )}
+                                      <option value="normal">Normal</option>
+                                      <option value="hybrid">Hybrid</option>
+                                    </select>
+                                    {mode === "hybrid" && (
+                                      <div className="flex items-center gap-1 ml-2" data-form-container>
+                                        <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
+                                        <Input
+                                          value={normalPrice}
+                                          onChange={(e) => setNormalPrice(e.target.value)}
+                                          onKeyDown={handleEnterNavigation}
+                                          className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Draggable Metric Widgets Grid */}
+                                  <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleMetricDragEnd}
+                                  >
+                                    <SortableContext items={metricOrder} strategy={rectSortingStrategy}>
+                                      <div
+                                        className="grid gap-2"
+                                        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}
+                                      >
+                                        {metricOrder.map((metricId) => {
+                                          const metricData: Record<string, MetricWidget> = {
+                                            totalCost: { id: "totalCost", label: "Total Cost", value: `${Number(shippingForm.totalCost || 0).toLocaleString("ru-RU")} ₽`, highlight: true },
+                                            costPerKg: { id: "costPerKg", label: "Cost ₽/kg", value: costPerKgRaw, highlight: true, color: "text-primary" },
+                                            weightRaw: { id: "weightRaw", label: "Weight (raw)", value: `${shippingForm.weight || "0"} kg` },
+                                            catalogWt: { id: "catalogWt", label: "Catalog wt", value: `${weightStats.totalWeight.toFixed(1)} kg` },
+                                            bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
+                                            packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
+                                            volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
+                                            density: { id: "density", label: "Density", value: shippingForm.density || "0" },
+                                            bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(2)} kg` },
+                                            normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
+                                            bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
+                                            costPerKgRaw: { id: "costPerKgRaw", label: "Cost ₽/kg (raw)", value: costPerKgRaw },
+                                            goodsPerKg: { id: "goodsPerKg", label: "Goods ₽/kg", value: goodsValuePerKg || "0" },
+                                            manager: { id: "manager", label: "Manager", value: shippingForm.manager || "—" },
+                                            test1: {
+                                              id: "test1",
+                                              label: "Normal wt",
+                                              value: mode === "hybrid"
+                                                ? `${Math.max(0, (Number(shippingForm.weight) || 0) - model.bulkyWeight).toFixed(2)} kg`
+                                                : "—"
+                                            },
+                                            test2: { id: "test2", label: "Test 2", value: "456" },
+                                            test3: { id: "test3", label: "Test 3", value: "789" },
+                                            test4: { id: "test4", label: "Test 4", value: "000" },
+                                          }
+                                          const metric = metricData[metricId]
+                                          if (!metric) return null
+                                          return <SortableMetricBlock key={metric.id} {...metric} />
+                                        })}
+                                      </div>
+                                    </SortableContext>
+                                  </DndContext>
+                                </div>
+                              )}
                             </div>
                           </GridPanel>
                         )
@@ -2529,165 +2529,165 @@ export function SimulationPanel({
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
                             <div className="flex-1 min-h-0 overflow-y-auto">
-                            <div className="flex flex-col gap-1.5 p-2.5">
-                              {/* Active rows indicator - uses data prop (same as main table) */}
-                              <div className="text-[9px] text-muted-foreground/70 mb-1">
-                                {data.length > 0 ? (
-                                  <span className="text-green-500">{data.length} строк в таблице</span>
-                                ) : (
-                                  <span className="text-muted-foreground/50">Нет данных</span>
-                                )}
-                              </div>
-
-                              {/* Enrich Button - same styling as Control Panel */}
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  // Same logic as Control Panel Enrich button
-                                  if (invoiceIds.length > 0) {
-                                    onEnrichSelected?.(invoiceIds)
-                                  } else if (selectedInvoice) {
-                                    onEnrich?.()
-                                  } else {
-                                    toast.error("Выберите инвойс")
-                                  }
-                                }}
-                                disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
-                                className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
-                              >
-                                {isEnriching ? (
-                                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                                ) : (
-                                  <Sparkles className="h-3 w-3 shrink-0" />
-                                )}
-                                {isEnriching ? "Enriching..." : "Enrich"}
-                              </Button>
-
-                              <div className="border-t border-border/40 my-1" />
-
-                              {/* Предварител��ная цена Button */}
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className={`h-7 text-[10px] w-full justify-center gap-1 transition-all ${isCalculatingMoot ? "opacity-70 cursor-progress" : ""
-                                  }`}
-                                onClick={() => {
-                                  // Get pricing from current mode/metrics
-                                  const costPerKg = mode === "hybrid" && normalPrice
-                                    ? parseFloat(normalPrice)
-                                    : parseFloat(costPerKgRaw) || 0
-                                  const bulkyPriceKg = model.bulkyPrice || costPerKg
-
-                                  // Pass pricing to calculation function
-                                  calculateMoot(costPerKg, bulkyPriceKg)
-                                }}
-                                disabled={isCalculatingMoot}
-                              >
-                                {isCalculatingMoot ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    Расчёт...
-                                  </>
-                                ) : (
-                                  "Предварительная цена"
-                                )}
-                              </Button>
-
-                              {/* Clear MOOT Button */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-[10px] w-full mt-1"
-                                onClick={onClearMoot}
-                                disabled={!onClearMoot}
-                              >
-                                Очис��ить MOOT
-                              </Button>
-
-                              {/* Export to Excel Button */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-[10px] w-full mt-1 gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-600/10 hover:text-emerald-700 dark:border-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
-                                onClick={() => {
-                                  // Get all data rows and export to CSV/Excel
-                                  const headers = [
-                                    "Part Code", "Manufacturer", "Part Name", "Qty", "Cost", 
-                                    "Now", "Ship", "isBulky", "Delta %", "Stock", 
-                                    "Weight", "MOOT", "Group", "Sales 12m"
-                                  ]
-                                  const csvRows = [headers.join(",")]
-                                  
-                                  data.forEach(row => {
-                                    const values = [
-                                      `"${row.partCode || ""}"`,
-                                      `"${row.manufacturer || ""}"`,
-                                      `"${row.partName || ""}"`,
-                                      row.qty ?? "",
-                                      row.cost ?? "",
-                                      row.now ?? "",
-                                      row.ship ?? "",
-                                      row.isBulky ? "Yes" : "No",
-                                      row.deltaPercent ?? "",
-                                      row.stock ?? "",
-                                      row.weight ?? "",
-                                      row.moot ?? "",
-                                      `"${row.group || ""}"`,
-                                      row.sales12m ?? ""
-                                    ]
-                                    csvRows.push(values.join(","))
-                                  })
-                                  
-                                  const csvContent = csvRows.join("\n")
-                                  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
-                                  const url = URL.createObjectURL(blob)
-                                  const a = document.createElement("a")
-                                  a.href = url
-                                  a.download = `table-export-${new Date().toISOString().slice(0, 10)}.csv`
-                                  a.click()
-                                  URL.revokeObjectURL(url)
-                                }}
-                                disabled={data.length === 0}
-                              >
-                                <Download className="h-3 w-3 shrink-0" />
-                                Экспорт в Excel
-                              </Button>
-
-                              {/* MOOT Results Feedback */}
-                              {mootResults && !isCalculatingMoot && (
-                                <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                                  {mootResults.calculated > 0 ? (
-                                    <div className="text-green-500">
-                                      Рассчитано: {mootResults.calculated} поз.
-                                    </div>
-                                  ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 && mootResults.skippedReasons.noRule === 0 ? (
-                                    <div className="text-red-500">
-                                      Ошибка: нет ₽/kg
-                                    </div>
-                                  ) : null}
-                                  {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0 || mootResults.skippedReasons.noRule > 0) && (
-                                    <div className="text-amber-500">
-                                      Пропущено: {mootResults.skipped}
-                                      {mootResults.skippedReasons.noWeight > 0 && (
-                                        <span className="block text-[8px]">
-                                          ��� нет веса: {mootResults.skippedReasons.noWeight}
-                                        </span>
-                                      )}
-                                      {mootResults.skippedReasons.noPrice > 0 && (
-                                        <span className="block text-[8px]">
-                                          — нет закупочной цены: {mootResults.skippedReasons.noPrice}
-                                        </span>
-                                      )}
-                                      {mootResults.skippedReasons.noRule > 0 && (
-                                        <span className="block text-[8px]">
-                                          — нет правила: {mootResults.skippedReasons.noRule}
-                                        </span>
-                                      )}
-                                    </div>
+                              <div className="flex flex-col gap-1.5 p-2.5">
+                                {/* Active rows indicator - uses data prop (same as main table) */}
+                                <div className="text-[9px] text-muted-foreground/70 mb-1">
+                                  {data.length > 0 ? (
+                                    <span className="text-green-500">{data.length} строк в таблице</span>
+                                  ) : (
+                                    <span className="text-muted-foreground/50">Нет данных</span>
                                   )}
                                 </div>
-                              )}
-                            </div>
+
+                                {/* Enrich Button - same styling as Control Panel */}
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    // Same logic as Control Panel Enrich button
+                                    if (invoiceIds.length > 0) {
+                                      onEnrichSelected?.(invoiceIds)
+                                    } else if (selectedInvoice) {
+                                      onEnrich?.()
+                                    } else {
+                                      toast.error("Выберите инвойс")
+                                    }
+                                  }}
+                                  disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
+                                  className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
+                                >
+                                  {isEnriching ? (
+                                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-3 w-3 shrink-0" />
+                                  )}
+                                  {isEnriching ? "Enriching..." : "Enrich"}
+                                </Button>
+
+                                <div className="border-t border-border/40 my-1" />
+
+                                {/* Предварител��ная цена Button */}
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className={`h-7 text-[10px] w-full justify-center gap-1 transition-all ${isCalculatingMoot ? "opacity-70 cursor-progress" : ""
+                                    }`}
+                                  onClick={() => {
+                                    // Get pricing from current mode/metrics
+                                    const costPerKg = mode === "hybrid" && normalPrice
+                                      ? parseFloat(normalPrice)
+                                      : parseFloat(costPerKgRaw) || 0
+                                    const bulkyPriceKg = model.bulkyPrice || costPerKg
+
+                                    // Pass pricing to calculation function
+                                    calculateMoot(costPerKg, bulkyPriceKg)
+                                  }}
+                                  disabled={isCalculatingMoot}
+                                >
+                                  {isCalculatingMoot ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Расчёт...
+                                    </>
+                                  ) : (
+                                    "Предварительная цена"
+                                  )}
+                                </Button>
+
+                                {/* Clear MOOT Button */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[10px] w-full mt-1"
+                                  onClick={onClearMoot}
+                                  disabled={!onClearMoot}
+                                >
+                                  Очистить MOOT
+                                </Button>
+
+                                {/* Export to Excel Button */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[10px] w-full mt-1 gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-600/10 hover:text-emerald-700 dark:border-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
+                                  onClick={() => {
+                                    // Get all data rows and export to CSV/Excel
+                                    const headers = [
+                                      "Part Code", "Manufacturer", "Part Name", "Qty", "Cost",
+                                      "Now", "Ship", "isBulky", "Delta %", "Stock",
+                                      "Weight", "MOOT", "Group", "Sales 12m"
+                                    ]
+                                    const csvRows = [headers.join(",")]
+
+                                    data.forEach(row => {
+                                      const values = [
+                                        `"${row.partCode || ""}"`,
+                                        `"${row.manufacturer || ""}"`,
+                                        `"${row.partName || ""}"`,
+                                        row.qty ?? "",
+                                        row.cost ?? "",
+                                        row.now ?? "",
+                                        row.ship ?? "",
+                                        row.isBulky ? "Yes" : "No",
+                                        row.deltaPercent ?? "",
+                                        row.stock ?? "",
+                                        row.weight ?? "",
+                                        row.moot ?? "",
+                                        `"${row.group || ""}"`,
+                                        row.sales12m ?? ""
+                                      ]
+                                      csvRows.push(values.join(","))
+                                    })
+
+                                    const csvContent = csvRows.join("\n")
+                                    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
+                                    const url = URL.createObjectURL(blob)
+                                    const a = document.createElement("a")
+                                    a.href = url
+                                    a.download = `table-export-${new Date().toISOString().slice(0, 10)}.csv`
+                                    a.click()
+                                    URL.revokeObjectURL(url)
+                                  }}
+                                  disabled={data.length === 0}
+                                >
+                                  <Download className="h-3 w-3 shrink-0" />
+                                  Экспорт в Excel
+                                </Button>
+
+                                {/* MOOT Results Feedback */}
+                                {mootResults && !isCalculatingMoot && (
+                                  <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                                    {mootResults.calculated > 0 ? (
+                                      <div className="text-green-500">
+                                        Рассчитано: {mootResults.calculated} поз.
+                                      </div>
+                                    ) : mootResults.skipped > 0 && mootResults.skippedReasons.noWeight === 0 && mootResults.skippedReasons.noPrice === 0 && mootResults.skippedReasons.noRule === 0 ? (
+                                      <div className="text-red-500">
+                                        Ошибка: нет ₽/kg
+                                      </div>
+                                    ) : null}
+                                    {mootResults.skipped > 0 && (mootResults.skippedReasons.noWeight > 0 || mootResults.skippedReasons.noPrice > 0 || mootResults.skippedReasons.noRule > 0) && (
+                                      <div className="text-amber-500">
+                                        Пропущено: {mootResults.skipped}
+                                        {mootResults.skippedReasons.noWeight > 0 && (
+                                          <span className="block text-[8px]">
+                                            ��� нет веса: {mootResults.skippedReasons.noWeight}
+                                          </span>
+                                        )}
+                                        {mootResults.skippedReasons.noPrice > 0 && (
+                                          <span className="block text-[8px]">
+                                            — нет закупочной цены: {mootResults.skippedReasons.noPrice}
+                                          </span>
+                                        )}
+                                        {mootResults.skippedReasons.noRule > 0 && (
+                                          <span className="block text-[8px]">
+                                            — нет правила: {mootResults.skippedReasons.noRule}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </GridPanel>
                         )
@@ -2707,12 +2707,12 @@ export function SimulationPanel({
                             headerExtra={
                               <>
                                 {isLoadingShipmentInvoices && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                                <span className={`font-mono text-[10px] tabular-nums ${invoiceMode === "linked" 
+                                <span className={`font-mono text-[10px] tabular-nums ${invoiceMode === "linked"
                                   ? (shipmentInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50")
                                   : (filteredAllInvoices.length > 0 ? "text-primary" : "text-muted-foreground/50")
-                                }`}>
-                                  {invoiceMode === "linked" 
-                                    ? `${shipmentInvoices.length} linked` 
+                                  }`}>
+                                  {invoiceMode === "linked"
+                                    ? `${shipmentInvoices.length} linked`
                                     : `${filteredAllInvoices.length} total`}
                                 </span>
                               </>
@@ -2730,7 +2730,7 @@ export function SimulationPanel({
                                     className={`flex-1 py-0.5 text-[9px] font-medium uppercase tracking-wider transition-colors ${invoiceMode === m
                                       ? "text-primary border-b border-primary"
                                       : "text-muted-foreground/60 hover:text-muted-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {m === "linked" ? "Linked" : "All"}
                                   </button>
@@ -2777,7 +2777,7 @@ export function SimulationPanel({
                                               }
                                             }}
                                             className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                                            }`}
+                                              }`}
                                           >
                                             <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
                                             <div className="min-w-0 flex-1">
@@ -2816,7 +2816,7 @@ export function SimulationPanel({
                                               }
                                             }}
                                             className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
-                                            }`}
+                                              }`}
                                           >
                                             <Check className={`h-3 w-3 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground/50"}`} />
                                             <div className="min-w-0 flex-1">
@@ -3017,7 +3017,7 @@ export function SimulationPanel({
                 1. Обзор системы
               </h3>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
-                Система Pricing & Simulation ��редназначена для управления ценообразованием и расчёта стоимости доставки товаров. 
+                Система Pricing & Simulation ��редназначена для управления ценообразованием и расчёта стоимости доставки товаров.
                 Она позволяет создавать правила ценообразования, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
               </p>
             </div>
@@ -3031,28 +3031,28 @@ export function SimulationPanel({
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Pricing Rules</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Настройка правил ценообразования: базовые наценки, коэффициенты для типов доставки, 
+                    Настройка правил ценообразования: базовые наценки, коэффициенты для типов доставки,
                     весовые категории и специальные условия.
                   </p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Shipping Model</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Создание и редактирование поставок. Укажите компанию-перевозчик��, тип доставки, 
+                    Создание и редактирование поставок. Укажите компанию-перевозчик��, тип доставки,
                     даты, стоимость и параметры груза.
                   </p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Pricing Manager</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Основной рабочий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов, 
+                    Основной рабочий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов,
                     расчёт цен и обогащение данных.
                   </p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Summary Impact</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Сводка по изменениям: сравнение итогов до и после применения правил, 
+                    Сводка по изменениям: сравнение итогов до и после применения правил,
                     разница в маржинальности.
                   </p>
                 </div>
@@ -3105,14 +3105,14 @@ export function SimulationPanel({
                 <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
                   <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary">Hybrid</span>
                   <p className="text-[12px] text-muted-foreground">
-                    Автоматический расчёт с возможностью ручных корректировок. Система рассчитывает базовую цену 
+                    Автоматический расчёт с возможностью ручных корректировок. Система рассчитывает базовую цену
                     на основе правил, но вы можете изменить отдельные параметры.
                   </p>
                 </div>
                 <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
                   <span className="shrink-0 px-2 py-0.5 rounded text-xs font-semibold bg-sky-400/20 text-sky-400">Override</span>
                   <p className="text-[12px] text-muted-foreground">
-                    Фиксированная цена за килограмм. ��ведите значение Override P/kg, и система 
+                    Фиксированная цена за килограмм. ��ведите значение Override P/kg, и система
                     рассчитает все остальные метрики на его основе.
                   </p>
                 </div>
