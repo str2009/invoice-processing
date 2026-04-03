@@ -939,37 +939,46 @@ console.log("scenario active:", isScenarioActive)
                   className="h-7 w-7 shrink-0 p-0"
                   aria-label="Change theme"
                 >
-              {mounted && (
-               theme === "light" ? (
-              <Sun className="h-3.5 w-3.5" />
-              ) : theme === "graphite" ? (
-             <Monitor className="h-3.5 w-3.5" />
-           ) : theme === "warm-dark" ? (
-    <Moon className="h-3.5 w-3.5 text-amber-500" />
+  {mounted && (
+  theme === "light" ? (
+  <Sun className="h-3.5 w-3.5" />
+  ) : theme === "soft" ? (
+  <Sun className="h-3.5 w-3.5 text-amber-400" />
+  ) : theme === "graphite" ? (
+  <Monitor className="h-3.5 w-3.5" />
+  ) : theme === "warm-dark" ? (
+  <Moon className="h-3.5 w-3.5 text-amber-500" />
   ) : (
-    <Moon className="h-3.5 w-3.5" />
+  <Moon className="h-3.5 w-3.5" />
   )
-)}
+  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[160px]">
                 <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
                   Theme
                 </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => setTheme("light")}
-                  className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
-                >
-                  <Sun className="h-3.5 w-3.5" />
-                  Light
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme("dark")}
-                  className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
-                >
-                  <Moon className="h-3.5 w-3.5" />
-                  Dark
-                </DropdownMenuItem>
+  <DropdownMenuItem
+  onClick={() => setTheme("light")}
+  className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
+  >
+  <Sun className="h-3.5 w-3.5" />
+  Light
+  </DropdownMenuItem>
+  <DropdownMenuItem
+  onClick={() => setTheme("soft")}
+  className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
+  >
+  <Sun className="h-3.5 w-3.5 text-amber-400" />
+  Soft
+  </DropdownMenuItem>
+  <DropdownMenuItem
+  onClick={() => setTheme("dark")}
+  className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
+  >
+  <Moon className="h-3.5 w-3.5" />
+  Dark
+  </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme("warm-dark")}
                   className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}

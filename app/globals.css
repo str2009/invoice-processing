@@ -146,6 +146,41 @@
     --sidebar-border: 216 9% 22%;
     --sidebar-ring: 43 50% 57%;
   }
+  /* Soft - мягкая светлая тема, минималистичная, дорогой вид */
+  .soft {
+    --background: 40 20% 97%;
+    --foreground: 220 15% 20%;
+    --card: 40 15% 99%;
+    --card-foreground: 220 15% 20%;
+    --popover: 40 15% 99%;
+    --popover-foreground: 220 15% 20%;
+    --primary: 220 50% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 10% 93%;
+    --secondary-foreground: 220 15% 25%;
+    --muted: 40 12% 94%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 40 15% 91%;
+    --accent-foreground: 220 15% 20%;
+    --destructive: 0 55% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 12% 88%;
+    --input: 40 12% 88%;
+    --ring: 220 50% 45%;
+    --chart-1: 220 50% 45%;
+    --chart-2: 175 45% 42%;
+    --chart-3: 35 70% 50%;
+    --chart-4: 0 55% 50%;
+    --chart-5: 270 40% 55%;
+    --sidebar-background: 40 15% 96%;
+    --sidebar-foreground: 220 15% 25%;
+    --sidebar-primary: 220 50% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 15% 91%;
+    --sidebar-accent-foreground: 220 15% 20%;
+    --sidebar-border: 40 12% 88%;
+    --sidebar-ring: 220 50% 45%;
+  }
 }
 
 @layer base {
