@@ -6,27 +6,60 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Helper to get invoice counts for all shipments in a single query
-async function getInvoiceCounts(): Promise<Map<string, number>> {
+// Helper to get all invoices grouped by shipment_id
+async function getShipmentInvoices(): Promise<Map<string, { invoice_id: string; supplier: string | null; date: string | null; amount: number | null }[]>> {
   const { data } = await supabase
     .from("shipment_invoices")
-    .select("shipment_id")
+    .select("shipment_id, invoice_id")
   
-  const counts = new Map<string, number>()
+  const invoiceMap = new Map<string, { invoice_id: string; supplier: string | null; date: string | null; amount: number | null }[]>()
+  
   if (data) {
+    // Get unique invoice IDs
+    const invoiceIds = [...new Set(data.map(r => r.invoice_id))]
+    
+    // Fetch invoice details
+    let invoiceDetails = new Map<string, { supplier: string | null; date: string | null; amount: number | null }>()
+    if (invoiceIds.length > 0) {
+      const { data: invoices } = await supabase
+        .from("invoices")
+        .select("invoice_id, supplier, date, total_purchase")
+        .in("invoice_id", invoiceIds)
+      
+      if (invoices) {
+        for (const inv of invoices) {
+          invoiceDetails.set(inv.invoice_id, {
+            supplier: inv.supplier,
+            date: inv.date,
+            amount: inv.total_purchase
+          })
+        }
+      }
+    }
+    
+    // Group by shipment
     for (const row of data) {
-      const id = row.shipment_id
-      counts.set(id, (counts.get(id) ?? 0) + 1)
+      const shipId = row.shipment_id
+      const details = invoiceDetails.get(row.invoice_id) || { supplier: null, date: null, amount: null }
+      
+      if (!invoiceMap.has(shipId)) {
+        invoiceMap.set(shipId, [])
+      }
+      invoiceMap.get(shipId)!.push({
+        invoice_id: row.invoice_id,
+        ...details
+      })
     }
   }
-  return counts
+  return invoiceMap
 }
 
-// Helper to enrich shipments with invoice_count
-function enrichWithInvoiceCounts(shipments: any[], counts: Map<string, number>): any[] {
+// Helper to enrich shipments with invoices array
+function enrichWithInvoices(shipments: any[], invoiceMap: Map<string, any[]>): any[] {
   return shipments.map(ship => ({
     ...ship,
-    invoice_count: counts.get(ship.shipment_id) ?? 0
+    invoice_count: invoiceMap.get(ship.shipment_id)?.length ?? 0,
+    invoices: invoiceMap.get(ship.shipment_id) ?? []
   }))
 }
 
@@ -35,9 +68,9 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const filter = url.searchParams.get("filter") || "all"
 
-    // Get invoice counts for all shipments (single query)
-    const invoiceCounts = await getInvoiceCounts()
-    const linkedIds = [...invoiceCounts.keys()]
+    // Get all invoices grouped by shipment (single batch query)
+    const invoiceMap = await getShipmentInvoices()
+    const linkedIds = [...invoiceMap.keys()]
 
     let data: any[] = []
     let error: any = null
@@ -81,8 +114,8 @@ export async function GET(req: Request) {
 
     if (error) throw error
 
-    // Enrich with invoice counts
-    const enrichedData = enrichWithInvoiceCounts(data, invoiceCounts)
+    // Enrich with invoices array
+    const enrichedData = enrichWithInvoices(data, invoiceMap)
 
     return NextResponse.json(enrichedData)
   } catch (e: any) {
