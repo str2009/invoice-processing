@@ -478,6 +478,32 @@ export function SimulationPanel({
     ))
   }, [])
 
+  // ─── Enter Key Navigation (Excel-like) ───
+  const handleEnterNavigation = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    if (e.key !== "Enter") return
+    
+    e.preventDefault()
+    
+    const form = (e.target as HTMLElement).closest("[data-form-container]")
+    if (!form) return
+    
+    const focusable = Array.from(
+      form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")
+    ).filter(el => !el.hasAttribute("disabled") && el.type !== "hidden")
+    
+    const currentIndex = focusable.indexOf(e.target as HTMLInputElement)
+    const nextElement = focusable[currentIndex + 1]
+    
+    if (nextElement) {
+      nextElement.focus()
+      // Move cursor to end of input
+      if (nextElement instanceof HTMLInputElement && nextElement.type === "text") {
+        const len = nextElement.value.length
+        nextElement.setSelectionRange(len, len)
+      }
+    }
+  }, [])
+
   // Add new empty panel
   const addEmptyPanel = useCallback(() => {
     const newId = `empty-${Date.now()}`
@@ -1859,7 +1885,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 1 — DELIVERY INFO ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto" data-form-container>
 
               {/* Row 1: Company, Type */}
               <div className="grid grid-cols-2 gap-3">
@@ -1913,6 +1939,7 @@ export function SimulationPanel({
                         invoiceNumber: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-7 text-xs font-mono"
                   />
                 </Field>
@@ -1949,6 +1976,7 @@ export function SimulationPanel({
                         transportDate: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-7 text-xs"
                   />
                 </Field>
@@ -1963,6 +1991,7 @@ export function SimulationPanel({
                         receivedDate: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-7 text-xs"
                   />
                 </Field>
@@ -1976,6 +2005,9 @@ export function SimulationPanel({
                     setShippingForm((p) => ({
                       ...p,
                       reference: e.target.value,
+                    }))
+                  }
+                  onKeyDown={handleEnterNavigation}
                     }))
                   }
                   className="h-7 text-xs"
@@ -1999,7 +2031,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 2 — CARGO ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto" data-form-container>
 
               <div className="grid grid-cols-2 gap-6">
 
@@ -2011,9 +2043,8 @@ export function SimulationPanel({
                         ...p,
                         totalCost: e.target.value,
                       }))
-
                     }}
-
+                    onKeyDown={handleEnterNavigation}
                     className="h-8 text-xs font-mono"
                   />
                 </Field>
@@ -2028,6 +2059,7 @@ export function SimulationPanel({
                         packages: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-8 text-xs font-mono"
                   />
                 </Field>
@@ -2041,6 +2073,7 @@ export function SimulationPanel({
                         weight: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-8 text-xs font-mono"
                   />
                 </Field>
@@ -2054,6 +2087,7 @@ export function SimulationPanel({
                         volume: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-8 text-xs font-mono"
                   />
                 </Field>
@@ -2067,6 +2101,7 @@ export function SimulationPanel({
                         density: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className="h-8 text-xs font-mono"
                   />
                 </Field>
@@ -2080,6 +2115,7 @@ export function SimulationPanel({
                         goodsTotalValue: e.target.value,
                       }))
                     }
+                    onKeyDown={handleEnterNavigation}
                     className={`h-8 text-xs font-mono ${isMismatch ? "border-red-500 text-red-600" : "border-border"
                       }`}
                   />
@@ -2106,7 +2142,7 @@ export function SimulationPanel({
             </div>
 
             {/* ───────────── COLUMN 3 — CONTROL ───────────── */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto">
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3 h-full overflow-y-auto" data-form-container>
 
               {/* Create Shipment Button - does NOT attach invoices */}
               <Button
@@ -2397,11 +2433,12 @@ export function SimulationPanel({
                                     <option value="hybrid">Hybrid</option>
                                   </select>
                                   {mode === "hybrid" && (
-                                    <div className="flex items-center gap-1 ml-2">
+                                    <div className="flex items-center gap-1 ml-2" data-form-container>
                                       <span className="text-[10px] text-muted-foreground/70">Override ₽/kg:</span>
                                       <Input
                                         value={normalPrice}
                                         onChange={(e) => setNormalPrice(e.target.value)}
+                                        onKeyDown={handleEnterNavigation}
                                         className="h-6 w-20 font-mono text-[12px] bg-background px-1.5 text-right font-semibold"
                                       />
                                     </div>
@@ -2933,11 +2970,11 @@ export function SimulationPanel({
                 </li>
                 <li className="flex gap-3">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">2</span>
-                  <span>Заполните данные о перевозке: компания, тип (AIR/SEA/RIVER/WINTER), даты, стоимость</span>
+                  <span>Заполните данные о перевозке: ��омпания, тип (AIR/SEA/RIVER/WINTER), даты, стоимость</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">3</span>
-                  <span>Перейдите в <span className="font-medium text-foreground">Pricing Manager</span> и выберите поставку из списка SHIPMENTS</span>
+                  <span>Перейдите в <span className="font-medium text-foreground">Pricing Manager</span> и в��берите поставку из списка SHIPMENTS</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">4</span>
@@ -3060,7 +3097,7 @@ export function SimulationPanel({
   )
 }
 
-// ─── Sub-components ─────────────────────────��────────��───────────────────────
+// ─── Sub-components ─────────────────────────��────────��──────────────────────��
 
 function PreviewCard({
   label,
