@@ -745,9 +745,7 @@ export function SimulationPanel({
   const shipmentInvoices = useMemo(() => {
     if (!selectedShipmentId) return []
     const shipment = shipments.find(s => s.shipment_id === selectedShipmentId)
-    const invoices = shipment?.invoices ?? []
-    console.log("[v0] shipmentInvoices derived:", { selectedShipmentId, shipment, invoices })
-    return invoices
+    return shipment?.invoices ?? []
   }, [selectedShipmentId, shipments])
   
   // Wrapper to sync shipment selection with parent
@@ -1012,9 +1010,10 @@ export function SimulationPanel({
     loadShipmentDetails()
   }, [selectedShipmentId, shipmentInvoices, onSetSelectedInvoices])
 
-  // Auto-select invoice if only one exists (derived state triggers this instantly)
+  // Auto-select first invoice when shipment has invoices (or when shipment changes)
   useEffect(() => {
-    if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
+    if (shipmentInvoices.length > 0 && !selectedInvoiceId) {
+      // Always select first invoice to load data in table
       const invoiceId = shipmentInvoices[0].invoice_id
       setSelectedInvoiceId(invoiceId)
       onInvoiceSelect?.(invoiceId)
@@ -2602,7 +2601,7 @@ export function SimulationPanel({
                                 onClick={onClearMoot}
                                 disabled={!onClearMoot}
                               >
-                                Очистить MOOT
+                                Очис��ить MOOT
                               </Button>
 
                               {/* Export to Excel Button */}
@@ -2771,7 +2770,6 @@ export function SimulationPanel({
                                             key={inv.invoice_id}
                                             onClick={() => {
                                               const newId = isSelected ? null : inv.invoice_id
-                                              console.log("[v0] Invoice clicked:", { newId, inv, onInvoiceSelect: !!onInvoiceSelect })
                                               setSelectedInvoiceId(newId)
                                               // Load invoice data in parent
                                               if (newId && onInvoiceSelect) {
