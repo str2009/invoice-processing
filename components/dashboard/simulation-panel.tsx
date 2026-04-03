@@ -125,6 +125,8 @@ interface SimulationPanelProps {
   onClearMoot?: () => void
   onUpdateShip?: (updates: Map<string | number, number>) => void
   onShipmentSelect?: (shipmentId: string | null) => void
+  onInvoiceReset?: () => void
+  onInvoiceSelect?: (invoiceId: string) => void
 }
 
 // ─── Column Resize Handle Component ───
@@ -400,11 +402,22 @@ export function SimulationPanel({
   onClearMoot,
   onUpdateShip,
   onShipmentSelect,
+  onInvoiceReset,
+  onInvoiceSelect,
 }: SimulationPanelProps) {
 
-  const [activeTab, setActiveTab] = useState("shipping")
+  const [activeTab, setActiveTabInternal] = useState("shipping")
   const [mode, setMode] = useState<"normal" | "hybrid">("hybrid")
   const [normalPrice, setNormalPrice] = useState("115")
+  
+  // Tab change handler with full reset
+  const setActiveTab = useCallback((newTab: string) => {
+    setActiveTabInternal(newTab)
+    // Reset all selections when switching tabs
+    setSelectedShipmentIdInternal(null)
+    onShipmentSelect?.(null)
+    onInvoiceReset?.()
+  }, [onShipmentSelect, onInvoiceReset])
 
   // ─── Draggable Metrics Widget Order ───
   const defaultMetricOrder = [
@@ -1008,14 +1021,17 @@ export function SimulationPanel({
   // Auto-select invoice if only one exists
   useEffect(() => {
     if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
-      setSelectedInvoiceId(shipmentInvoices[0].invoice_id)
+      const invoiceId = shipmentInvoices[0].invoice_id
+      setSelectedInvoiceId(invoiceId)
+      // Also load invoice data in parent
+      onInvoiceSelect?.(invoiceId)
     }
     // Clear selection when shipment changes
     if (shipmentInvoices.length === 0) {
       setSelectedInvoiceId(null)
       setInvoiceItems([])
     }
-  }, [shipmentInvoices, selectedInvoiceId])
+  }, [shipmentInvoices, selectedInvoiceId, onInvoiceSelect])
 
   // Load invoice items when invoice is selected
   useEffect(() => {
@@ -2770,7 +2786,14 @@ export function SimulationPanel({
                                         return (
                                           <div
                                             key={inv.invoice_id}
-                                            onClick={() => setSelectedInvoiceId(isSelected ? null : inv.invoice_id)}
+                                            onClick={() => {
+                                              const newId = isSelected ? null : inv.invoice_id
+                                              setSelectedInvoiceId(newId)
+                                              // Load invoice data in parent
+                                              if (newId && onInvoiceSelect) {
+                                                onInvoiceSelect(newId)
+                                              }
+                                            }}
                                             className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"
                                             }`}
                                           >
@@ -2802,10 +2825,12 @@ export function SimulationPanel({
                                           <div
                                             key={invoiceId}
                                             onClick={() => {
-                                              setSelectedInvoiceId(isSelected ? null : invoiceId)
-                                              // Update parent's selected invoices to show this one in table
-                                              if (!isSelected && onSetSelectedInvoices) {
-                                                onSetSelectedInvoices([invoiceId])
+                                              const newId = isSelected ? null : invoiceId
+                                              setSelectedInvoiceId(newId)
+                                              // Load invoice data in parent
+                                              if (newId) {
+                                                onSetSelectedInvoices?.([newId])
+                                                onInvoiceSelect?.(newId)
                                               }
                                             }}
                                             className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/30"

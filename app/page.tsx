@@ -198,8 +198,8 @@ useEffect(() => {
   const data = scenarioData ?? baseData
   const invoiceId = selectedInvoice
   
-  // Table readiness: show data only when both shipment and invoice are selected
-  const isTableReady = Boolean(selectedShipmentId && selectedInvoice)
+  // Table readiness: show data only when invoice is selected (with loaded data)
+  const isTableReady = Boolean(selectedInvoice && data.length > 0)
   const safeData = isTableReady ? data : []
 
   // Map raw Supabase row to InvoiceRow shape
@@ -252,17 +252,14 @@ useEffect(() => {
   useEffect(() => {
     const loadInvoices = async () => {
       try {
-        const res = await fetch("/api/invoice/list")
-        if (!res.ok) return
-        const data: InvoiceListItem[] = await res.json()
-        setInvoiceList(data)
-        if (data.length > 0) {
-          setSelectedInvoice(data[0].invoice_id)
-          loadInvoice(data[0].invoice_id)
-        }
-      } catch {
-        // No invoices available — empty state
-      }
+  const res = await fetch("/api/invoice/list")
+  if (!res.ok) return
+  const data: InvoiceListItem[] = await res.json()
+  setInvoiceList(data)
+  // Do NOT auto-select first invoice - keep empty state on load
+  } catch {
+  // No invoices available — empty state
+  }
     }
     loadInvoices()
   }, [loadInvoice])
@@ -871,25 +868,24 @@ console.log("scenario active:", isScenarioActive)
             {/* Invoice ID — text-only status color */}
             <span
               className={`min-w-0 truncate font-mono text-xs font-medium ${
-                invoiceId
+                selectedInvoice
                   ? isEnriched
                     ? "text-emerald-400/70"
                     : "text-zinc-400"
                   : "text-muted-foreground/40"
               }`}
             >
-              {invoiceId ?? "\u2014"}
+              {selectedInvoice ?? "\u2014"}
             </span>
             {/* Supplier — plain truncated text */}
             <span className="min-w-0 truncate text-xs text-foreground/70">
-              {(() => {
-                const inv = invoiceList.find((i) => i.invoice_id === selectedInvoice)
-                return inv?.supplier ?? ""
-              })()}
+              {selectedInvoice
+                ? invoiceList.find((i) => i.invoice_id === selectedInvoice)?.supplier ?? ""
+                : "\u2014"}
             </span>
             {/* Total — right-aligned, fixed width */}
             <span className="w-28 text-right font-mono text-xs tabular-nums text-foreground/80">
-              {data.length > 0
+              {selectedInvoice && safeData.length > 0
                 ? totalPurchase.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : "\u2014"}
             </span>
@@ -1176,6 +1172,12 @@ console.log("scenario active:", isScenarioActive)
   onClearMoot={handleClearMoot}
   onUpdateShip={handleUpdateShip}
   onShipmentSelect={setSelectedShipmentId}
+  onInvoiceReset={() => {
+    setSelectedInvoice(null)
+    setRows([])
+    setSelectedInvoices([])
+  }}
+  onInvoiceSelect={handleInvoiceChange}
 />
               </div>
             )}
