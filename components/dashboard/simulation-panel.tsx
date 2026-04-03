@@ -2008,8 +2008,6 @@ export function SimulationPanel({
                     }))
                   }
                   onKeyDown={handleEnterNavigation}
-                    }))
-                  }
                   className="h-7 text-xs"
                 />
               </Field>
