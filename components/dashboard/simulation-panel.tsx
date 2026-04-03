@@ -124,6 +124,7 @@ interface SimulationPanelProps {
   onUpdateMoot?: (updates: Map<string | number, number>) => void
   onClearMoot?: () => void
   onUpdateShip?: (updates: Map<string | number, number>) => void
+  onShipmentSelect?: (shipmentId: string | null) => void
 }
 
 // ─── Column Resize Handle Component ───
@@ -398,6 +399,7 @@ export function SimulationPanel({
   onUpdateMoot,
   onClearMoot,
   onUpdateShip,
+  onShipmentSelect,
 }: SimulationPanelProps) {
 
   const [activeTab, setActiveTab] = useState("shipping")
@@ -718,8 +720,14 @@ export function SimulationPanel({
 
   const [shipments, setShipments] = useState<ShipmentListItem[]>([])
   const [isLoadingShipments, setIsLoadingShipments] = useState(false)
-  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
+  const [selectedShipmentId, setSelectedShipmentIdInternal] = useState<string | null>(null)
   const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
+  
+  // Wrapper to sync shipment selection with parent
+  const setSelectedShipmentId = useCallback((id: string | null) => {
+    setSelectedShipmentIdInternal(id)
+    onShipmentSelect?.(id)
+  }, [onShipmentSelect])
 
   // Pricing Manager: selected invoice and its items
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
@@ -3023,7 +3031,7 @@ export function SimulationPanel({
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Shipping Model</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Создание и редактирование поставок. Укажите компанию-перевозчика, тип доставки, 
+                    Создание и редактирование поставок. Укажите компанию-перевозчик��, тип доставки, 
                     даты, стоимость и параметры груза.
                   </p>
                 </div>

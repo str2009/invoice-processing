@@ -97,6 +97,9 @@ useEffect(() => {
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
+  
+  // Shipment selection state (synced from SimulationPanel)
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null)
   const toggleInvoice = (id: string) => {
     setSelectedInvoices((prev) =>
       prev.includes(id)
@@ -194,6 +197,10 @@ useEffect(() => {
   const baseData = rows
   const data = scenarioData ?? baseData
   const invoiceId = selectedInvoice
+  
+  // Table readiness: show data only when both shipment and invoice are selected
+  const isTableReady = Boolean(selectedShipmentId && selectedInvoice)
+  const safeData = isTableReady ? data : []
 
   // Map raw Supabase row to InvoiceRow shape
   const mapRow = useCallback((r: Record<string, unknown>, idx: number): InvoiceRow => ({
@@ -1050,17 +1057,31 @@ console.log("scenario active:", isScenarioActive)
           {/* Top section: table + right analytics panel */}
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Table takes remaining space */}
-            <div className="min-w-0 flex-1 overflow-hidden transition-all duration-300 ease-in-out">
-<InvoiceTable
-  key={dataVersion}
-  data={data}
-  globalFilter={globalFilter}
-  onGlobalFilterChange={setGlobalFilter}
-  onRowCountChange={setRowCount}
-  selectedRowId={selectedRow?.id}
-  onRowClick={handleRowClick}
-  onUpdateRow={handleUpdateRow}
-  />
+            <div className="relative min-w-0 flex-1 overflow-hidden transition-all duration-300 ease-in-out">
+              <InvoiceTable
+                key={dataVersion}
+                data={safeData}
+                globalFilter={globalFilter}
+                onGlobalFilterChange={setGlobalFilter}
+                onRowCountChange={setRowCount}
+                selectedRowId={selectedRow?.id}
+                onRowClick={handleRowClick}
+                onUpdateRow={handleUpdateRow}
+              />
+              {/* Empty state overlay when table is not ready */}
+              {!isTableReady && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/60">
+                  <div className="text-center space-y-2">
+                    <FileText className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Выберите инвойс для начала работы
+                    </p>
+                    <p className="text-xs text-muted-foreground/60">
+                      Выберите поставку и инвойс для отображения данных
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right analytics panel - pinned, resizable */}
@@ -1154,6 +1175,7 @@ console.log("scenario active:", isScenarioActive)
   onUpdateMoot={handleUpdateMoot}
   onClearMoot={handleClearMoot}
   onUpdateShip={handleUpdateShip}
+  onShipmentSelect={setSelectedShipmentId}
 />
               </div>
             )}
