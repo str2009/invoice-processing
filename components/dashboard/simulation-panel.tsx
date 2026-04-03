@@ -715,15 +715,6 @@ export function SimulationPanel({
   const [savedShipping, setSavedShipping] = useState<ShippingForm | null>(null)
 
   // -------------------- Shipment management state --------------------
-  type ShipmentListItem = {
-    shipment_id: string
-    transport_company: string | null
-    transport_invoice_number: string | null
-    transport_date: string | null
-    transport_type: string | null
-    invoice_count?: number
-  }
-
   type ShipmentInvoice = {
     invoice_id: string
     supplier: string | null
@@ -731,23 +722,36 @@ export function SimulationPanel({
     amount: number | null
   }
 
+  type ShipmentListItem = {
+    shipment_id: string
+    transport_company: string | null
+    transport_invoice_number: string | null
+    transport_date: string | null
+    transport_type: string | null
+    invoice_count?: number
+    invoices?: ShipmentInvoice[]
+  }
+
   const [shipments, setShipments] = useState<ShipmentListItem[]>([])
   const [isLoadingShipments, setIsLoadingShipments] = useState(false)
   const [selectedShipmentId, setSelectedShipmentIdInternal] = useState<string | null>(null)
-  const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
 
-  // Pricing Manager: selected invoice and its items (declared before wrapper that uses them)
+  // Pricing Manager: selected invoice and its items
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
   
-  // Wrapper to sync shipment selection with parent and reset related state
+  // Derived state: invoices for selected shipment (instant, no async)
+  const shipmentInvoices = useMemo(() => {
+    if (!selectedShipmentId) return []
+    const shipment = shipments.find(s => s.shipment_id === selectedShipmentId)
+    return shipment?.invoices ?? []
+  }, [selectedShipmentId, shipments])
+  
+  // Wrapper to sync shipment selection with parent
   const setSelectedShipmentId = useCallback((id: string | null) => {
-    // Immediately clear invoices to prevent stale data
-    setShipmentInvoices([])
     setSelectedInvoiceId(null)
     setInvoiceItems([])
-    // Then update shipment selection
     setSelectedShipmentIdInternal(id)
     onShipmentSelect?.(id)
   }, [onShipmentSelect])
@@ -962,21 +966,16 @@ export function SimulationPanel({
     }
   }, [activeTab, shipmentFilter, loadShipments])
 
-  // Load shipment details when selected
+  // Load shipment details when selected (form data only, invoices are derived)
   useEffect(() => {
-    if (!selectedShipmentId) {
-      setShipmentInvoices([])
-      return
-    }
+    if (!selectedShipmentId) return
 
-    const loadShipmentData = async () => {
+    const loadShipmentDetails = async () => {
       setIsLoadingShipmentInvoices(true)
       try {
-        // Load shipment details
         const detailsRes = await fetch(`/api/shipment/${selectedShipmentId}`)
         if (detailsRes.ok) {
           const details = await detailsRes.json()
-          // Fill form with shipment data
           setShippingForm({
             company: details.transport_company || "",
             type: details.transport_type || "",
@@ -996,45 +995,27 @@ export function SimulationPanel({
             warehouse: "",
           })
         }
-
-        // Load linked invoices
-        const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
-
-        if (invoicesRes.ok) {
-          const rawData = await invoicesRes.json()
-          const invoices = Array.isArray(rawData) ? rawData : []
-
-          setShipmentInvoices(invoices)
-
-          // Update selected invoices in parent
-          if (onSetSelectedInvoices && invoices.length > 0) {
-            onSetSelectedInvoices(invoices.map((inv: ShipmentInvoice) => inv.invoice_id))
-          }
-        } else {
-          setShipmentInvoices([])
+        
+        // Update selected invoices in parent from derived shipmentInvoices
+        if (onSetSelectedInvoices && shipmentInvoices.length > 0) {
+          onSetSelectedInvoices(shipmentInvoices.map(inv => inv.invoice_id))
         }
       } catch (e) {
-        console.error("Failed to load shipment data:", e)
+        console.error("Failed to load shipment details:", e)
       } finally {
         setIsLoadingShipmentInvoices(false)
       }
     }
 
-    loadShipmentData()
-  }, [selectedShipmentId, onSetSelectedInvoices])
+    loadShipmentDetails()
+  }, [selectedShipmentId, shipmentInvoices, onSetSelectedInvoices])
 
-  // Auto-select invoice if only one exists
+  // Auto-select invoice if only one exists (derived state triggers this instantly)
   useEffect(() => {
     if (shipmentInvoices.length === 1 && !selectedInvoiceId) {
       const invoiceId = shipmentInvoices[0].invoice_id
       setSelectedInvoiceId(invoiceId)
-      // Also load invoice data in parent
       onInvoiceSelect?.(invoiceId)
-    }
-    // Clear selection when shipment changes
-    if (shipmentInvoices.length === 0) {
-      setSelectedInvoiceId(null)
-      setInvoiceItems([])
     }
   }, [shipmentInvoices, selectedInvoiceId, onInvoiceSelect])
 
@@ -1095,27 +1076,22 @@ export function SimulationPanel({
         return
       }
 
-      toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
-
-      // Reload shipment invoices
-      const invoicesRes = await fetch(`/api/shipment/${selectedShipmentId}/invoices`)
-      if (invoicesRes.ok) {
-        const rawData = await invoicesRes.json()
-        const invoices = Array.isArray(rawData) ? rawData : []
-        setShipmentInvoices(invoices)
-      }
-    } catch {
-      toast.error("Failed to attach invoices", { id: toastId })
-    } finally {
-      setIsAttaching(false)
-    }
-  }, [selectedShipmentId, invoiceIds])
+  toast.success(`${invoiceIds.length} invoice(s) attached`, { id: toastId })
+  
+  // Reload shipments to update derived invoices
+  loadShipments(shipmentFilter)
+  } catch {
+  toast.error("Failed to attach invoices", { id: toastId })
+  } finally {
+  setIsAttaching(false)
+  }
+  }, [selectedShipmentId, invoiceIds, loadShipments, shipmentFilter])
 
   // Clear form for new shipment entry
   const handleNewShipment = useCallback(() => {
-    setSelectedShipmentId(null)
-    setShippingForm(EMPTY_SHIPPING)
-    setShipmentInvoices([])
+  setSelectedShipmentId(null)
+  setShippingForm(EMPTY_SHIPPING)
+  // shipmentInvoices is derived from selectedShipmentId, no need to clear
   }, [])
 
   // -------------------- Invoice vs Goods check --------------------
@@ -2785,7 +2761,7 @@ export function SimulationPanel({
                                       No invoices linked to this shipment
                                     </p>
                                   ) : (
-                                    <div className="divide-y divide-border/40" key={selectedShipmentId}>
+                                    <div className="divide-y divide-border/40">
                                       {shipmentInvoices.map((inv) => {
                                         const isSelected = selectedInvoiceId === inv.invoice_id
                                         return (
@@ -3040,7 +3016,7 @@ export function SimulationPanel({
                 1. Обзор системы
               </h3>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
-                Система Pricing & Simulation предназначена для управления ценообразованием и расчёта стоимости доставки товаров. 
+                Система Pricing & Simulation ��редназначена для управления ценообразованием и расчёта стоимости доставки товаров. 
                 Она позволяет создавать правила ценообразования, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
               </p>
             </div>
