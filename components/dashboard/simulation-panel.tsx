@@ -735,17 +735,22 @@ export function SimulationPanel({
   const [isLoadingShipments, setIsLoadingShipments] = useState(false)
   const [selectedShipmentId, setSelectedShipmentIdInternal] = useState<string | null>(null)
   const [shipmentInvoices, setShipmentInvoices] = useState<ShipmentInvoice[]>([])
-  
-  // Wrapper to sync shipment selection with parent
-  const setSelectedShipmentId = useCallback((id: string | null) => {
-    setSelectedShipmentIdInternal(id)
-    onShipmentSelect?.(id)
-  }, [onShipmentSelect])
 
-  // Pricing Manager: selected invoice and its items
+  // Pricing Manager: selected invoice and its items (declared before wrapper that uses them)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [invoiceItems, setInvoiceItems] = useState<any[]>([])
   const [isLoadingInvoiceItems, setIsLoadingInvoiceItems] = useState(false)
+  
+  // Wrapper to sync shipment selection with parent and reset related state
+  const setSelectedShipmentId = useCallback((id: string | null) => {
+    // Immediately clear invoices to prevent stale data
+    setShipmentInvoices([])
+    setSelectedInvoiceId(null)
+    setInvoiceItems([])
+    // Then update shipment selection
+    setSelectedShipmentIdInternal(id)
+    onShipmentSelect?.(id)
+  }, [onShipmentSelect])
   
   // Invoice panel mode: "linked" (to shipment) or "all" (searchable list)
   const [invoiceMode, setInvoiceMode] = useState<"linked" | "all">("linked")
@@ -2780,7 +2785,7 @@ export function SimulationPanel({
                                       No invoices linked to this shipment
                                     </p>
                                   ) : (
-                                    <div className="divide-y divide-border/40">
+                                    <div className="divide-y divide-border/40" key={selectedShipmentId}>
                                       {shipmentInvoices.map((inv) => {
                                         const isSelected = selectedInvoiceId === inv.invoice_id
                                         return (
@@ -3036,7 +3041,7 @@ export function SimulationPanel({
               </h3>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
                 Система Pricing & Simulation предназначена для управления ценообразованием и расчёта стоимости доставки товаров. 
-                Она позволяет создавать правила ценообразования, привязывать инвойсы к поставкам и рассчитывать итоговые цены.
+                Она позволяет создавать правила ценообразования, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
               </p>
             </div>
 
