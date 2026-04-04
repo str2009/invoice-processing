@@ -415,7 +415,8 @@ const columns: ColumnDef<InvoiceRow>[] = [
     accessorKey: "moot",
     header: "PriceNorm",
     cell: ({ row, table }) => {
-      const [value, setValue] = useState(row.original.moot ?? "")
+      const [isEditing, setIsEditing] = useState(false)
+      const [editValue, setEditValue] = useState("")
       const isManual = row.original.isManual ?? false
       const now = row.original.now || 0
       const mootVal = row.original.moot ?? 0
@@ -424,40 +425,48 @@ const columns: ColumnDef<InvoiceRow>[] = [
       const diffPercent = now > 0 ? Math.abs((mootVal - now) / now) * 100 : 0
       const hasSignificantDiff = mootVal > 0 && diffPercent > 5
 
-      // Sync when row.original.moot changes (from calculateMoot)
-      useEffect(() => {
-        setValue(row.original.moot ?? "")
-      }, [row.original.moot])
+      // Format display value with space as thousands separator
+      const displayValue = mootVal > 0
+        ? Math.round(mootVal).toLocaleString("ru-RU").replace(/,/g, " ")
+        : ""
 
-      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value
-        setValue(newValue)
-        // Mark as manual edit
-        const onUpdateRow = (table.options.meta as any)?.onUpdateRow
-        if (onUpdateRow) {
-          onUpdateRow(row.original.id, {
-            moot: newValue === "" ? undefined : parseFloat(newValue),
-            isManual: true
-          })
+      const handleFocus = () => {
+        setIsEditing(true)
+        setEditValue(mootVal > 0 ? String(Math.round(mootVal)) : "")
+      }
+
+      const handleBlur = () => {
+        setIsEditing(false)
+        const numValue = parseFloat(editValue)
+        if (!isNaN(numValue) && numValue !== mootVal) {
+          const onUpdateRow = (table.options.meta as any)?.onUpdateRow
+          if (onUpdateRow) {
+            onUpdateRow(row.original.id, {
+              moot: numValue,
+              isManual: true
+            })
+          }
         }
       }
 
-      // Format display value with space as thousands separator
-      const displayValue = typeof value === "number" || (typeof value === "string" && value !== "")
-        ? Math.round(Number(value)).toLocaleString("ru-RU").replace(/,/g, " ")
-        : ""
+      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEditValue(e.target.value)
+      }
 
       return (
         <div className={`relative rounded ${hasSignificantDiff ? "bg-amber-500/20" : ""}`}>
           <input
-            type="number"
-            step="1"
-            value={value}
+            type="text"
+            inputMode="numeric"
+            value={isEditing ? editValue : displayValue}
             data-moot="true"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             onChange={handleChange}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault()
+                e.currentTarget.blur()
 
                 const inputs = document.querySelectorAll<HTMLInputElement>(
                   'input[data-moot="true"]'
@@ -469,8 +478,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
                 if (next) next.focus()
               }
             }}
-            style={{ MozAppearance: "textfield" }}
-            className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isManual
+            className={`w-full h-7 rounded px-2 text-xs font-mono text-center transition-all ${isManual
                 ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40"
                 : hasSignificantDiff
                   ? "bg-transparent border border-amber-500/30"
