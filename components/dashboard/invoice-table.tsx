@@ -271,6 +271,20 @@ const columns: ColumnDef<InvoiceRow>[] = [
     ),
   },
   {
+    id: "costOld",
+    accessorKey: "costOld",
+    header: "Cost Old",
+    cell: ({ row }) => {
+      const val = row.getValue("costOld") as number | null | undefined
+      if (val == null) return <span className="text-muted-foreground/40">—</span>
+      return (
+        <span className="font-mono tabular-nums text-muted-foreground">
+          {val.toFixed(2)}
+        </span>
+      )
+    },
+  },
+  {
     id: "now",
     accessorKey: "now",
     header: "Now",

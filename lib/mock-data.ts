@@ -12,6 +12,7 @@ export interface InvoiceRow {
   partName: string
   qty: number
   cost: number
+  costOld?: number | null
   now: number
   ship: number
   deltaPercent: number

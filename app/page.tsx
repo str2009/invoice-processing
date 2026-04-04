@@ -210,6 +210,7 @@ useEffect(() => {
     partName: (r.part_name as string) ?? (r.partName as string) ?? "",
     qty: Number(r.qty ?? 0),
     cost: Number(r.cost ?? 0),
+    costOld: r.cost_old != null ? Number(r.cost_old) : null,
     now: Number(r.now ?? r.price_now ?? 0),
     ship: Number(r.ship ?? r.price_ship ?? 0),
     deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
