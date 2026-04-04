@@ -198,8 +198,8 @@ useEffect(() => {
   const data = scenarioData ?? baseData
   const invoiceId = selectedInvoice
   
-  // Table readiness: show data only when invoice is selected (with loaded data)
-  const isTableReady = Boolean(selectedInvoice && data.length > 0)
+  // Table readiness: show data when invoice is selected OR when we have enriched multi-invoice data
+  const isTableReady = Boolean((selectedInvoice && data.length > 0) || (isEnriched && data.length > 0))
   const safeData = isTableReady ? data : []
 
   // Map raw Supabase row to InvoiceRow shape
@@ -210,6 +210,7 @@ useEffect(() => {
     partName: (r.part_name as string) ?? (r.partName as string) ?? "",
     qty: Number(r.qty ?? 0),
     cost: Number(r.cost ?? 0),
+    costOld: r.cost_old != null ? Number(r.cost_old) : null,
     now: Number(r.now ?? r.price_now ?? 0),
     ship: Number(r.ship ?? r.price_ship ?? 0),
     deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
@@ -325,7 +326,7 @@ useEffect(() => {
       setSelectedInvoice(null)
       setIsEnriched(false)
   
-      // обновить список
+      // о��новить список
       const listRes = await fetch("/api/invoice/list")
       if (listRes.ok) {
         const data = await listRes.json()
@@ -714,13 +715,35 @@ useEffect(() => {
   }, [])
 
   // Update Ship values for all rows based on calculated delivery costs
+  // Also recalculates deltaPercent = ((Now - Ship) / Cost - 1) × 100
   const handleUpdateShip = useCallback((updates: Map<string | number, number>) => {
     setRows((prevRows) => {
       const updatedRows = prevRows.map((row) => {
         const itemId = row.id || row.sku || row.article
         const shipValue = updates.get(itemId)
         if (shipValue !== undefined) {
-          return { ...row, ship: shipValue }
+          // Calculate deltaPercent: ((Now - Ship) / Cost - 1) × 100
+          const cost = row.cost || 0
+          const now = row.now || 0
+          const deltaPercent = cost > 0 && shipValue > 0
+            ? Math.round((((now - shipValue) / cost) - 1) * 1000) / 10
+            : 0
+          return { ...row, ship: shipValue, deltaPercent }
+        }
+        return row
+      })
+      return updatedRows
+    })
+  }, [])
+
+  // Update DeltaNorm values (markup % from pricing rules used in MOOT calculation)
+  const handleUpdateDeltaNorm = useCallback((updates: Map<string | number, number>) => {
+    setRows((prevRows) => {
+      const updatedRows = prevRows.map((row) => {
+        const itemId = row.id || row.sku || row.article
+        const deltaNormValue = updates.get(itemId)
+        if (deltaNormValue !== undefined) {
+          return { ...row, deltaNorm: deltaNormValue }
         }
         return row
       })
@@ -885,7 +908,7 @@ console.log("scenario active:", isScenarioActive)
             </span>
             {/* Total — right-aligned, fixed width */}
             <span className="w-28 text-right font-mono text-xs tabular-nums text-foreground/80">
-              {selectedInvoice && safeData.length > 0
+              {isTableReady
                 ? totalPurchase.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : "\u2014"}
             </span>
@@ -1171,6 +1194,7 @@ console.log("scenario active:", isScenarioActive)
   onUpdateMoot={handleUpdateMoot}
   onClearMoot={handleClearMoot}
   onUpdateShip={handleUpdateShip}
+  onUpdateDeltaNorm={handleUpdateDeltaNorm}
   onShipmentSelect={setSelectedShipmentId}
   onInvoiceReset={() => {
     setSelectedInvoice(null)

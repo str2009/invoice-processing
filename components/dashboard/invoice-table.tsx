@@ -111,11 +111,10 @@ function ResizeHandle({
       onMouseDown={header.getResizeHandler()}
       onTouchStart={header.getResizeHandler()}
       onDoubleClick={onDoubleClick}
-      className={`absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize select-none touch-none transition-colors ${
-        header.column.getIsResizing() 
-          ? "bg-primary" 
+      className={`absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize select-none touch-none transition-colors ${header.column.getIsResizing()
+          ? "bg-primary"
           : "bg-border hover:bg-primary/60"
-      }`}
+        }`}
       style={{ transform: "translateX(50%)" }}
     />
   )
@@ -155,15 +154,13 @@ function DraggableHeaderCell({
       ref={setNodeRef}
       style={style}
       data-column-id={header.column.id}
-      className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${
-        isDragging ? "z-20" : ""
-      }`}
+      className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${isDragging ? "z-20" : ""
+        }`}
       colSpan={header.colSpan}
     >
       <div
-        className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${
-          isNumeric ? "justify-center" : ""
-        }`}
+        className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""
+          }`}
         {...attributes}
         {...listeners}
       >
@@ -217,9 +214,8 @@ function DraggableCell({
       ref={setNodeRef}
       style={style}
       data-column-id={cell.column.id}
-      className={`truncate border-b border-r border-border px-2 py-1.5 text-xs ${
-        isNumeric ? "text-center" : ""
-      }`}
+      className={`truncate border-b border-r border-border px-2 py-1.5 text-xs ${isNumeric ? "text-center" : ""
+        }`}
     >
       {flexRender(cell.column.columnDef.cell, cell.getContext())}
     </td>
@@ -271,14 +267,33 @@ const columns: ColumnDef<InvoiceRow>[] = [
     ),
   },
   {
+    id: "costOld",
+    accessorKey: "costOld",
+    header: "Cost Old",
+    cell: ({ row }) => {
+      const val = row.getValue("costOld") as number | null | undefined
+      if (val == null) return <span className="text-muted-foreground/40">—</span>
+      return (
+        <span className="font-mono tabular-nums text-muted-foreground">
+          {val.toFixed(2)}
+        </span>
+      )
+    },
+  },
+  {
     id: "now",
     accessorKey: "now",
     header: "Now",
-    cell: ({ row }) => (
-      <span className="font-mono tabular-nums">
-        {(row.getValue("now") as number).toFixed(2)}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const val = row.getValue("now") as number
+      // Format with space as thousands separator
+      const formatted = Math.round(val).toLocaleString("ru-RU").replace(/,/g, " ")
+      return (
+        <span className="font-mono tabular-nums">
+          {formatted}
+        </span>
+      )
+    },
   },
   {
     id: "ship",
@@ -293,15 +308,14 @@ const columns: ColumnDef<InvoiceRow>[] = [
       const hasValue = val != null && val > 0
       return (
         <span
-          className={`font-mono tabular-nums ${
-            !hasValue
+          className={`font-mono tabular-nums ${!hasValue
               ? "text-muted-foreground/40"
               : isHigher
                 ? "text-amber-600 dark:text-amber-400"
                 : isLower
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-foreground"
-          }`}
+            }`}
         >
           {hasValue ? val.toFixed(2) : "---"}
         </span>
@@ -321,7 +335,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
       )
     },
   },
-  
+
   {
     id: "deltaPercent",
     accessorKey: "deltaPercent",
@@ -332,16 +346,30 @@ const columns: ColumnDef<InvoiceRow>[] = [
         return <span className="font-mono text-muted-foreground/40">{"---"}</span>
       return (
         <span
-          className={`font-mono tabular-nums ${
-            val > 0
+          className={`font-mono tabular-nums ${val > 0
               ? "text-amber-600 dark:text-amber-400"
               : val < 0
                 ? "text-emerald-600 dark:text-emerald-400"
                 : "text-muted-foreground"
-          }`}
+            }`}
         >
           {val > 0 ? "+" : ""}
           {val.toFixed(1)}%
+        </span>
+      )
+    },
+  },
+  {
+    id: "deltaNorm",
+    accessorKey: "deltaNorm",
+    header: "\u0394Norm",
+    cell: ({ row }) => {
+      const val = row.getValue("deltaNorm") as number | null | undefined
+      if (val == null)
+        return <span className="font-mono text-muted-foreground/40">{"—"}</span>
+      return (
+        <span className="font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
+          {val.toFixed(0)}%
         </span>
       )
     },
@@ -354,30 +382,28 @@ const columns: ColumnDef<InvoiceRow>[] = [
       const stock = row.getValue("stock") as number
       return (
         <span
-          className={`font-mono tabular-nums ${
-            stock < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
-          }`}
+          className={`font-mono tabular-nums ${stock < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+            }`}
         >
           {stock}
         </span>
       )
     },
   },
-  
+
   {
     id: "weight",
     accessorKey: "weight",
     header: "Weight",
     cell: ({ row }) => {
       const weight = row.getValue("weight") as number
-  
+
       return (
         <span
-          className={`font-mono tabular-nums ${
-            weight === 0
+          className={`font-mono tabular-nums ${weight === 0
               ? "text-red-500 font-semibold"
               : "text-muted-foreground"
-          }`}
+            }`}
         >
           {weight.toFixed(3)} kg
         </span>
@@ -387,56 +413,79 @@ const columns: ColumnDef<InvoiceRow>[] = [
   {
     id: "moot",
     accessorKey: "moot",
-    header: "MOOT",
+    header: "PriceNorm",
     cell: ({ row, table }) => {
-      const [value, setValue] = useState(row.original.moot ?? "")
+      const [isEditing, setIsEditing] = useState(false)
+      const [editValue, setEditValue] = useState("")
       const isManual = row.original.isManual ?? false
-      
-      // Sync when row.original.moot changes (from calculateMoot)
-      useEffect(() => {
-        setValue(row.original.moot ?? "")
-      }, [row.original.moot])
+      const now = row.original.now || 0
+      const mootVal = row.original.moot ?? 0
 
-      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value
-        setValue(newValue)
-        // Mark as manual edit
-        const onUpdateRow = (table.options.meta as any)?.onUpdateRow
-        if (onUpdateRow) {
-          onUpdateRow(row.original.id, {
-            moot: newValue === "" ? undefined : parseFloat(newValue),
-            isManual: true
-          })
+      // Check if difference > 5%
+      const diffPercent = now > 0 ? Math.abs((mootVal - now) / now) * 100 : 0
+      const hasSignificantDiff = mootVal > 0 && diffPercent > 5
+
+      // Format display value with space as thousands separator
+      const displayValue = mootVal > 0
+        ? Math.round(mootVal).toLocaleString("ru-RU").replace(/,/g, " ")
+        : ""
+
+      const handleFocus = () => {
+        setIsEditing(true)
+        setEditValue(mootVal > 0 ? String(Math.round(mootVal)) : "")
+      }
+
+      const handleBlur = () => {
+        setIsEditing(false)
+        const numValue = parseFloat(editValue)
+        if (!isNaN(numValue) && numValue !== mootVal) {
+          const onUpdateRow = (table.options.meta as any)?.onUpdateRow
+          if (onUpdateRow) {
+            onUpdateRow(row.original.id, {
+              moot: numValue,
+              isManual: true
+            })
+          }
         }
       }
-    
+
+      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEditValue(e.target.value)
+      }
+
       return (
-        <input
-          type="number"
-          step="0.1"
-          value={value}
-          data-moot="true"
-          onChange={handleChange}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-    
-              const inputs = document.querySelectorAll<HTMLInputElement>(
-                'input[data-moot="true"]'
-              )
-    
-              const currentIndex = Array.from(inputs).indexOf(e.currentTarget)
-              const next = inputs[currentIndex + 1]
-    
-              if (next) next.focus()
-            }
-          }}
-          className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${
-            isManual 
-              ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40" 
-              : "bg-background border border-border"
-          }`}
-        />
+        <div className={`relative rounded ${hasSignificantDiff ? "bg-amber-500/20" : ""}`}>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={isEditing ? editValue : displayValue}
+            data-moot="true"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onChange={handleChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                e.currentTarget.blur()
+
+                const inputs = document.querySelectorAll<HTMLInputElement>(
+                  'input[data-moot="true"]'
+                )
+
+                const currentIndex = Array.from(inputs).indexOf(e.currentTarget)
+                const next = inputs[currentIndex + 1]
+
+                if (next) next.focus()
+              }
+            }}
+            className={`w-full h-7 rounded px-2 text-xs font-mono text-center transition-all ${isManual
+                ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40"
+                : hasSignificantDiff
+                  ? "bg-transparent border border-amber-500/30"
+                  : "bg-background border border-border"
+              }`}
+          />
+        </div>
       )
     }
   },
@@ -477,7 +526,7 @@ const columnLabels: Record<string, string> = {
   weight: "Weight",
   productGroup: "Group",
   sales12m: "Sales 12m",
-  moot: "MOOT",
+  moot: "PriceNorm",
 }
 
 // --- Main component ---
@@ -611,7 +660,7 @@ export function InvoiceTable({
     data.forEach((row) => {
       const value = row[columnId as keyof InvoiceRow]
       let text = ""
-      
+
       if (value === null || value === undefined) {
         text = ""
       } else if (typeof value === "number") {
@@ -630,7 +679,7 @@ export function InvoiceTable({
       } else {
         text = String(value)
       }
-      
+
       measureEl.textContent = text
       const width = measureEl.offsetWidth + 32 // add padding
       if (width > maxWidth) maxWidth = width
@@ -709,8 +758,8 @@ export function InvoiceTable({
             onCheckedChange={handleDetailsPanelToggle}
             className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30"
           />
-          <Label 
-            htmlFor="details-panel-toggle" 
+          <Label
+            htmlFor="details-panel-toggle"
             className="text-xs text-muted-foreground cursor-pointer select-none"
           >
             Details Panel
@@ -788,17 +837,15 @@ export function InvoiceTable({
                   return (
                     <tr
                       key={row.id}
-                      className={`h-8 transition-colors ${
-                        detailsPanelEnabled
+                      className={`h-8 transition-colors ${detailsPanelEnabled
                           ? "cursor-pointer"
                           : "cursor-default"
-                      } ${
-                        isSelected
+                        } ${isSelected
                           ? "bg-primary/10 hover:bg-primary/15"
                           : detailsPanelEnabled
                             ? "bg-background hover:bg-muted/50"
                             : "bg-background hover:bg-muted/20"
-                      }`}
+                        }`}
                       onClick={() => {
                         if (detailsPanelEnabled) {
                           onRowClick?.(row.original)

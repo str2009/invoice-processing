@@ -124,6 +124,7 @@ interface SimulationPanelProps {
   onUpdateMoot?: (updates: Map<string | number, number>) => void
   onClearMoot?: () => void
   onUpdateShip?: (updates: Map<string | number, number>) => void
+  onUpdateDeltaNorm?: (updates: Map<string | number, number>) => void
   onShipmentSelect?: (shipmentId: string | null) => void
   onInvoiceReset?: () => void
   onInvoiceSelect?: (invoiceId: string) => void
@@ -401,6 +402,7 @@ export function SimulationPanel({
   onUpdateMoot,
   onClearMoot,
   onUpdateShip,
+  onUpdateDeltaNorm,
   onShipmentSelect,
   onInvoiceReset,
   onInvoiceSelect,
@@ -768,7 +770,7 @@ export function SimulationPanel({
     )
   }, [invoiceIds, invoiceSearch])
 
-  // MOOT Calculation state
+  // PriceNorm Calculation state
   const [isCalculatingMoot, setIsCalculatingMoot] = useState(false)
   const [mootResults, setMootResults] = useState<{
     calculated: number
@@ -813,7 +815,7 @@ export function SimulationPanel({
     return { markup, rule: matchedRule }
   }
 
-  // ─── MOOT Calculation Function (uses data prop - same source as main table) ───
+  // ─── PriceNorm Calculation Function (uses data prop - same source as main table) ───
   const calculateMoot = (costPerKgValue: number, bulkyPriceValue: number) => {
     // Validate data exists
     if (!data || data.length === 0) {
@@ -837,6 +839,7 @@ export function SimulationPanel({
     let skippedNoRule = 0
     const newMootPrices = new Map<string | number, number>()
     const newShipValues = new Map<string | number, number>()
+    const newDeltaNormValues = new Map<string | number, number>()
 
     data.forEach((item) => {
       const itemId = item.id || item.sku || item.article
@@ -856,13 +859,13 @@ export function SimulationPanel({
         newShipValues.set(itemId, ship)
       }
 
-      // Validation: skip MOOT if no weight
+      // Validation: skip PriceNorm if no weight
       if (weight <= 0) {
         skippedNoWeight++
         return
       }
 
-      // Validation: skip MOOT if no cost (purchase price)
+      // Validation: skip PriceNorm if no cost (purchase price)
       if (cost <= 0) {
         skippedNoPrice++
         return
@@ -873,7 +876,7 @@ export function SimulationPanel({
 
       // Debug logging for first few items
       if (calculated < 3) {
-        console.log("[v0] MOOT calc:", {
+        console.log("[v0] PriceNorm calc:", {
           cost,
           group,
           matchedRule: rule,
@@ -891,11 +894,14 @@ export function SimulationPanel({
         return
       }
 
-      // Final MOOT price = cost * (1 + markup) + delivery
+      // Final PriceNorm = cost * (1 + markup) + delivery
       // markup is from pricing_rules (e.g., 105 → 1.05)
       const finalPrice = cost * (1 + markup) + delivery
 
       newMootPrices.set(itemId, Math.round(finalPrice))
+      // Store deltaNorm (markupPct from pricing rule, e.g. 5 for 5% markup)
+      const markupPct = rule?.markupPct ? parseFloat(rule.markupPct) : 0
+      newDeltaNormValues.set(itemId, markupPct)
       calculated++
     })
 
@@ -911,9 +917,14 @@ export function SimulationPanel({
       onUpdateShip(newShipValues)
     }
 
-    // Update MOOT values in parent (writes to "moot" column)
+    // Update PriceNorm values in parent (writes to "moot" column)
     if (onUpdateMoot && newMootPrices.size > 0) {
       onUpdateMoot(newMootPrices)
+    }
+
+    // Update DeltaNorm values in parent (writes to "deltaNorm" column)
+    if (onUpdateDeltaNorm && newDeltaNormValues.size > 0) {
+      onUpdateDeltaNorm(newDeltaNormValues)
     }
 
     // Brief delay to show loading state, then show toast
@@ -2593,16 +2604,16 @@ export function SimulationPanel({
                                   )}
                                 </Button>
 
-                                {/* Clear MOOT Button */}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-[10px] w-full mt-1"
-                                  onClick={onClearMoot}
-                                  disabled={!onClearMoot}
-                                >
-                                  Очистить MOOT
-                                </Button>
+{/* Clear PriceNorm Button */}
+  <Button
+  variant="outline"
+  size="sm"
+  className="text-xs"
+  onClick={onClearMoot}
+  disabled={!onClearMoot}
+  >
+  Очистить PriceNorm
+  </Button>
 
                                 {/* Export to Excel Button */}
                                 <Button
@@ -2614,7 +2625,7 @@ export function SimulationPanel({
                                     const headers = [
                                       "Part Code", "Manufacturer", "Part Name", "Qty", "Cost",
                                       "Now", "Ship", "isBulky", "Delta %", "Stock",
-                                      "Weight", "MOOT", "Group", "Sales 12m"
+                                      "Weight", "PriceNorm", "Group", "Sales 12m"
                                     ]
                                     const csvRows = [headers.join(",")]
 
@@ -2653,7 +2664,7 @@ export function SimulationPanel({
                                   Экспорт в Excel
                                 </Button>
 
-                                {/* MOOT Results Feedback */}
+                                {/* PriceNorm Results Feedback */}
                                 {mootResults && !isCalculatingMoot && (
                                   <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
                                     {mootResults.calculated > 0 ? (
@@ -2906,7 +2917,7 @@ export function SimulationPanel({
                             <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
                             <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
                             <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
-                            <th className="px-3 py-2 text-right font-medium text-primary">MOOT</th>
+                            <th className="px-3 py-2 text-right font-medium text-primary">PriceNorm</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
@@ -3018,7 +3029,7 @@ export function SimulationPanel({
               </h3>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
                 Система Pricing & Simulation ��редназначена для управления ценообразованием и расчёта стоимости доставки товаров.
-                Она позволяет создавать правила ценообразования, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
+                Она позволяет создавать правила ценообразова��ия, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
               </p>
             </div>
 
@@ -3091,7 +3102,7 @@ export function SimulationPanel({
                 </li>
                 <li className="flex gap-3">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">7</span>
-                  <span>Нажмите <span className="text-amber-400 font-medium">Предварительная цена</span> для расчёта MOOT</span>
+                  <span>Нажмите <span className="text-amber-400 font-medium">Предварительная цена</span> для расчёта PriceNorm</span>
                 </li>
               </ol>
             </div>
