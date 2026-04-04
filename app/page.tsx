@@ -714,13 +714,20 @@ useEffect(() => {
   }, [])
 
   // Update Ship values for all rows based on calculated delivery costs
+  // Also recalculates deltaPercent = ((Now - Ship) / Cost - 1) × 100
   const handleUpdateShip = useCallback((updates: Map<string | number, number>) => {
     setRows((prevRows) => {
       const updatedRows = prevRows.map((row) => {
         const itemId = row.id || row.sku || row.article
         const shipValue = updates.get(itemId)
         if (shipValue !== undefined) {
-          return { ...row, ship: shipValue }
+          // Calculate deltaPercent: ((Now - Ship) / Cost - 1) × 100
+          const cost = row.cost || 0
+          const now = row.now || 0
+          const deltaPercent = cost > 0 && shipValue > 0
+            ? Math.round((((now - shipValue) / cost) - 1) * 1000) / 10
+            : 0
+          return { ...row, ship: shipValue, deltaPercent }
         }
         return row
       })
