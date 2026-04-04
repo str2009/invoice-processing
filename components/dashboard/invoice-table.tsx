@@ -469,7 +469,8 @@ const columns: ColumnDef<InvoiceRow>[] = [
                 if (next) next.focus()
               }
             }}
-            className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${isManual
+            style={{ MozAppearance: "textfield" }}
+            className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isManual
                 ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40"
                 : hasSignificantDiff
                   ? "bg-transparent border border-amber-500/30"
