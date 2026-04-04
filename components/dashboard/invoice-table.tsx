@@ -355,6 +355,21 @@ const columns: ColumnDef<InvoiceRow>[] = [
     },
   },
   {
+    id: "deltaNorm",
+    accessorKey: "deltaNorm",
+    header: "\u0394Norm",
+    cell: ({ row }) => {
+      const val = row.getValue("deltaNorm") as number | null | undefined
+      if (val == null)
+        return <span className="font-mono text-muted-foreground/40">{"—"}</span>
+      return (
+        <span className="font-mono tabular-nums text-cyan-600 dark:text-cyan-400">
+          {val.toFixed(0)}%
+        </span>
+      )
+    },
+  },
+  {
     id: "stock",
     accessorKey: "stock",
     header: "Stock",

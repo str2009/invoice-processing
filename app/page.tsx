@@ -326,7 +326,7 @@ useEffect(() => {
       setSelectedInvoice(null)
       setIsEnriched(false)
   
-      // обновить список
+      // о��новить список
       const listRes = await fetch("/api/invoice/list")
       if (listRes.ok) {
         const data = await listRes.json()
@@ -729,6 +729,21 @@ useEffect(() => {
             ? Math.round((((now - shipValue) / cost) - 1) * 1000) / 10
             : 0
           return { ...row, ship: shipValue, deltaPercent }
+        }
+        return row
+      })
+      return updatedRows
+    })
+  }, [])
+
+  // Update DeltaNorm values (markup % from pricing rules used in MOOT calculation)
+  const handleUpdateDeltaNorm = useCallback((updates: Map<string | number, number>) => {
+    setRows((prevRows) => {
+      const updatedRows = prevRows.map((row) => {
+        const itemId = row.id || row.sku || row.article
+        const deltaNormValue = updates.get(itemId)
+        if (deltaNormValue !== undefined) {
+          return { ...row, deltaNorm: deltaNormValue }
         }
         return row
       })
@@ -1179,6 +1194,7 @@ console.log("scenario active:", isScenarioActive)
   onUpdateMoot={handleUpdateMoot}
   onClearMoot={handleClearMoot}
   onUpdateShip={handleUpdateShip}
+  onUpdateDeltaNorm={handleUpdateDeltaNorm}
   onShipmentSelect={setSelectedShipmentId}
   onInvoiceReset={() => {
     setSelectedInvoice(null)

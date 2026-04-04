@@ -124,6 +124,7 @@ interface SimulationPanelProps {
   onUpdateMoot?: (updates: Map<string | number, number>) => void
   onClearMoot?: () => void
   onUpdateShip?: (updates: Map<string | number, number>) => void
+  onUpdateDeltaNorm?: (updates: Map<string | number, number>) => void
   onShipmentSelect?: (shipmentId: string | null) => void
   onInvoiceReset?: () => void
   onInvoiceSelect?: (invoiceId: string) => void
@@ -401,6 +402,7 @@ export function SimulationPanel({
   onUpdateMoot,
   onClearMoot,
   onUpdateShip,
+  onUpdateDeltaNorm,
   onShipmentSelect,
   onInvoiceReset,
   onInvoiceSelect,
@@ -837,6 +839,7 @@ export function SimulationPanel({
     let skippedNoRule = 0
     const newMootPrices = new Map<string | number, number>()
     const newShipValues = new Map<string | number, number>()
+    const newDeltaNormValues = new Map<string | number, number>()
 
     data.forEach((item) => {
       const itemId = item.id || item.sku || item.article
@@ -896,6 +899,9 @@ export function SimulationPanel({
       const finalPrice = cost * (1 + markup) + delivery
 
       newMootPrices.set(itemId, Math.round(finalPrice))
+      // Store deltaNorm (markupPct from pricing rule, e.g. 5 for 5% markup)
+      const markupPct = rule?.markupPct ? parseFloat(rule.markupPct) : 0
+      newDeltaNormValues.set(itemId, markupPct)
       calculated++
     })
 
@@ -914,6 +920,11 @@ export function SimulationPanel({
     // Update MOOT values in parent (writes to "moot" column)
     if (onUpdateMoot && newMootPrices.size > 0) {
       onUpdateMoot(newMootPrices)
+    }
+
+    // Update DeltaNorm values in parent (writes to "deltaNorm" column)
+    if (onUpdateDeltaNorm && newDeltaNormValues.size > 0) {
+      onUpdateDeltaNorm(newDeltaNormValues)
     }
 
     // Brief delay to show loading state, then show toast
@@ -3018,7 +3029,7 @@ export function SimulationPanel({
               </h3>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
                 Система Pricing & Simulation ��редназначена для управления ценообразованием и расчёта стоимости доставки товаров.
-                Она позволяет создавать правила ценообразования, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
+                Она позволяет создавать правила ценообразова��ия, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
               </p>
             </div>
 

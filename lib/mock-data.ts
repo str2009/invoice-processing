@@ -16,6 +16,7 @@ export interface InvoiceRow {
   now: number
   ship: number
   deltaPercent: number
+  deltaNorm?: number | null
   stock: number
   weight: number
   productGroup: string
@@ -83,7 +84,7 @@ const partNames = [
   "Рычаг подвески передний нижний левый",
   "Рычаг подвески передний нижний правый",
   "Опора амортизатора передняя",
-  "Втулка стабилизатора переднего D23",
+  "Втулка стабилизато��а переднего D23",
   "Стойка ��табилизатор�� переднего",
   "Шаровая опора нижняя",
   "Наконечник рулевой тяги правый",
