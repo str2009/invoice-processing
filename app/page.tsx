@@ -203,32 +203,22 @@ useEffect(() => {
   const safeData = isTableReady ? data : []
 
   // Map raw Supabase row to InvoiceRow shape
-  const mapRow = useCallback((r: Record<string, unknown>, idx: number): InvoiceRow => {
-    const cost = Number(r.cost ?? 0)
-    const now = Number(r.now ?? r.price_now ?? 0)
-    const ship = Number(r.ship ?? r.price_ship ?? 0)
-    // deltaPercent = ((Now - Ship) / Cost - 1) × 100
-    const deltaPercent = cost > 0 && ship > 0
-      ? Math.round((((now - ship) / cost) - 1) * 1000) / 10
-      : 0
-    
-    return {
-      id: String(r.id ?? idx + 1),
-      partCode: (r.part_code as string) ?? (r.partCode as string) ?? "",
-      manufacturer: (r.manufacturer as string) ?? "",
-      partName: (r.part_name as string) ?? (r.partName as string) ?? "",
-      qty: Number(r.qty ?? 0),
-      cost,
-      now,
-      ship,
-      deltaPercent,
-      stock: Number(r.stock ?? 0),
-      weight: Number(r.weight ?? 0),
-      isBulky: Boolean(r.isBulky),
-      productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
-      sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
-    }
-  }, [])
+  const mapRow = useCallback((r: Record<string, unknown>, idx: number): InvoiceRow => ({
+    id: String(r.id ?? idx + 1),
+    partCode: (r.part_code as string) ?? (r.partCode as string) ?? "",
+    manufacturer: (r.manufacturer as string) ?? "",
+    partName: (r.part_name as string) ?? (r.partName as string) ?? "",
+    qty: Number(r.qty ?? 0),
+    cost: Number(r.cost ?? 0),
+    now: Number(r.now ?? r.price_now ?? 0),
+    ship: Number(r.ship ?? r.price_ship ?? 0),
+    deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
+    stock: Number(r.stock ?? 0),
+    weight: Number(r.weight ?? 0),
+    isBulky: Boolean(r.isBulky),
+    productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
+    sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
+  }), [])
 
   // Load invoice rows by ID
   // source: "raw" = invoice_rows (default, before enrich)
