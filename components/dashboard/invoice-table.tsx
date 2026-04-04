@@ -111,11 +111,10 @@ function ResizeHandle({
       onMouseDown={header.getResizeHandler()}
       onTouchStart={header.getResizeHandler()}
       onDoubleClick={onDoubleClick}
-      className={`absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize select-none touch-none transition-colors ${
-        header.column.getIsResizing() 
-          ? "bg-primary" 
+      className={`absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize select-none touch-none transition-colors ${header.column.getIsResizing()
+          ? "bg-primary"
           : "bg-border hover:bg-primary/60"
-      }`}
+        }`}
       style={{ transform: "translateX(50%)" }}
     />
   )
@@ -155,15 +154,13 @@ function DraggableHeaderCell({
       ref={setNodeRef}
       style={style}
       data-column-id={header.column.id}
-      className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${
-        isDragging ? "z-20" : ""
-      }`}
+      className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${isDragging ? "z-20" : ""
+        }`}
       colSpan={header.colSpan}
     >
       <div
-        className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${
-          isNumeric ? "justify-center" : ""
-        }`}
+        className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""
+          }`}
         {...attributes}
         {...listeners}
       >
@@ -217,9 +214,8 @@ function DraggableCell({
       ref={setNodeRef}
       style={style}
       data-column-id={cell.column.id}
-      className={`truncate border-b border-r border-border px-2 py-1.5 text-xs ${
-        isNumeric ? "text-center" : ""
-      }`}
+      className={`truncate border-b border-r border-border px-2 py-1.5 text-xs ${isNumeric ? "text-center" : ""
+        }`}
     >
       {flexRender(cell.column.columnDef.cell, cell.getContext())}
     </td>
@@ -290,7 +286,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
     header: "Now",
     cell: ({ row }) => (
       <span className="font-mono tabular-nums">
-        {(row.getValue("now") as number).toFixed(2)}
+        {(row.getValue("now") as number).toFixed(0)}
       </span>
     ),
   },
@@ -307,15 +303,14 @@ const columns: ColumnDef<InvoiceRow>[] = [
       const hasValue = val != null && val > 0
       return (
         <span
-          className={`font-mono tabular-nums ${
-            !hasValue
+          className={`font-mono tabular-nums ${!hasValue
               ? "text-muted-foreground/40"
               : isHigher
                 ? "text-amber-600 dark:text-amber-400"
                 : isLower
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-foreground"
-          }`}
+            }`}
         >
           {hasValue ? val.toFixed(2) : "---"}
         </span>
@@ -335,7 +330,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
       )
     },
   },
-  
+
   {
     id: "deltaPercent",
     accessorKey: "deltaPercent",
@@ -346,13 +341,12 @@ const columns: ColumnDef<InvoiceRow>[] = [
         return <span className="font-mono text-muted-foreground/40">{"---"}</span>
       return (
         <span
-          className={`font-mono tabular-nums ${
-            val > 0
+          className={`font-mono tabular-nums ${val > 0
               ? "text-amber-600 dark:text-amber-400"
               : val < 0
                 ? "text-emerald-600 dark:text-emerald-400"
                 : "text-muted-foreground"
-          }`}
+            }`}
         >
           {val > 0 ? "+" : ""}
           {val.toFixed(1)}%
@@ -368,30 +362,28 @@ const columns: ColumnDef<InvoiceRow>[] = [
       const stock = row.getValue("stock") as number
       return (
         <span
-          className={`font-mono tabular-nums ${
-            stock < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
-          }`}
+          className={`font-mono tabular-nums ${stock < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+            }`}
         >
           {stock}
         </span>
       )
     },
   },
-  
+
   {
     id: "weight",
     accessorKey: "weight",
     header: "Weight",
     cell: ({ row }) => {
       const weight = row.getValue("weight") as number
-  
+
       return (
         <span
-          className={`font-mono tabular-nums ${
-            weight === 0
+          className={`font-mono tabular-nums ${weight === 0
               ? "text-red-500 font-semibold"
               : "text-muted-foreground"
-          }`}
+            }`}
         >
           {weight.toFixed(3)} kg
         </span>
@@ -405,7 +397,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
     cell: ({ row, table }) => {
       const [value, setValue] = useState(row.original.moot ?? "")
       const isManual = row.original.isManual ?? false
-      
+
       // Sync when row.original.moot changes (from calculateMoot)
       useEffect(() => {
         setValue(row.original.moot ?? "")
@@ -423,7 +415,7 @@ const columns: ColumnDef<InvoiceRow>[] = [
           })
         }
       }
-    
+
       return (
         <input
           type="number"
@@ -434,22 +426,21 @@ const columns: ColumnDef<InvoiceRow>[] = [
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault()
-    
+
               const inputs = document.querySelectorAll<HTMLInputElement>(
                 'input[data-moot="true"]'
               )
-    
+
               const currentIndex = Array.from(inputs).indexOf(e.currentTarget)
               const next = inputs[currentIndex + 1]
-    
+
               if (next) next.focus()
             }
           }}
-          className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${
-            isManual 
-              ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40" 
+          className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${isManual
+              ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40"
               : "bg-background border border-border"
-          }`}
+            }`}
         />
       )
     }
@@ -625,7 +616,7 @@ export function InvoiceTable({
     data.forEach((row) => {
       const value = row[columnId as keyof InvoiceRow]
       let text = ""
-      
+
       if (value === null || value === undefined) {
         text = ""
       } else if (typeof value === "number") {
@@ -644,7 +635,7 @@ export function InvoiceTable({
       } else {
         text = String(value)
       }
-      
+
       measureEl.textContent = text
       const width = measureEl.offsetWidth + 32 // add padding
       if (width > maxWidth) maxWidth = width
@@ -723,8 +714,8 @@ export function InvoiceTable({
             onCheckedChange={handleDetailsPanelToggle}
             className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30"
           />
-          <Label 
-            htmlFor="details-panel-toggle" 
+          <Label
+            htmlFor="details-panel-toggle"
             className="text-xs text-muted-foreground cursor-pointer select-none"
           >
             Details Panel
@@ -802,17 +793,15 @@ export function InvoiceTable({
                   return (
                     <tr
                       key={row.id}
-                      className={`h-8 transition-colors ${
-                        detailsPanelEnabled
+                      className={`h-8 transition-colors ${detailsPanelEnabled
                           ? "cursor-pointer"
                           : "cursor-default"
-                      } ${
-                        isSelected
+                        } ${isSelected
                           ? "bg-primary/10 hover:bg-primary/15"
                           : detailsPanelEnabled
                             ? "bg-background hover:bg-muted/50"
                             : "bg-background hover:bg-muted/20"
-                      }`}
+                        }`}
                       onClick={() => {
                         if (detailsPanelEnabled) {
                           onRowClick?.(row.original)
