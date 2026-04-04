@@ -284,11 +284,16 @@ const columns: ColumnDef<InvoiceRow>[] = [
     id: "now",
     accessorKey: "now",
     header: "Now",
-    cell: ({ row }) => (
-      <span className="font-mono tabular-nums">
-        {(row.getValue("now") as number).toFixed(0)}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const val = row.getValue("now") as number
+      // Format with space as thousands separator
+      const formatted = Math.round(val).toLocaleString("ru-RU").replace(/,/g, " ")
+      return (
+        <span className="font-mono tabular-nums">
+          {formatted}
+        </span>
+      )
+    },
   },
   {
     id: "ship",
@@ -408,10 +413,16 @@ const columns: ColumnDef<InvoiceRow>[] = [
   {
     id: "moot",
     accessorKey: "moot",
-    header: "MOOT",
+    header: "PriceNorm",
     cell: ({ row, table }) => {
       const [value, setValue] = useState(row.original.moot ?? "")
       const isManual = row.original.isManual ?? false
+      const now = row.original.now || 0
+      const mootVal = row.original.moot ?? 0
+
+      // Check if difference > 5%
+      const diffPercent = now > 0 ? Math.abs((mootVal - now) / now) * 100 : 0
+      const hasSignificantDiff = mootVal > 0 && diffPercent > 5
 
       // Sync when row.original.moot changes (from calculateMoot)
       useEffect(() => {
@@ -431,32 +442,41 @@ const columns: ColumnDef<InvoiceRow>[] = [
         }
       }
 
+      // Format display value with space as thousands separator
+      const displayValue = typeof value === "number" || (typeof value === "string" && value !== "")
+        ? Math.round(Number(value)).toLocaleString("ru-RU").replace(/,/g, " ")
+        : ""
+
       return (
-        <input
-          type="number"
-          step="0.1"
-          value={value}
-          data-moot="true"
-          onChange={handleChange}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
+        <div className={`relative rounded ${hasSignificantDiff ? "bg-amber-500/20" : ""}`}>
+          <input
+            type="number"
+            step="1"
+            value={value}
+            data-moot="true"
+            onChange={handleChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
 
-              const inputs = document.querySelectorAll<HTMLInputElement>(
-                'input[data-moot="true"]'
-              )
+                const inputs = document.querySelectorAll<HTMLInputElement>(
+                  'input[data-moot="true"]'
+                )
 
-              const currentIndex = Array.from(inputs).indexOf(e.currentTarget)
-              const next = inputs[currentIndex + 1]
+                const currentIndex = Array.from(inputs).indexOf(e.currentTarget)
+                const next = inputs[currentIndex + 1]
 
-              if (next) next.focus()
-            }
-          }}
-          className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${isManual
-              ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40"
-              : "bg-background border border-border"
-            }`}
-        />
+                if (next) next.focus()
+              }
+            }}
+            className={`w-full h-7 rounded px-2 text-xs font-mono text-right transition-all ${isManual
+                ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 ring-1 ring-amber-500/40"
+                : hasSignificantDiff
+                  ? "bg-transparent border border-amber-500/30"
+                  : "bg-background border border-border"
+              }`}
+          />
+        </div>
       )
     }
   },
@@ -497,7 +517,7 @@ const columnLabels: Record<string, string> = {
   weight: "Weight",
   productGroup: "Group",
   sales12m: "Sales 12m",
-  moot: "MOOT",
+  moot: "PriceNorm",
 }
 
 // --- Main component ---
