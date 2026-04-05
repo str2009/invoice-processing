@@ -344,10 +344,11 @@ interface MetricWidget {
   value: string | number
   highlight?: boolean
   color?: string
+  warn?: boolean
 }
 
 // ─── Sortable Metric Block Component ───
-function SortableMetricBlock({ id, label, value, highlight, color }: MetricWidget) {
+function SortableMetricBlock({ id, label, value, highlight, color, warn }: MetricWidget) {
   const {
     attributes,
     listeners,
@@ -376,12 +377,13 @@ function SortableMetricBlock({ id, label, value, highlight, color }: MetricWidge
         transition-colors select-none
         ${isDragging ? "shadow-lg ring-2 ring-primary/30" : ""}
         ${highlight ? "bg-primary/10 border-primary/30" : ""}
+        ${warn ? "bg-amber-500/20 border-amber-500/50 ring-1 ring-amber-500/30" : ""}
       `}
     >
       <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider font-medium">
         {label}
       </span>
-      <span className={`font-mono text-[13px] font-semibold ${color || "text-foreground"}`}>
+      <span className={`font-mono text-[13px] font-semibold ${warn ? "text-amber-400" : (color || "text-foreground")}`}>
         {value}
       </span>
     </div>
@@ -2515,7 +2517,7 @@ export function SimulationPanel({
                                             bulkyPriceKg: { id: "bulkyPriceKg", label: "Bulky ₽/kg", value: mode === "normal" ? "—" : Math.round(model.bulkyPrice).toLocaleString("ru-RU"), color: mode === "hybrid" && model.bulkyPrice > 0 ? "text-amber-500" : undefined },
                                             packages: { id: "packages", label: "Packages", value: shippingForm.packages || "0" },
                                             volume: { id: "volume", label: "Volume (m³)", value: shippingForm.volume || "0" },
-                                            density: { id: "density", label: "Density", value: shippingForm.density || "0" },
+                                            density: { id: "density", label: "Density", value: shippingForm.density || "0", warn: isLowDensity },
                                             bulkyWt: { id: "bulkyWt", label: "Bulky wt", value: mode === "normal" ? "—" : `${model.bulkyWeight.toFixed(2)} kg` },
                                             normalShip: { id: "normalShip", label: "Normal ship", value: `${Math.round(model.normalShipping).toLocaleString("ru-RU")} ₽` },
                                             bulkyShip: { id: "bulkyShip", label: "Bulky ship", value: mode === "normal" ? "—" : `${Math.round(model.bulkyShipping).toLocaleString("ru-RU")} ₽` },
