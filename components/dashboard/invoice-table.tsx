@@ -43,7 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ArrowUp, ArrowDown, Columns3 } from "lucide-react"
-import type { InvoiceRow } from "@/lib/mock-data"
+import { REASON_OPTIONS, type InvoiceRow } from "@/lib/mock-data"
 
 // --- localStorage helpers ---
 const STORAGE_KEY_ORDER = "spreadsheet-column-order"
@@ -496,17 +496,47 @@ const columns: ColumnDef<InvoiceRow>[] = [
     cell: ({ row }) => <span>{row.getValue("productGroup")}</span>,
   },
   {
-    id: "sales12m",
-    accessorKey: "sales12m",
-    header: "12m",
-    cell: ({ row }) => {
-      const val = row.getValue("sales12m") as number
-      return (
-        <span className="font-mono tabular-nums text-muted-foreground">
-          {val.toLocaleString()}
-        </span>
-      )
-    },
+  id: "sales12m",
+  accessorKey: "sales12m",
+  header: "12m",
+  cell: ({ row }) => {
+  const val = row.getValue("sales12m") as number
+  return (
+  <span className="font-mono tabular-nums text-muted-foreground">
+  {val.toLocaleString()}
+  </span>
+  )
+  },
+  },
+  {
+  id: "reason",
+  accessorKey: "reason",
+  header: "Reason",
+  cell: ({ row, table }) => {
+  const currentValue = row.original.reason || ""
+  
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value
+    const onUpdateRow = (table.options.meta as any)?.onUpdateRow
+    if (onUpdateRow) {
+      onUpdateRow(row.original.id, { reason: newValue || null })
+    }
+  }
+  
+  return (
+    <select
+      value={currentValue}
+      onChange={handleChange}
+      className="w-full h-7 rounded px-1.5 text-xs bg-background border border-border cursor-pointer hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+    >
+      {REASON_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  )
+  },
   },
 ]
 
@@ -527,17 +557,9 @@ const columnLabels: Record<string, string> = {
   productGroup: "Group",
   sales12m: "Sales 12m",
   moot: "PriceNorm",
-}
-
-// --- Main component ---
-interface InvoiceTableProps {
-  data: InvoiceRow[]
-  globalFilter: string
-  onGlobalFilterChange: (value: string) => void
-  onRowCountChange?: (count: number) => void
-  selectedRowId?: string | null
-  onRowClick?: (row: InvoiceRow) => void
-  onUpdateRow?: (id: string, updates: Partial<InvoiceRow>) => void
+  productGroup: "Group",
+  sales12m: "Sales 12m",
+  reason: "Reason",
 }
 
 export function InvoiceTable({

@@ -219,6 +219,7 @@ useEffect(() => {
     isBulky: Boolean(r.isBulky),
     productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
     sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
+    reason: (r.reason as string) ?? null,
   }), [])
 
   // Load invoice rows by ID
