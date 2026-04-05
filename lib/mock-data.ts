@@ -23,7 +23,17 @@ export interface InvoiceRow {
   sales12m: number
   moot?: number | null
   isManual?: boolean
+  reason?: string | null
 }
+
+export const REASON_OPTIONS = [
+  { value: "", label: "—" },
+  { value: "fake", label: "фейк" },
+  { value: "too_cheap", label: "очень дешево" },
+  { value: "will_buy_anyway", label: "и так купят" },
+  { value: "123", label: "123" },
+  { value: "other", label: "другое" },
+] as const
 
 const _mockInvoiceData: InvoiceRow[] = [
   { id: "1", partCode: "BRK-4421-A", manufacturer: "Brembo", partName: "Колодки тормозные передние дисковые", qty: 20, cost: 52.30, now: 89.99, ship: 94.50, deltaPercent: 5.0, stock: 145, weight: 2.4, productGroup: "Brake Pads", sales12m: 312 },
