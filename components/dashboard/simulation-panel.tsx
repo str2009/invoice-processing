@@ -2056,7 +2056,7 @@ export function SimulationPanel({
               </Field>
 
   {/* Row 5: Comment (full width, resizable) */}
-  {isLowDensity && (
+  {isLowDensity && !shippingForm.comment?.trim() && (
   <div className="rounded-md bg-amber-500/10 border border-amber-500/40 px-3 py-2 text-xs text-amber-400">
   Укажите в комментарии причину такой маленькой плотности груза
   </div>
@@ -3079,7 +3079,7 @@ export function SimulationPanel({
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Pricing Manager</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Основной рабочий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов,
+                    Основной ра��очий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов,
                     расчёт цен и обогащение данных.
                   </p>
                 </div>
