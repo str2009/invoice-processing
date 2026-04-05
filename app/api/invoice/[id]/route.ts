@@ -41,8 +41,9 @@ export async function POST(
 ) {
   const { id } = await params
   const { shipping } = await request.json()
+  const supabase = getSupabaseServer()
 
-  const { error } = await supabaseServer
+  const { error } = await supabase
     .from("invoice")
     .update({
       transport_company: shipping.company,
@@ -72,24 +73,25 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const supabase = getSupabaseServer()
 
   try {
     // удалить enriched (если есть)
-    const e1 = await supabaseServer
+    const e1 = await supabase
       .from("invoice_rows_enriched")
       .delete()
       .eq("invoice_id", id)
     if (e1.error) throw e1.error
 
     // удалить строки
-    const e2 = await supabaseServer
+    const e2 = await supabase
       .from("invoice_rows")
       .delete()
       .eq("invoice_id", id)
     if (e2.error) throw e2.error
 
     // удалить сам инвойс
-    const e3 = await supabaseServer
+    const e3 = await supabase
       .from("invoice")
       .delete()
       .eq("invoice_id", id)

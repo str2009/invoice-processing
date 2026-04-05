@@ -1202,7 +1202,7 @@ export function SimulationPanel({
   ]
 
   const validationErrors = useMemo(() => {
-    return requiredFields
+    const errors = requiredFields
       .filter((key) => {
         const value = shippingForm[key]
 
@@ -1213,7 +1213,21 @@ export function SimulationPanel({
         return false
       })
       .map((key) => `${key} is required`)
+    
+    // Check if density < 100 requires comment
+    const densityVal = parseFloat(shippingForm.density) || 0
+    if (densityVal > 0 && densityVal < 100 && !shippingForm.comment?.trim()) {
+      errors.push("Укажите в комментарии причину такой маленькой плотности груза")
+    }
+    
+    return errors
   }, [shippingForm])
+
+  // Flag for low density warning
+  const isLowDensity = useMemo(() => {
+    const densityVal = parseFloat(shippingForm.density) || 0
+    return densityVal > 0 && densityVal < 100
+  }, [shippingForm.density])
 
   const isFormValid = validationErrors.length === 0
 
@@ -2041,19 +2055,28 @@ export function SimulationPanel({
                 />
               </Field>
 
-              {/* Row 5: Comment (full width, resizable) */}
-              <Field label="Comment" compact>
-                <textarea
-                  value={shippingForm.comment}
-                  onChange={(e) =>
-                    setShippingForm((p) => ({
-                      ...p,
-                      comment: e.target.value,
-                    }))
-                  }
-                  className="w-full min-h-[60px] rounded-md border border-border bg-background px-2 py-1.5 text-xs resize-y"
-                />
-              </Field>
+  {/* Row 5: Comment (full width, resizable) */}
+  {isLowDensity && !shippingForm.comment?.trim() && (
+  <div className="rounded-md bg-amber-500/10 border border-amber-500/40 px-3 py-2 text-xs text-amber-400">
+  Укажите в комментарии причину такой маленькой плотности груза
+  </div>
+  )}
+  <Field label="Comment" compact>
+  <textarea
+  value={shippingForm.comment}
+  onChange={(e) =>
+  setShippingForm((p) => ({
+  ...p,
+  comment: e.target.value,
+  }))
+  }
+  className={`w-full min-h-[60px] rounded-md border bg-background px-2 py-1.5 text-xs resize-y ${
+  isLowDensity && !shippingForm.comment?.trim()
+    ? "border-amber-500/60 ring-1 ring-amber-500/40"
+    : "border-border"
+  }`}
+  />
+  </Field>
 
             </div>
 
@@ -3028,7 +3051,7 @@ export function SimulationPanel({
                 1. Обзор системы
               </h3>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
-                Система Pricing & Simulation ��редназначена для управления ценообразованием и расчёта стоимости доставки товаров.
+                Система Pricing & Simulation ���редназначена для управления ценообразованием и расчёта стоимости доставки товаров.
                 Она позволяет создавать правила ценообразова��ия, ��ривязывать инвойсы к поставкам и рассчитывать итоговые цены.
               </p>
             </div>
@@ -3056,7 +3079,7 @@ export function SimulationPanel({
                 <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                   <p className="text-[13px] font-medium text-foreground">Pricing Manager</p>
                   <p className="text-[12px] text-muted-foreground">
-                    Основной рабочий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов,
+                    Основной ра��очий интерфейс: выбор поставки, просмотр метрик, привязка инвойсов,
                     расчёт цен и обогащение данных.
                   </p>
                 </div>
