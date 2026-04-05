@@ -339,6 +339,52 @@ useEffect(() => {
     }
   }, [])
 
+  // Delete multiple selected invoices
+  const handleDeleteSelected = useCallback(async (ids: string[]) => {
+    if (!ids.length) return
+    
+    const ok = confirm(`Delete ${ids.length} invoice(s)?`)
+    if (!ok) return
+    
+    const ts = () => new Date().toLocaleTimeString()
+    
+    setLogs(prev => [...prev, `[${ts()}] Deleting ${ids.length} invoice(s)...`])
+    
+    let deleted = 0
+    let failed = 0
+    
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/invoice/${id}`, {
+          method: "DELETE",
+        })
+        
+        if (res.ok) {
+          deleted++
+        } else {
+          failed++
+        }
+      } catch {
+        failed++
+      }
+    }
+    
+    // Clear UI
+    setRows([])
+    setSelectedInvoice(null)
+    setSelectedInvoices(new Set())
+    setIsEnriched(false)
+    
+    // Refresh list
+    const listRes = await fetch("/api/invoice/list")
+    if (listRes.ok) {
+      const data = await listRes.json()
+      setInvoiceList(data)
+    }
+    
+    setLogs(prev => [...prev, `[${ts()}] Deleted ${deleted} invoice(s)${failed ? `, ${failed} failed` : ""}.`])
+  }, [])
+
   const handleUploadFile = useCallback(async (file: File) => {
     setIsUploading(true)
     setLogs((prev) => [
@@ -851,8 +897,9 @@ console.log("scenario active:", isScenarioActive)
         onRecalculate={handleRecalculate}
         onUpdateMarket={handleUpdateMarket}
         onEnrichSelected={handleEnrichSelected}
-        onDeleteInvoice={handleDeleteInvoice}
-        selectedInvoices={selectedInvoices}
+  onDeleteInvoice={handleDeleteInvoice}
+  onDeleteSelected={handleDeleteSelected}
+  selectedInvoices={selectedInvoices}
         onToggleInvoice={toggleInvoice}
       />
 

@@ -66,6 +66,7 @@ interface ControlPanelProps {
   isLoadingInvoice: boolean
   isEnriching: boolean
   onDeleteInvoice?: (id: string) => void
+  onDeleteSelected?: (ids: string[]) => void
   contextMeta?: {
     totalRows: number
     avgMargin: number
@@ -113,8 +114,9 @@ export function ControlPanel({
   onUpdateMarket,
   onEnrichSelected,
 onResetEnrich,
-onDeleteInvoice,
-onExportSelected,
+  onDeleteInvoice,
+  onDeleteSelected,
+  onExportSelected,
 selectedInvoices: externalSelectedInvoices,
 onToggleInvoice,
 }: ControlPanelProps) {
@@ -735,11 +737,12 @@ useEffect(() => {
       size="sm"
       disabled={!hasSelection}
       onClick={() =>
-        onSimulate?.(Array.from(selectedIds))
+        onExportSelected?.(Array.from(selectedIds))
       }
       className="h-7 gap-1.5 text-[10px]"
     >
-      Simulate
+      <Download className="h-3 w-3 shrink-0" />
+      Export
     </Button>
 
     <Button
@@ -747,11 +750,12 @@ useEffect(() => {
       size="sm"
       disabled={!hasSelection}
       onClick={() =>
-        onExportSelected?.(Array.from(selectedIds)) // ✅ исправлено
+        onDeleteSelected?.(Array.from(selectedIds))
       }
-      className="h-7 gap-1.5 text-[10px]"
+      className="h-7 gap-1.5 text-[10px] text-destructive hover:bg-destructive/10"
     >
-      Export
+      <Trash2 className="h-3 w-3 shrink-0" />
+      Delete
     </Button>
 
   </div>
