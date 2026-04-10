@@ -434,26 +434,31 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
   // Fetch part details from API
   useEffect(() => {
-    console.log("[v0] PANEL RENDER:", row, panelEnabled)
+    // Construct part_brand_key from partCode and manufacturer
+    const partBrandKey = row?.partCode && row?.manufacturer 
+      ? `${row.partCode}_${row.manufacturer}` 
+      : null
+
+    console.log("[v0] PANEL RENDER:", { partCode: row?.partCode, manufacturer: row?.manufacturer, partBrandKey, panelEnabled })
 
     if (!panelEnabled) {
       console.log("[v0] PANEL DISABLED → SKIP FETCH")
       return
     }
 
-    if (!row?.part_brand_key) {
+    if (!partBrandKey) {
       console.log("[v0] NO part_brand_key → SKIP FETCH")
       return
     }
 
     // Prevent duplicate requests for same key
-    if (lastKeyRef.current === row.part_brand_key) {
+    if (lastKeyRef.current === partBrandKey) {
       console.log("[v0] SAME KEY → SKIP FETCH")
       return
     }
-    lastKeyRef.current = row.part_brand_key
+    lastKeyRef.current = partBrandKey
 
-    console.log("[v0] FETCH START:", row.part_brand_key)
+    console.log("[v0] FETCH START:", partBrandKey)
     setIsLoading(true)
 
     fetch(API_URL, {
@@ -461,7 +466,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ part_brand_key: row.part_brand_key }),
+      body: JSON.stringify({ part_brand_key: partBrandKey }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -475,7 +480,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       .finally(() => {
         setIsLoading(false)
       })
-  }, [row, panelEnabled])
+  }, [row?.partCode, row?.manufacturer, panelEnabled])
 
   // Load order from localStorage
   useEffect(() => {
