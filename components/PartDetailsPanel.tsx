@@ -75,18 +75,6 @@ const DEFAULT_ORDER: BlockId[] = [
   "history",
 ]
 
-// Fallback data for Analogs (used when API fails or returns empty)
-const FALLBACK_ANALOGS: AnalogItem[] = [
-  { part_brand_key: "C112_SAKURA", brand: "SAKURA", price: 690, stock: 5 },
-  { part_brand_key: "C112_MASUMA", brand: "MASUMA", price: 720, stock: 12 },
-]
-
-// Fallback data for History (used when API fails or returns empty)
-const FALLBACK_HISTORY: HistoryItem[] = [
-  { date: "2025-12-01", supplier: "AMX", qty: 10, price: 280 },
-  { date: "2025-10-15", supplier: "BEST", qty: 5, price: 310 },
-]
-
 const API_URL = "/api/part-details"
 
 function InfoRow({
@@ -436,27 +424,23 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   useEffect(() => {
     const partBrandKey = row?.part_brand_key
 
-    console.log("[v0] PANEL RENDER:", { part_brand_key: partBrandKey, panelEnabled })
-
     if (!panelEnabled) {
-      console.log("[v0] PANEL DISABLED → SKIP FETCH")
       return
     }
 
     if (!partBrandKey) {
-      console.log("[v0] NO part_brand_key → SKIP FETCH")
       return
     }
 
     // Prevent duplicate requests for same key
     if (lastKeyRef.current === partBrandKey) {
-      console.log("[v0] SAME KEY → SKIP FETCH")
       return
     }
     lastKeyRef.current = partBrandKey
 
-    console.log("[v0] FETCH START:", partBrandKey)
+    console.log("[DETAILS] REQUEST:", partBrandKey)
     setIsLoading(true)
+    setDetailsData(null)
 
     fetch(API_URL, {
       method: "POST",
@@ -467,11 +451,11 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("[v0] FETCH DONE:", data)
+        console.log("[DETAILS] RESPONSE:", data)
         setDetailsData(data)
       })
       .catch((err) => {
-        console.error("[v0] FETCH ERROR:", err)
+        console.error("[DETAILS] ERROR:", err)
         setDetailsData(null)
       })
       .finally(() => {
@@ -539,22 +523,14 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     [blocksOrder, saveOrder]
   )
 
-  // Get analogs data with fallback
+  // Get analogs data from response (no fallback)
   const analogsData = useMemo(() => {
-    if (detailsData?.analogs && detailsData.analogs.length > 0) {
-      return detailsData.analogs
-    }
-    // Use fallback if no data or empty
-    return FALLBACK_ANALOGS
+    return detailsData?.analogs || []
   }, [detailsData])
 
-  // Get history data with fallback
+  // Get history data from response (no fallback)
   const historyData = useMemo(() => {
-    if (detailsData?.history && detailsData.history.length > 0) {
-      return detailsData.history
-    }
-    // Use fallback if no data or empty
-    return FALLBACK_HISTORY
+    return detailsData?.history || []
   }, [detailsData])
 
   // Render a block by ID
