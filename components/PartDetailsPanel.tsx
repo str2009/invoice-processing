@@ -432,14 +432,11 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [isLoading, setIsLoading] = useState(false)
   const lastKeyRef = useRef<string | null>(null)
 
-  // Fetch part details from API
+  // Fetch part details from API using part_brand_key from Supabase
   useEffect(() => {
-    // Construct part_brand_key from partCode and manufacturer
-    const partBrandKey = row?.partCode && row?.manufacturer 
-      ? `${row.partCode}_${row.manufacturer}` 
-      : null
+    const partBrandKey = row?.part_brand_key
 
-    console.log("[v0] PANEL RENDER:", { partCode: row?.partCode, manufacturer: row?.manufacturer, partBrandKey, panelEnabled })
+    console.log("[v0] PANEL RENDER:", { part_brand_key: partBrandKey, panelEnabled })
 
     if (!panelEnabled) {
       console.log("[v0] PANEL DISABLED → SKIP FETCH")
@@ -480,7 +477,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       .finally(() => {
         setIsLoading(false)
       })
-  }, [row?.partCode, row?.manufacturer, panelEnabled])
+  }, [row?.part_brand_key, panelEnabled])
 
   // Load order from localStorage
   useEffect(() => {
