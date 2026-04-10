@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { Columns } from "lucide-react"
 import { ControlPanel } from "@/components/dashboard/control-panel"
 import { InvoiceTable } from "@/components/dashboard/invoice-table"
-import { AnalyticsPanel } from "@/components/dashboard/analytics-panel"
+import { PartDetailsPanel } from "@/components/PartDetailsPanel"
 import type { InvoiceRow, InvoiceListItem } from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -220,6 +220,7 @@ useEffect(() => {
     productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
     sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
     reason: (r.reason as string) ?? null,
+    part_brand_key: (r.part_brand_key as string) ?? null,
   }), [])
 
   // Load invoice rows by ID
@@ -799,6 +800,7 @@ useEffect(() => {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
+    console.log("[v0] CLICK ROW:", row)
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
 
@@ -1168,9 +1170,10 @@ console.log("scenario active:", isScenarioActive)
                     aria-orientation="vertical"
                     aria-label="Resize detail panel"
                   />
-                  <AnalyticsPanel
+                  <PartDetailsPanel
                     row={selectedRow}
                     onClose={handleCloseAnalytics}
+                    panelEnabled={true}
                   />
                 </div>
               )}

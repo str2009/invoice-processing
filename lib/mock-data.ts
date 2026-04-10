@@ -24,6 +24,7 @@ export interface InvoiceRow {
   moot?: number | null
   isManual?: boolean
   reason?: string | null
+  part_brand_key?: string | null
 }
 
 export const REASON_OPTIONS = [
