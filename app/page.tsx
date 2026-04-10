@@ -799,6 +799,7 @@ useEffect(() => {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
+    console.log("[v0] CLICK ROW:", row)
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
 
@@ -1171,6 +1172,7 @@ console.log("scenario active:", isScenarioActive)
                   <PartDetailsPanel
                     row={selectedRow}
                     onClose={handleCloseAnalytics}
+                    panelEnabled={true}
                   />
                 </div>
               )}

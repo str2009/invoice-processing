@@ -38,6 +38,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
 interface PartDetailsPanelProps {
   row: InvoiceRow
   onClose: () => void
+  panelEnabled?: boolean
 }
 
 interface AnalogItem {
@@ -425,49 +426,56 @@ function HistoryBlock({
   )
 }
 
-export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
+export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
   const [detailsData, setDetailsData] = useState<DetailsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const lastKeyRef = useRef<string | null>(null)
 
-  // Fetch part details from webhook
+  // Fetch part details from API
   useEffect(() => {
-    const fetchDetails = async () => {
-      const partBrandKey = row.part_brand_key
-      if (!partBrandKey) {
-        console.log("[v0] REQUEST PART: (no part_brand_key)")
-        return
-      }
+    console.log("[v0] PANEL RENDER:", row, panelEnabled)
 
-      console.log("[v0] REQUEST PART:", partBrandKey)
-      setIsLoading(true)
-
-      try {
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ part_brand_key: partBrandKey }),
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
-
-        const data = await response.json()
-        console.log("[v0] DETAILS RESPONSE:", data)
-        setDetailsData(data)
-      } catch (error) {
-        console.error("[v0] FETCH ERROR:", error)
-        setDetailsData(null)
-      } finally {
-        setIsLoading(false)
-      }
+    if (!panelEnabled) {
+      console.log("[v0] PANEL DISABLED → SKIP FETCH")
+      return
     }
 
-    fetchDetails()
-  }, [row.part_brand_key])
+    if (!row?.part_brand_key) {
+      console.log("[v0] NO part_brand_key → SKIP FETCH")
+      return
+    }
+
+    // Prevent duplicate requests for same key
+    if (lastKeyRef.current === row.part_brand_key) {
+      console.log("[v0] SAME KEY → SKIP FETCH")
+      return
+    }
+    lastKeyRef.current = row.part_brand_key
+
+    console.log("[v0] FETCH START:", row.part_brand_key)
+    setIsLoading(true)
+
+    fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ part_brand_key: row.part_brand_key }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("[v0] FETCH DONE:", data)
+        setDetailsData(data)
+      })
+      .catch((err) => {
+        console.error("[v0] FETCH ERROR:", err)
+        setDetailsData(null)
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
+  }, [row, panelEnabled])
 
   // Load order from localStorage
   useEffect(() => {
