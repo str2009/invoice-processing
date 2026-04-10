@@ -33,6 +33,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { ControlPanel } from "@/components/dashboard/control-panel"
+import { PartDetailsPanel } from "@/components/dashboard/part-details-panel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -67,13 +68,9 @@ import {
   ChevronUp,
   ChevronDown,
   PanelLeft,
-  Package,
-  TrendingUp,
-  Warehouse,
   GripVertical,
   GripHorizontal,
   Columns3,
-  Weight,
   CalendarDays,
 } from "lucide-react"
 import type { InvoiceRow, InvoiceListItem } from "@/lib/mock-data"
@@ -1185,93 +1182,10 @@ useEffect(() => {
                 aria-orientation="vertical"
                 aria-label="Resize detail panel"
               />
-            <aside className="flex h-full w-full flex-col border-l border-border bg-card" role="complementary" aria-label="Part analytics">
-              <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2">
-                <h2 className="text-xs font-semibold text-foreground">Part Details</h2>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSelectedRow(null)}>
-                  <X className="h-3.5 w-3.5" />
-                  <span className="sr-only">Close panel</span>
-                </Button>
-              </div>
-              <ScrollArea className="flex-1">
-                <div className="flex flex-col gap-3 p-3">
-                  {/* Identity */}
-                  <div>
-                    <div className="mb-1.5 flex items-center gap-1.5">
-                      <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Identity</span>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-1.5">
-                      <p className="font-mono text-xs font-semibold text-foreground">{selectedRow.partCode}</p>
-                      <p className="text-[11px] text-muted-foreground">{selectedRow.brand}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">{selectedRow.pricingGroup} / {selectedRow.abcClass}</p>
-                    </div>
-                  </div>
-                  {/* Pricing */}
-                  <div>
-                    <div className="mb-1.5 flex items-center gap-1.5">
-                      <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Pricing</span>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-                      <InfoRow label="Purchase" value={selectedRow.purchase.toFixed(2)} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Current" value={selectedRow.current.toFixed(2)} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Margin" value={`${selectedRow.marginPct.toFixed(1)}%`} className={selectedRow.marginPct > 40 ? "text-emerald-600 dark:text-emerald-400" : selectedRow.marginPct < 0 ? "text-red-500" : "text-amber-600 dark:text-amber-400"} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Competitor" value={selectedRow.competitorPrice > 0 ? selectedRow.competitorPrice.toFixed(2) : "---"} className={selectedRow.competitorPrice > 0 && selectedRow.competitorPrice < selectedRow.current ? "text-red-500" : ""} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Risk Score" value={selectedRow.riskScore} className={selectedRow.riskScore >= 60 ? "text-red-500" : selectedRow.riskScore >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
-                    </div>
-                  </div>
-                  {/* Stock */}
-                  <div>
-                    <div className="mb-1.5 flex items-center gap-1.5">
-                      <Warehouse className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Stock</span>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-                      <InfoRow label="Current" value={selectedRow.stock} className={selectedRow.stock < 20 ? "text-amber-600 dark:text-amber-400" : ""} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Incoming" value={selectedRow.incoming} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Total" value={selectedRow.totalStock} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Coverage" value={selectedRow.coverageDays >= 9999 ? "---" : `${selectedRow.coverageDays}d`} className={selectedRow.coverageDays < 30 ? "text-amber-600 dark:text-amber-400" : ""} />
-                    </div>
-                  </div>
-                  {/* Sales */}
-                  <div>
-                    <div className="mb-1.5 flex items-center gap-1.5">
-                      <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Sales</span>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-                      <InfoRow label="12m Sales" value={selectedRow.sales12m.toLocaleString("en-US")} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="3m Sales" value={selectedRow.sales3m.toLocaleString("en-US")} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Last Sale" value={selectedRow.lastSaleDate} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Monthly Avg" value={Math.round(selectedRow.sales12m / 12).toLocaleString("en-US")} />
-                    </div>
-                  </div>
-                  {/* Weight */}
-                  <div>
-                    <div className="mb-1.5 flex items-center gap-1.5">
-                      <Weight className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Physical</span>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-                      <InfoRow label="Weight" value={`${selectedRow.weight.toFixed(3)} kg`} />
-                      <div className="border-t border-border/50" />
-                      <InfoRow label="Bulk Qty" value={selectedRow.bulk} />
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
-            </aside>
+              <PartDetailsPanel
+                row={selectedRow}
+                onClose={() => setSelectedRow(null)}
+              />
             </div>
           )}
         </div>
