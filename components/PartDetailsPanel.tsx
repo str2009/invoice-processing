@@ -86,7 +86,7 @@ const FALLBACK_HISTORY: HistoryItem[] = [
   { date: "2025-10-15", supplier: "BEST", qty: 5, price: 310 },
 ]
 
-const WEBHOOK_URL = "https://max24vin.ru/webhook/f74f751a-126a-get_part_details"
+const API_URL = "/api/part-details"
 
 function InfoRow({
   label,
@@ -443,7 +443,7 @@ export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
       setIsLoading(true)
 
       try {
-        const response = await fetch(WEBHOOK_URL, {
+        const response = await fetch(API_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -459,7 +459,7 @@ export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
         console.log("[v0] DETAILS RESPONSE:", data)
         setDetailsData(data)
       } catch (error) {
-        console.log("[v0] DETAILS ERROR:", error)
+        console.error("[v0] FETCH ERROR:", error)
         setDetailsData(null)
       } finally {
         setIsLoading(false)
