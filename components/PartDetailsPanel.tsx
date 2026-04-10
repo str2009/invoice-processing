@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   X,
   Package,
@@ -39,6 +40,26 @@ interface PartDetailsPanelProps {
   onClose: () => void
 }
 
+interface AnalogItem {
+  part_brand_key: string
+  brand: string
+  price: number
+  stock: number
+}
+
+interface HistoryItem {
+  date: string
+  supplier: string
+  qty: number
+  price: number
+}
+
+interface DetailsResponse {
+  analogs: AnalogItem[]
+  history: HistoryItem[]
+  analytics?: Record<string, unknown>
+}
+
 type BlockId = "identity" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "history"
 
 const STORAGE_KEY = "part-details-layout"
@@ -53,17 +74,19 @@ const DEFAULT_ORDER: BlockId[] = [
   "history",
 ]
 
-// Mock data for Analogs
-const MOCK_ANALOGS = [
-  { code: "MC224_MASUMA", brand: "MASUMA", price: 720, stock: 12 },
-  { code: "MC224_SAKURA", brand: "SAKURA", price: 690, stock: 5 },
+// Fallback data for Analogs (used when API fails or returns empty)
+const FALLBACK_ANALOGS: AnalogItem[] = [
+  { part_brand_key: "C112_SAKURA", brand: "SAKURA", price: 690, stock: 5 },
+  { part_brand_key: "C112_MASUMA", brand: "MASUMA", price: 720, stock: 12 },
 ]
 
-// Mock data for History
-const MOCK_HISTORY = [
+// Fallback data for History (used when API fails or returns empty)
+const FALLBACK_HISTORY: HistoryItem[] = [
   { date: "2025-12-01", supplier: "AMX", qty: 10, price: 280 },
   { date: "2025-10-15", supplier: "BEST", qty: 5, price: 310 },
 ]
+
+const WEBHOOK_URL = "https://max24vin.ru/webhook/f74f751a-126a-get_part_details"
 
 function InfoRow({
   label,
@@ -261,9 +284,14 @@ function SalesBlock({ row }: { row: InvoiceRow }) {
   )
 }
 
-function AnalogsBlock() {
-  const analogs = MOCK_ANALOGS
-  const bestPrice = Math.min(...analogs.map((a) => a.price))
+function AnalogsBlock({
+  analogs,
+  isLoading,
+}: {
+  analogs: AnalogItem[]
+  isLoading: boolean
+}) {
+  const bestPrice = analogs.length > 0 ? Math.min(...analogs.map((a) => a.price)) : 0
 
   return (
     <div className="pl-6">
@@ -274,7 +302,13 @@ function AnalogsBlock() {
         </span>
       </div>
       <div className="rounded-lg border border-border bg-muted/30">
-        {analogs.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        ) : analogs.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground/60">No analogs</p>
         ) : (
           <div className="max-h-32 overflow-auto">
@@ -290,11 +324,11 @@ function AnalogsBlock() {
               <tbody>
                 {analogs.map((analog, idx) => (
                   <tr
-                    key={analog.code}
+                    key={analog.part_brand_key}
                     className={idx < analogs.length - 1 ? "border-b border-border/30" : ""}
                   >
                     <td className="px-2 py-1.5 font-mono text-foreground/80">
-                      {analog.code}
+                      {analog.part_brand_key}
                     </td>
                     <td className="px-2 py-1.5 text-muted-foreground">
                       {analog.brand}
@@ -322,9 +356,15 @@ function AnalogsBlock() {
   )
 }
 
-function HistoryBlock() {
+function HistoryBlock({
+  history,
+  isLoading,
+}: {
+  history: HistoryItem[]
+  isLoading: boolean
+}) {
   // Sort by date descending
-  const history = [...MOCK_HISTORY].sort(
+  const sortedHistory = [...history].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   )
 
@@ -337,7 +377,13 @@ function HistoryBlock() {
         </span>
       </div>
       <div className="rounded-lg border border-border bg-muted/30">
-        {history.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        ) : sortedHistory.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground/60">No history</p>
         ) : (
           <div className="max-h-32 overflow-auto">
@@ -351,10 +397,10 @@ function HistoryBlock() {
                 </tr>
               </thead>
               <tbody>
-                {history.map((item, idx) => (
+                {sortedHistory.map((item, idx) => (
                   <tr
-                    key={`${item.date}-${item.supplier}`}
-                    className={idx < history.length - 1 ? "border-b border-border/30" : ""}
+                    key={`${item.date}-${item.supplier}-${idx}`}
+                    className={idx < sortedHistory.length - 1 ? "border-b border-border/30" : ""}
                   >
                     <td className="px-2 py-1.5 font-mono text-foreground/80">
                       {item.date}
@@ -381,6 +427,47 @@ function HistoryBlock() {
 
 export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
+  const [detailsData, setDetailsData] = useState<DetailsResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch part details from webhook
+  useEffect(() => {
+    const fetchDetails = async () => {
+      const partBrandKey = row.part_brand_key
+      if (!partBrandKey) {
+        console.log("[v0] REQUEST PART: (no part_brand_key)")
+        return
+      }
+
+      console.log("[v0] REQUEST PART:", partBrandKey)
+      setIsLoading(true)
+
+      try {
+        const response = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ part_brand_key: partBrandKey }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+        console.log("[v0] DETAILS RESPONSE:", data)
+        setDetailsData(data)
+      } catch (error) {
+        console.log("[v0] DETAILS ERROR:", error)
+        setDetailsData(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDetails()
+  }, [row.part_brand_key])
 
   // Load order from localStorage
   useEffect(() => {
@@ -442,6 +529,24 @@ export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
     [blocksOrder, saveOrder]
   )
 
+  // Get analogs data with fallback
+  const analogsData = useMemo(() => {
+    if (detailsData?.analogs && detailsData.analogs.length > 0) {
+      return detailsData.analogs
+    }
+    // Use fallback if no data or empty
+    return FALLBACK_ANALOGS
+  }, [detailsData])
+
+  // Get history data with fallback
+  const historyData = useMemo(() => {
+    if (detailsData?.history && detailsData.history.length > 0) {
+      return detailsData.history
+    }
+    // Use fallback if no data or empty
+    return FALLBACK_HISTORY
+  }, [detailsData])
+
   // Render a block by ID
   const renderBlock = useCallback(
     (blockId: BlockId) => {
@@ -457,14 +562,14 @@ export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
         case "sales":
           return <SalesBlock row={row} />
         case "analogs":
-          return <AnalogsBlock />
+          return <AnalogsBlock analogs={analogsData} isLoading={isLoading} />
         case "history":
-          return <HistoryBlock />
+          return <HistoryBlock history={historyData} isLoading={isLoading} />
         default:
           return null
       }
     },
-    [row]
+    [row, analogsData, historyData, isLoading]
   )
 
   return (
