@@ -214,8 +214,8 @@ function IdentityCard({ row }: { row: AnalyticsRow }) {
           {row.partCode}
         </p>
         <p className="text-[11px] text-muted-foreground">{row.brand}</p>
-        <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-          {row.pricingGroup} / {row.abcClass}
+        <p className="mt-1 text-[10px] text-muted-foreground/60">
+          {row.partName || `${row.partCode.toLowerCase()} ${row.partCode}`}
         </p>
       </div>
     </div>
@@ -232,9 +232,14 @@ function PricingCard({ row }: { row: AnalyticsRow }) {
         </span>
       </div>
       <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-        <InfoRow label="Purchase" value={row.purchase.toFixed(2)} />
+        <InfoRow label="Purchase (Cost)" value={row.purchase.toFixed(2)} />
         <div className="border-t border-border/50" />
-        <InfoRow label="Current" value={row.current.toFixed(2)} />
+        <InfoRow label="Current (Now)" value={row.current.toFixed(2)} />
+        <div className="border-t border-border/50" />
+        <InfoRow
+          label="Incoming (Ship)"
+          value={row.incoming > 0 ? row.incoming.toFixed(2) : "---"}
+        />
         <div className="border-t border-border/50" />
         <InfoRow
           label="Margin"
@@ -242,31 +247,9 @@ function PricingCard({ row }: { row: AnalyticsRow }) {
           className={
             row.marginPct > 40
               ? "text-emerald-600 dark:text-emerald-400"
-              : row.marginPct < 0
-              ? "text-red-500"
-              : "text-amber-600 dark:text-amber-400"
-          }
-        />
-        <div className="border-t border-border/50" />
-        <InfoRow
-          label="Competitor"
-          value={row.competitorPrice > 0 ? row.competitorPrice.toFixed(2) : "---"}
-          className={
-            row.competitorPrice > 0 && row.competitorPrice < row.current
-              ? "text-red-500"
-              : ""
-          }
-        />
-        <div className="border-t border-border/50" />
-        <InfoRow
-          label="Risk Score"
-          value={row.riskScore}
-          className={
-            row.riskScore >= 60
-              ? "text-red-500"
-              : row.riskScore >= 30
+              : row.marginPct <= 0
               ? "text-amber-600 dark:text-amber-400"
-              : "text-emerald-600 dark:text-emerald-400"
+              : ""
           }
         />
       </div>
@@ -275,6 +258,9 @@ function PricingCard({ row }: { row: AnalyticsRow }) {
 }
 
 function InventoryCard({ row }: { row: AnalyticsRow }) {
+  // Calculate total value = qty * purchase price
+  const totalValue = row.bulk * row.purchase
+  
   return (
     <div className="pl-6">
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -284,29 +270,24 @@ function InventoryCard({ row }: { row: AnalyticsRow }) {
         </span>
       </div>
       <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
+        <InfoRow label="Quantity (invoice)" value={row.bulk} />
+        <div className="border-t border-border/50" />
         <InfoRow
-          label="Current"
+          label="Stock"
           value={row.stock}
-          className={row.stock < 20 ? "text-amber-600 dark:text-amber-400" : ""}
+          className={row.stock === 0 ? "text-amber-600 dark:text-amber-400" : ""}
         />
         <div className="border-t border-border/50" />
-        <InfoRow label="Incoming" value={row.incoming} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Total" value={row.totalStock} />
-        <div className="border-t border-border/50" />
-        <InfoRow
-          label="Coverage"
-          value={row.coverageDays >= 9999 ? "---" : `${row.coverageDays}d`}
-          className={
-            row.coverageDays < 30 ? "text-amber-600 dark:text-amber-400" : ""
-          }
-        />
+        <InfoRow label="Total value" value={totalValue.toFixed(2)} />
       </div>
     </div>
   )
 }
 
 function PhysicalCard({ row }: { row: AnalyticsRow }) {
+  // Total weight = unit weight * quantity
+  const totalWeight = row.weight * row.bulk
+  
   return (
     <div className="pl-6">
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -316,25 +297,15 @@ function PhysicalCard({ row }: { row: AnalyticsRow }) {
         </span>
       </div>
       <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-        <InfoRow label="Weight" value={`${row.weight.toFixed(3)} kg`} />
+        <InfoRow label="Weight" value={`${row.weight.toFixed(1)} kg`} />
         <div className="border-t border-border/50" />
-        <InfoRow label="Bulk Qty" value={row.bulk} />
+        <InfoRow label="Total weight" value={`${totalWeight.toFixed(1)} kg`} />
       </div>
     </div>
   )
 }
 
-function SalesCard({
-  row,
-  analytics,
-  isLoading,
-}: {
-  row: AnalyticsRow
-  analytics: AnalyticsData | null
-  isLoading: boolean
-}) {
-  const daysNoSales = analytics?.days_no_sales ?? null
-
+function SalesCard({ row }: { row: AnalyticsRow }) {
   return (
     <div className="pl-6">
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -344,31 +315,12 @@ function SalesCard({
         </span>
       </div>
       <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-        <InfoRow label="12m Sales" value={row.sales12m.toLocaleString("en-US")} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="3m Sales" value={row.sales3m.toLocaleString("en-US")} />
+        <InfoRow label="12-month sales" value={row.sales12m} />
         <div className="border-t border-border/50" />
         <InfoRow
-          label="Monthly Avg"
-          value={Math.round(row.sales12m / 12).toLocaleString("en-US")}
+          label="Monthly avg"
+          value={Math.round(row.sales12m / 12)}
         />
-        <div className="border-t border-border/50" />
-        {isLoading ? (
-          <div className="flex items-center justify-between py-1">
-            <span className="text-[11px] text-muted-foreground">Days w/o Sales</span>
-            <Skeleton className="h-3 w-8" />
-          </div>
-        ) : (
-          <InfoRow
-            label="Days w/o Sales"
-            value={daysNoSales !== null ? daysNoSales : "---"}
-            className={
-              daysNoSales !== null && daysNoSales > 30
-                ? "text-amber-600 dark:text-amber-400"
-                : ""
-            }
-          />
-        )}
       </div>
     </div>
   )
@@ -649,13 +601,7 @@ export function PartDetailsPanel({ row, onClose }: PartDetailsPanelProps) {
         case "physical":
           return <PhysicalCard row={row} />
         case "sales":
-          return (
-            <SalesCard
-              row={row}
-              analytics={asyncData?.analytics ?? null}
-              isLoading={isLoading}
-            />
-          )
+          return <SalesCard row={row} />
         case "analogs":
           return (
             <AnalogsCard
