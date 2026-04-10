@@ -93,6 +93,7 @@ const defaultColumnSizing: ColumnSizingState = {
   productGroup: 100,
   sales12m: 80,
   moot: 80,
+  part_brand_key: 180,
 }
 
 // --- Numeric column IDs for centering ---
@@ -509,6 +510,20 @@ const columns: ColumnDef<InvoiceRow>[] = [
   },
   },
   {
+    id: "part_brand_key",
+    accessorKey: "part_brand_key",
+    header: "Key",
+    cell: ({ row }) => {
+      const val = row.getValue("part_brand_key") as string | null
+      if (!val) return <span className="text-muted-foreground/40">—</span>
+      return (
+        <span className="font-mono text-xs text-muted-foreground truncate" title={val}>
+          {val}
+        </span>
+      )
+    },
+  },
+  {
   id: "reason",
   accessorKey: "reason",
   header: "Reason",
@@ -557,9 +572,8 @@ const columnLabels: Record<string, string> = {
   productGroup: "Group",
   sales12m: "Sales 12m",
   moot: "PriceNorm",
-  productGroup: "Group",
-  sales12m: "Sales 12m",
   reason: "Reason",
+  part_brand_key: "Key",
 }
 
 export function InvoiceTable({
