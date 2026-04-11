@@ -41,12 +41,19 @@ interface PartDetailsPanelProps {
   panelEnabled?: boolean
 }
 
+interface PurchaseHistoryItem {
+  price: number
+  date: string
+}
+
 interface AnalogItem {
   part_brand_key: string
+  code?: string
   brand: string
   price: number
   purchase_price?: number
   stock: number
+  purchase_history?: PurchaseHistoryItem[]
 }
 
 interface HistoryItem {
@@ -62,7 +69,7 @@ interface DetailsResponse {
   analytics?: Record<string, unknown>
 }
 
-type BlockId = "identity" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "history"
+type BlockId = "identity" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
 
 const STORAGE_KEY = "part-details-layout"
 
@@ -73,6 +80,7 @@ const DEFAULT_ORDER: BlockId[] = [
   "physical",
   "sales",
   "analogs",
+  "analogDetails",
   "history",
 ]
 
@@ -280,12 +288,16 @@ function AnalogsBlock({
   includeZeroStock,
   onToggleZeroStock,
   currentPartKey,
+  selectedAnalog,
+  onSelectAnalog,
 }: {
   analogs: AnalogItem[]
   isLoading: boolean
   includeZeroStock: boolean
   onToggleZeroStock: () => void
   currentPartKey: string
+  selectedAnalog: AnalogItem | null
+  onSelectAnalog: (analog: AnalogItem) => void
 }) {
   const bestPrice = analogs.length > 0 ? Math.min(...analogs.map((a) => a.price)) : 0
 
@@ -341,11 +353,13 @@ function AnalogsBlock({
               <tbody>
                 {analogs.map((analog, idx) => {
                   const isCurrentPart = analog.part_brand_key === currentPartKey
+                  const isSelected = selectedAnalog?.part_brand_key === analog.part_brand_key
                   return (
                     <tr
                       key={analog.part_brand_key}
-                      className={`${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
-                        isCurrentPart ? "bg-primary/10" : ""
+                      onClick={() => onSelectAnalog(analog)}
+                      className={`cursor-pointer transition-colors hover:bg-muted/50 ${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
+                        isSelected ? "bg-primary/20" : isCurrentPart ? "bg-primary/10" : ""
                       }`}
                     >
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
@@ -450,12 +464,88 @@ function HistoryBlock({
   )
 }
 
+function AnalogDetailsBlock({
+  selectedAnalog,
+}: {
+  selectedAnalog: AnalogItem | null
+}) {
+  if (!selectedAnalog) {
+    return (
+      <div className="pl-6">
+        <div className="mb-2 flex items-center gap-2">
+          <Package className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Analog Details
+          </span>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+          <p className="text-xs text-muted-foreground/60">Select an analog to view details</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Extract code from part_brand_key if not provided
+  const code = selectedAnalog.code || selectedAnalog.part_brand_key.split("_")[0]
+  
+  // Sort purchase history by date descending
+  const sortedHistory = [...(selectedAnalog.purchase_history || [])].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  )
+
+  // Get last purchase date from history
+  const lastPurchaseDate = sortedHistory.length > 0 ? sortedHistory[0].date : null
+
+  return (
+    <div className="pl-6">
+      <div className="mb-2 flex items-center gap-2">
+        <Package className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Analog Details
+        </span>
+      </div>
+      <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
+        <InfoRow label="Code" value={code} />
+        <div className="border-t border-border/50" />
+        <InfoRow label="Brand" value={selectedAnalog.brand} />
+        <div className="border-t border-border/50" />
+        <InfoRow label="Now (price)" value={selectedAnalog.price} />
+        <div className="border-t border-border/50" />
+        <InfoRow label="Cost (purchase)" value={selectedAnalog.purchase_price ?? "—"} />
+        <div className="border-t border-border/50" />
+        <InfoRow label="Last purchase" value={lastPurchaseDate || "—"} />
+        
+        {/* Purchase History */}
+        {sortedHistory.length > 0 && (
+          <>
+            <div className="border-t border-border/50 my-1" />
+            <div className="py-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                Purchase History
+              </span>
+              <div className="mt-1.5 space-y-0.5">
+                {sortedHistory.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs">
+                    <span className="font-mono text-foreground">{item.price}</span>
+                    <span className="text-muted-foreground">— {item.date}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
   const [analogsRaw, setAnalogsRaw] = useState<AnalogItem[]>([])
   const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
+  const [selectedAnalog, setSelectedAnalog] = useState<AnalogItem | null>(null)
 
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
@@ -562,13 +652,15 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       (a) => a.part_brand_key === currentPartKey
     )
     
-    // Create current part row - price and purchase_price come from n8n response
+    // Create current part row - price, purchase_price and purchase_history come from n8n response
     const currentPart: AnalogItem = {
       part_brand_key: currentPartKey,
+      code: currentPartFromApi?.code || row.partCode,
       brand: row.manufacturer,
       price: currentPartFromApi?.price ?? 0,
       purchase_price: currentPartFromApi?.purchase_price,
       stock: currentPartFromApi?.stock ?? row.stock,
+      purchase_history: currentPartFromApi?.purchase_history,
     }
     
     // Filter out current part from raw analogs (avoid duplicates)
@@ -587,6 +679,13 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
   // History data (no filtering needed)
   const historyData = historyRaw
+
+  // Auto-select first analog when data loads
+  useEffect(() => {
+    if (analogsData.length > 0 && !selectedAnalog) {
+      setSelectedAnalog(analogsData[0])
+    }
+  }, [analogsData, selectedAnalog])
 
   // Render a block by ID
   const renderBlock = useCallback(
@@ -610,15 +709,19 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
               includeZeroStock={includeZeroStock}
               onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
               currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
+              selectedAnalog={selectedAnalog}
+              onSelectAnalog={setSelectedAnalog}
             />
           )
+        case "analogDetails":
+          return <AnalogDetailsBlock selectedAnalog={selectedAnalog} />
         case "history":
           return <HistoryBlock history={historyData} isLoading={isLoading} />
         default:
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog]
   )
 
   return (
