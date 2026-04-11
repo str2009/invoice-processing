@@ -491,10 +491,10 @@ function AnalogDetailsBlock({
     )
   }
 
-  // Sort purchase history by date descending, limit to 3 rows
+  // Sort purchase history by date descending, limit to 10 rows
   const sortedHistory = [...(selectedAnalog.purchase_history || [])].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  ).slice(0, 3)
+  ).slice(0, 10)
 
   // Check if date is older than 90 days
   const isOlderThan90Days = (dateStr: string) => {
