@@ -452,8 +452,9 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [isLoading, setIsLoading] = useState(false)
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
 
-  // Get part_brand_key from row
-  const partBrandKey = row?.part_brand_key
+  // Get part_brand_key from row, or construct from partCode_manufacturer
+  const partBrandKey = row?.part_brand_key || 
+    (row?.partCode && row?.manufacturer ? `${row.partCode}_${row.manufacturer}` : null)
 
   // Fetch part details - depends ONLY on partBrandKey
   useEffect(() => {
