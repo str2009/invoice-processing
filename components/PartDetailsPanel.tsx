@@ -45,6 +45,7 @@ interface AnalogItem {
   part_brand_key: string
   brand: string
   price: number
+  purchase_price?: number
   stock: number
 }
 
@@ -333,6 +334,7 @@ function AnalogsBlock({
                   <th className="px-2 py-1.5 text-left font-medium">Code</th>
                   <th className="px-2 py-1.5 text-left font-medium">Brand</th>
                   <th className="px-2 py-1.5 text-right font-medium">Now</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Cost</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
@@ -360,6 +362,9 @@ function AnalogsBlock({
                         }`}
                       >
                         {analog.price}
+                      </td>
+                      <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                        {analog.purchase_price}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.stock}
