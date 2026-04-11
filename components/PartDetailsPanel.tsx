@@ -332,7 +332,7 @@ function AnalogsBlock({
                 <tr className="border-b border-border/50 text-muted-foreground">
                   <th className="px-2 py-1.5 text-left font-medium">Code</th>
                   <th className="px-2 py-1.5 text-left font-medium">Brand</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Price</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
@@ -549,18 +549,24 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
   // Filtered analogs - current part first, then apply stock filter
   const analogsData = useMemo(() => {
-    // Create current part row from Identity data
-    const currentPartKey = row?.part_brand_key
+    const currentPartKey = row?.part_brand_key || `${row.partCode}_${row.manufacturer}`
+    
+    // Find current part in n8n response to get its price
+    const currentPartFromApi = analogsRaw.find(
+      (a) => a.part_brand_key === currentPartKey
+    )
+    
+    // Create current part row - price comes from n8n response
     const currentPart: AnalogItem = {
-      part_brand_key: currentPartKey || `${row.partCode}_${row.manufacturer}`,
+      part_brand_key: currentPartKey,
       brand: row.manufacturer,
-      price: row.cost,
-      stock: row.stock,
+      price: currentPartFromApi?.price ?? 0,
+      stock: currentPartFromApi?.stock ?? row.stock,
     }
     
     // Filter out current part from raw analogs (avoid duplicates)
     const otherAnalogs = analogsRaw.filter(
-      (a) => a.part_brand_key !== currentPart.part_brand_key
+      (a) => a.part_brand_key !== currentPartKey
     )
     
     // Apply zero stock filter if toggle is OFF
