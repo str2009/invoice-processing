@@ -1880,7 +1880,11 @@ export function SimulationPanel({
               </div>
 
               {/* Shipment list with scrolling - isolated from other panels */}
-              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain isolate">
+              <div 
+                ref={shipmentListRef} 
+                className="overflow-y-auto overscroll-contain"
+                style={{ maxHeight: "calc(100vh - 280px)" }}
+              >
                 {filteredShipments.length === 0 && !isLoadingShipments ? (
                   <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                     {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -2272,7 +2276,7 @@ export function SimulationPanel({
                   <p className="font-medium text-foreground">Инструкция для менеджеров:</p>
                   <ol className="list-decimal list-inside space-y-1 pl-1">
                     <li>Выберите поставку из списка слева или создайте новую</li>
-                    <li>Заполните данные о перевозке (компания, тип, дата)</li>
+                    <li>Заполните данные о перевозке (компан��я, тип, дата)</li>
                     <li>Укажите стоимость и параметры груза</li>
                     <li>Привяжите и��войсы к поставке</li>
                     <li>Нажмите "Create Shipment" для сохранени����</li>
@@ -2337,7 +2341,7 @@ export function SimulationPanel({
             </div>
 
             {/* Main Grid Area */}
-            <div className="flex-1 p-4 overflow-auto">
+            <div className="flex-1 p-4 overflow-hidden">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -2397,7 +2401,10 @@ export function SimulationPanel({
                             </div>
 
                             {/* Shipment list with own scrolling - isolated from other panels */}
-                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain isolate">
+                            <div 
+                              className="overflow-y-auto overscroll-contain"
+                              style={{ maxHeight: "calc(100vh - 280px)" }}
+                            >
                               {filteredShipments.length === 0 && !isLoadingShipments ? (
                                 <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                                   {shipmentSearch ? "No matching shipments" : "No shipments found"}
