@@ -471,6 +471,15 @@ function HistoryBlock({
   )
 }
 
+// Format date to DD.MM.YY
+function formatDateShort(dateString: string): string {
+  const d = new Date(dateString)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = String(d.getFullYear()).slice(-2)
+  return `${day}.${month}.${year}`
+}
+
 function AnalogDetailsBlock({
   selectedAnalog,
 }: {
@@ -530,7 +539,7 @@ function AnalogDetailsBlock({
                     {item.price.toLocaleString("ru-RU")}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {item.date}
+                    {formatDateShort(item.date)}
                   </span>
                 </div>
               ))
@@ -552,7 +561,7 @@ function AnalogDetailsBlock({
                   {selectedAnalog.last_sale.price.toLocaleString("ru-RU")}
                 </span>
                 <span className="text-xs text-muted-foreground mt-0.5">
-                  {selectedAnalog.last_sale.date}
+                  {formatDateShort(selectedAnalog.last_sale.date)}
                 </span>
               </div>
             ) : (
@@ -583,7 +592,7 @@ function AnalogDetailsBlock({
                 </span>
                 {selectedAnalog.out_of_stock_since && (
                   <span className="text-xs text-muted-foreground mt-0.5">
-                    since {selectedAnalog.out_of_stock_since}
+                    since {formatDateShort(selectedAnalog.out_of_stock_since)}
                   </span>
                 )}
               </div>
