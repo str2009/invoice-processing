@@ -46,11 +46,6 @@ interface PurchaseHistoryItem {
   date: string
 }
 
-interface LastSale {
-  price: number
-  date: string
-}
-
 interface AnalogItem {
   part_brand_key: string
   code?: string
@@ -59,8 +54,9 @@ interface AnalogItem {
   purchase_price?: number
   stock: number
   purchase_history?: PurchaseHistoryItem[]
-  last_sale?: LastSale
-  out_of_stock_since?: string
+  last_sale_price?: number
+  last_sale_date?: string
+  last_stock_zero_date?: string
 }
 
 interface HistoryItem {
@@ -495,34 +491,31 @@ function AnalogDetailsBlock({
     )
   }
 
-  // Sort purchase history by date descending, limit to 5 rows
+  // Sort purchase history by date descending, limit to 3 rows
   const sortedHistory = [...(selectedAnalog.purchase_history || [])].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  ).slice(0, 5)
+  ).slice(0, 3)
 
-  // Check if purchase is recent (<90 days) or old (>1 year)
-  const isRecent = (dateStr: string) => {
+  // Check if date is older than 90 days
+  const isOlderThan90Days = (dateStr: string) => {
     const date = new Date(dateStr)
     const now = new Date()
     const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    return diffDays < 90
+    return diffDays > 90
   }
 
-  const isOld = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    return diffDays > 365
-  }
+  const lastSaleIsOld = selectedAnalog.last_sale_date 
+    ? isOlderThan90Days(selectedAnalog.last_sale_date) 
+    : false
 
   return (
     <div className="pl-6">
       <div 
-        className="rounded-lg border border-border bg-muted/30 px-4 py-3 grid gap-5"
-        style={{ gridTemplateColumns: "2.5fr 1fr 1fr" }}
+        className="rounded-lg border border-border bg-muted/30 grid"
+        style={{ gridTemplateColumns: "2fr 1fr 1fr" }}
       >
-        {/* Purchase History (Primary, Left) */}
-        <div className="flex flex-col">
+        {/* Purchase History (Left) */}
+        <div className="flex flex-col px-4 py-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Purchase
           </span>
@@ -531,38 +524,43 @@ function AnalogDetailsBlock({
               sortedHistory.map((item, idx) => (
                 <div 
                   key={idx} 
-                  className={`flex items-center gap-3 text-sm ${
-                    isOld(item.date) ? "text-muted-foreground" : ""
-                  }`}
+                  className="flex items-center justify-between text-sm"
                 >
-                  <span className="font-mono font-medium tabular-nums">
+                  <span className="font-mono tabular-nums">
                     {item.price.toLocaleString("ru-RU")}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
                     {formatDateShort(item.date)}
                   </span>
                 </div>
               ))
             ) : (
-              <span className="text-sm text-muted-foreground">—</span>
+              <span className="text-sm text-muted-foreground">No history</span>
             )}
           </div>
         </div>
 
         {/* Last Sale (Center) */}
-        <div className="flex flex-col">
+        <div className="flex flex-col px-4 py-3 border-l border-border">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Last Sale
           </span>
           <div className="mt-2 flex-1">
-            {selectedAnalog.last_sale ? (
-              <div className="flex flex-col">
-                <span className="font-mono text-base font-medium tabular-nums">
-                  {selectedAnalog.last_sale.price.toLocaleString("ru-RU")}
-                </span>
-                <span className="text-xs text-muted-foreground mt-0.5">
-                  {formatDateShort(selectedAnalog.last_sale.date)}
-                </span>
+            {selectedAnalog.last_sale_price ? (
+              <div className={`flex flex-col ${lastSaleIsOld ? "text-muted-foreground" : ""}`}>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-base tabular-nums">
+                    {selectedAnalog.last_sale_price.toLocaleString("ru-RU")}
+                  </span>
+                  {lastSaleIsOld && (
+                    <span className="text-amber-500 text-xs" title="Sale older than 90 days">!</span>
+                  )}
+                </div>
+                {selectedAnalog.last_sale_date && (
+                  <span className="font-mono text-xs text-muted-foreground mt-0.5 tabular-nums">
+                    {formatDateShort(selectedAnalog.last_sale_date)}
+                  </span>
+                )}
               </div>
             ) : (
               <span className="text-sm text-muted-foreground">—</span>
@@ -571,7 +569,7 @@ function AnalogDetailsBlock({
         </div>
 
         {/* Stock Status (Right) */}
-        <div className="flex flex-col">
+        <div className="flex flex-col px-4 py-3 border-l border-border">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Stock
           </span>
@@ -590,9 +588,9 @@ function AnalogDetailsBlock({
                 <span className="text-sm font-medium text-destructive">
                   OUT OF STOCK
                 </span>
-                {selectedAnalog.out_of_stock_since && (
+                {selectedAnalog.last_stock_zero_date && (
                   <span className="text-xs text-muted-foreground mt-0.5">
-                    since {formatDateShort(selectedAnalog.out_of_stock_since)}
+                    since {formatDateShort(selectedAnalog.last_stock_zero_date)}
                   </span>
                 )}
               </div>
@@ -726,8 +724,9 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       purchase_price: currentPartFromApi?.purchase_price,
       stock: currentPartFromApi?.stock ?? row.stock,
       purchase_history: currentPartFromApi?.purchase_history,
-      last_sale: currentPartFromApi?.last_sale,
-      out_of_stock_since: currentPartFromApi?.out_of_stock_since,
+      last_sale_price: currentPartFromApi?.last_sale_price,
+      last_sale_date: currentPartFromApi?.last_sale_date,
+      last_stock_zero_date: currentPartFromApi?.last_stock_zero_date,
     }
     
     // Filter out current part from raw analogs (avoid duplicates)
