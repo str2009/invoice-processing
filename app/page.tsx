@@ -92,6 +92,7 @@ useEffect(() => {
   const [globalFilter, setGlobalFilter] = useState("")
   const [rowCount, setRowCount] = useState(0)
   const [selectedRow, setSelectedRow] = useState<InvoiceRow | null>(null)
+  const [selectedPartKey, setSelectedPartKey] = useState<string | null>(null)
 
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
@@ -269,10 +270,11 @@ useEffect(() => {
 
   // Handle invoice selection change
   const handleInvoiceChange = useCallback(
-    (invoiceId: string) => {
-      setSelectedInvoice(invoiceId)
-      setSelectedRow(null)
-      setIsEnriched(false)
+(invoiceId: string) => {
+    setSelectedInvoice(invoiceId)
+    setSelectedRow(null)
+    setSelectedPartKey(null)
+    setIsEnriched(false)
       loadInvoice(invoiceId, "raw")
     },
     [loadInvoice]
@@ -726,6 +728,7 @@ useEffect(() => {
     setProgress(0)
     setIsProcessing(false)
     setSelectedRow(null)
+    setSelectedPartKey(null)
     setLogs([])
     setDataVersion((v) => v + 1)
   }, [])
@@ -800,9 +803,16 @@ useEffect(() => {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
-    console.log("[v0] CLICK ROW:", row)
-    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-  }, [])
+    const isDeselecting = selectedRow?.id === row.id
+    if (isDeselecting) {
+      setSelectedRow(null)
+      setSelectedPartKey(null)
+    } else {
+      const key = row.part_brand_key || `${row.partCode}_${row.manufacturer}`
+      setSelectedRow(row)
+      setSelectedPartKey(key)
+    }
+  }, [selectedRow?.id])
 
   // Update a single row (used for manual MOOT edits)
   const handleUpdateRow = useCallback((id: string, updates: Partial<InvoiceRow>) => {
@@ -813,6 +823,7 @@ useEffect(() => {
 
   const handleCloseAnalytics = useCallback(() => {
     setSelectedRow(null)
+    setSelectedPartKey(null)
   }, [])
 
   // Close analytics panel if filter removes the selected row
@@ -1172,8 +1183,8 @@ console.log("scenario active:", isScenarioActive)
                   />
                   <PartDetailsPanel
                     row={selectedRow}
+                    partBrandKey={selectedPartKey}
                     onClose={handleCloseAnalytics}
-                    panelEnabled={true}
                   />
                 </div>
               )}
