@@ -523,9 +523,27 @@ useEffect(() => {
         `[${ts()}] Enrichment complete. ${enrichedRows.length} rows received.`,
       ])
 
-      // Map and display enriched rows
-      const mapped: InvoiceRow[] = enrichedRows.map(mapRow)
-      setRows(mapped)
+      // Merge enriched data into existing rows, preserving part_brand_key
+      const enrichedMap = new Map<string, Record<string, unknown>>()
+      for (const r of enrichedRows) {
+        const key = (r.part_brand_key as string) || (r.id as string)
+        if (key) enrichedMap.set(key, r)
+      }
+
+      setRows((prev) =>
+        prev.map((row) => {
+          const key = row.part_brand_key || row.id
+          const enriched = enrichedMap.get(key)
+          if (!enriched) return row
+
+          const merged = mapRow({ ...enriched }, 0)
+          return {
+            ...row,
+            ...merged,
+            part_brand_key: row.part_brand_key, // Always preserve original key
+          }
+        })
+      )
       setIsEnriched(true)
       setDataVersion((v) => v + 1)
 
@@ -611,10 +629,28 @@ useEffect(() => {
         )
       )
   
-      // 🔥 3. Обновляем UI
+      // 🔥 3. Merge enriched data into existing rows, preserving part_brand_key
+      const enrichedMap = new Map<string, InvoiceRow>()
+      for (const r of allRows) {
+        const key = r.part_brand_key || r.id
+        if (key) enrichedMap.set(key, r)
+      }
+
       setScenarioData(null)
       setIsScenarioActive(false)
-      setRows([...allRows])
+      setRows((prev) =>
+        prev.map((row) => {
+          const key = row.part_brand_key || row.id
+          const enriched = enrichedMap.get(key)
+          if (!enriched) return row
+
+          return {
+            ...row,
+            ...enriched,
+            part_brand_key: row.part_brand_key, // Always preserve original key
+          }
+        })
+      )
       setIsEnriched(true)
       setDataVersion((v) => v + 1)
   
