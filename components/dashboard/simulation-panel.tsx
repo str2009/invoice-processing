@@ -303,7 +303,7 @@ function GridPanel({
 
       {/* Panel Content (hidden when collapsed) */}
       {!collapsed && (
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto flex flex-col">
           {children}
         </div>
       )}
