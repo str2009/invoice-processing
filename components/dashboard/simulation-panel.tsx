@@ -303,7 +303,7 @@ function GridPanel({
 
       {/* Panel Content (hidden when collapsed) */}
       {!collapsed && (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {children}
         </div>
       )}
@@ -1879,8 +1879,8 @@ export function SimulationPanel({
                 />
               </div>
 
-              {/* Shipment list with scrolling */}
-              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              {/* Shipment list with scrolling - isolated from other panels */}
+              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain isolate">
                 {filteredShipments.length === 0 && !isLoadingShipments ? (
                   <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                     {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -2396,8 +2396,8 @@ export function SimulationPanel({
                               />
                             </div>
 
-                            {/* Shipment list with own scrolling */}
-                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                            {/* Shipment list with own scrolling - isolated from other panels */}
+                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain isolate">
                               {filteredShipments.length === 0 && !isLoadingShipments ? (
                                 <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                                   {shipmentSearch ? "No matching shipments" : "No shipments found"}
