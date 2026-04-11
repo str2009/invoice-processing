@@ -37,8 +37,8 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
 
 interface PartDetailsPanelProps {
   row: InvoiceRow
-  partBrandKey: string | null
   onClose: () => void
+  panelEnabled?: boolean
 }
 
 interface AnalogItem {
@@ -445,14 +445,17 @@ function HistoryBlock({
   )
 }
 
-export function PartDetailsPanel({ row, partBrandKey, onClose }: PartDetailsPanelProps) {
+export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
   const [analogsRaw, setAnalogsRaw] = useState<AnalogItem[]>([])
   const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
 
-  // Fetch part details - depends ONLY on partBrandKey prop (stable after row click)
+  // Get part_brand_key from row
+  const partBrandKey = row?.part_brand_key
+
+  // Fetch part details - depends ONLY on partBrandKey
   useEffect(() => {
     if (!partBrandKey) return
 
@@ -546,16 +549,16 @@ export function PartDetailsPanel({ row, partBrandKey, onClose }: PartDetailsPane
 
   // Filtered analogs - current part first, then apply stock filter
   const analogsData = useMemo(() => {
-    if (!partBrandKey) return []
+    const currentPartKey = row?.part_brand_key || `${row.partCode}_${row.manufacturer}`
     
     // Find current part in n8n response to get its price
     const currentPartFromApi = analogsRaw.find(
-      (a) => a.part_brand_key === partBrandKey
+      (a) => a.part_brand_key === currentPartKey
     )
     
     // Create current part row - price comes from n8n response
     const currentPart: AnalogItem = {
-      part_brand_key: partBrandKey,
+      part_brand_key: currentPartKey,
       brand: row.manufacturer,
       price: currentPartFromApi?.price ?? 0,
       stock: currentPartFromApi?.stock ?? row.stock,
@@ -563,7 +566,7 @@ export function PartDetailsPanel({ row, partBrandKey, onClose }: PartDetailsPane
     
     // Filter out current part from raw analogs (avoid duplicates)
     const otherAnalogs = analogsRaw.filter(
-      (a) => a.part_brand_key !== partBrandKey
+      (a) => a.part_brand_key !== currentPartKey
     )
     
     // Apply zero stock filter if toggle is OFF
@@ -573,7 +576,7 @@ export function PartDetailsPanel({ row, partBrandKey, onClose }: PartDetailsPane
     
     // Current part is always first
     return [currentPart, ...filteredAnalogs]
-  }, [analogsRaw, partBrandKey, row.manufacturer, row.stock, includeZeroStock])
+  }, [analogsRaw, row, includeZeroStock])
 
   // History data (no filtering needed)
   const historyData = historyRaw
@@ -599,7 +602,7 @@ export function PartDetailsPanel({ row, partBrandKey, onClose }: PartDetailsPane
               isLoading={isLoading}
               includeZeroStock={includeZeroStock}
               onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
-              currentPartKey={partBrandKey || ""}
+              currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
             />
           )
         case "history":
@@ -608,7 +611,7 @@ export function PartDetailsPanel({ row, partBrandKey, onClose }: PartDetailsPane
           return null
       }
     },
-    [row, partBrandKey, analogsData, historyData, isLoading, includeZeroStock]
+    [row, analogsData, historyData, isLoading, includeZeroStock]
   )
 
   return (
