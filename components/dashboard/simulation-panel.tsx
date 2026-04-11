@@ -303,7 +303,7 @@ function GridPanel({
 
       {/* Panel Content (hidden when collapsed) */}
       {!collapsed && (
-        <div className="flex-1 min-h-0 overflow-auto flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {children}
         </div>
       )}
@@ -1880,7 +1880,7 @@ export function SimulationPanel({
               </div>
 
               {/* Shipment list with scrolling - isolated from other panels */}
-              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain isolate">
+              <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 {filteredShipments.length === 0 && !isLoadingShipments ? (
                   <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                     {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -2336,8 +2336,8 @@ export function SimulationPanel({
               </div>
             </div>
 
-            {/* Main Grid Area */}
-            <div className="flex-1 p-4 overflow-auto">
+            {/* Main Grid Area - no global scroll, each panel scrolls independently */}
+            <div className="flex-1 p-4 overflow-hidden">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -2397,7 +2397,7 @@ export function SimulationPanel({
                             </div>
 
                             {/* Shipment list with own scrolling - isolated from other panels */}
-                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain isolate">
+                            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                               {filteredShipments.length === 0 && !isLoadingShipments ? (
                                 <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
                                   {shipmentSearch ? "No matching shipments" : "No shipments found"}
@@ -2564,7 +2564,7 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            <div className="flex-1 min-h-0 overflow-y-auto">
+                            <div className="flex-1 min-h-0 overflow-hidden">
                               <div className="flex flex-col gap-1.5 p-2.5">
                                 {/* Active rows indicator - uses data prop (same as main table) */}
                                 <div className="text-[9px] text-muted-foreground/70 mb-1">
