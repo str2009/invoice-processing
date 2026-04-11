@@ -303,7 +303,7 @@ function GridPanel({
 
       {/* Panel Content (hidden when collapsed) */}
       {!collapsed && (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {children}
         </div>
       )}
@@ -1879,7 +1879,7 @@ export function SimulationPanel({
                 />
               </div>
 
-              {/* Shipment list with scrolling */}
+              {/* Shipment list with scrolling - isolated from other panels */}
               <div ref={shipmentListRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                 {filteredShipments.length === 0 && !isLoadingShipments ? (
                   <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
@@ -2336,8 +2336,8 @@ export function SimulationPanel({
               </div>
             </div>
 
-            {/* Main Grid Area */}
-            <div className="flex-1 p-4 overflow-auto">
+            {/* Main Grid Area - no global scroll, each panel scrolls independently */}
+            <div className="flex-1 min-h-0 p-4 overflow-hidden flex flex-col">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -2346,7 +2346,7 @@ export function SimulationPanel({
                 <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
                   {/* 12-Column Grid - NO wrapping, explicit positioning */}
                   <div
-                    className="grid gap-3 h-[calc(100vh-140px)]"
+                    className="grid gap-3 flex-1 min-h-0"
                     style={{
                       gridTemplateColumns: "repeat(12, 1fr)",
                       gridAutoFlow: "column",
@@ -2396,7 +2396,7 @@ export function SimulationPanel({
                               />
                             </div>
 
-                            {/* Shipment list with own scrolling */}
+                            {/* Shipment list with own scrolling - isolated from other panels */}
                             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
                               {filteredShipments.length === 0 && !isLoadingShipments ? (
                                 <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
@@ -2564,7 +2564,7 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            <div className="flex-1 min-h-0 overflow-y-auto">
+                            <div className="shrink-0 overflow-hidden">
                               <div className="flex flex-col gap-1.5 p-2.5">
                                 {/* Active rows indicator - uses data prop (same as main table) */}
                                 <div className="text-[9px] text-muted-foreground/70 mb-1">
@@ -2906,84 +2906,7 @@ export function SimulationPanel({
                 </SortableContext>
               </DndContext>
 
-              {/* ─── Invoice Items Table ─── */}
-              {selectedInvoiceId && (
-                <div className="mt-4 bg-card border border-border rounded-xl">
-                  <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Invoice Items
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground/70">
-                        {selectedInvoiceId}
-                      </span>
-                    </div>
-                    <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                      {invoiceItems.length} item(s)
-                    </span>
-                  </div>
 
-                  {isLoadingInvoiceItems ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : invoiceItems.length === 0 ? (
-                    <p className="px-4 py-6 text-center text-[11px] italic text-muted-foreground/40">
-                      No items found for this invoice
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                      <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-muted/50 border-b border-border">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">SKU</th>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Name</th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Weight</th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Price</th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Total</th>
-                            <th className="px-3 py-2 text-right font-medium text-primary">PriceNorm</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/40">
-                          {invoiceItems.map((item, idx) => {
-                            const itemId = item.id || item.sku || item.article
-                            const mootPrice = mootPrices.get(itemId)
-                            const hasNoWeight = !Number(item.weight ?? 0)
-                            const hasNoPrice = !Number(item.price ?? item.purchase_price ?? 0)
-                            const isSkipped = hasNoWeight || hasNoPrice
-
-                            return (
-                              <tr
-                                key={item.id || idx}
-                                className={`hover:bg-muted/30 transition-colors ${isSkipped && mootResults ? "bg-amber-500/5" : ""
-                                  }`}
-                              >
-                                <td className="px-3 py-2 font-mono text-foreground">{item.sku || item.article || "—"}</td>
-                                <td className="px-3 py-2 text-foreground truncate max-w-[200px]">{item.name || item.product_name || "—"}</td>
-                                <td className="px-3 py-2 text-right font-mono text-foreground">{item.quantity || item.qty || 0}</td>
-                                <td className={`px-3 py-2 text-right font-mono ${hasNoWeight && mootResults ? "text-amber-500" : "text-muted-foreground"}`}>
-                                  {item.weight ? `${item.weight} kg` : "—"}
-                                </td>
-                                <td className={`px-3 py-2 text-right font-mono ${hasNoPrice && mootResults ? "text-amber-500" : "text-foreground"}`}>
-                                  {item.price ? `${Number(item.price).toLocaleString("ru-RU")} ₽` : "—"}
-                                </td>
-                                <td className="px-3 py-2 text-right font-mono font-medium text-foreground">
-                                  {item.total ? `${Number(item.total).toLocaleString("ru-RU")} ₽` : "—"}
-                                </td>
-                                <td className={`px-3 py-2 text-right font-mono font-medium ${mootPrice ? "text-primary animate-pulse" : "text-muted-foreground/40"
-                                  }`}>
-                                  {mootPrice ? `${mootPrice.toLocaleString("ru-RU")} ₽` : "—"}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </TabsContent>

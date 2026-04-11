@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -45,6 +45,7 @@ interface AnalogItem {
   part_brand_key: string
   brand: string
   price: number
+  purchase_price?: number
   stock: number
 }
 
@@ -276,19 +277,45 @@ function SalesBlock({ row }: { row: InvoiceRow }) {
 function AnalogsBlock({
   analogs,
   isLoading,
+  includeZeroStock,
+  onToggleZeroStock,
+  currentPartKey,
 }: {
   analogs: AnalogItem[]
   isLoading: boolean
+  includeZeroStock: boolean
+  onToggleZeroStock: () => void
+  currentPartKey: string
 }) {
   const bestPrice = analogs.length > 0 ? Math.min(...analogs.map((a) => a.price)) : 0
 
   return (
     <div className="pl-6">
-      <div className="mb-2 flex items-center gap-2">
-        <GitCompareArrows className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Analogs
-        </span>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <GitCompareArrows className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Analogs
+          </span>
+        </div>
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground">Include zero stock</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={includeZeroStock}
+            onClick={onToggleZeroStock}
+            className={`relative h-4 w-7 rounded-full transition-colors ${
+              includeZeroStock ? "bg-primary" : "bg-muted-foreground/30"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${
+                includeZeroStock ? "translate-x-3.5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </label>
       </div>
       <div className="rounded-lg border border-border bg-muted/30">
         {isLoading ? (
@@ -300,42 +327,51 @@ function AnalogsBlock({
         ) : analogs.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground/60">No analogs</p>
         ) : (
-          <div className="max-h-32 overflow-auto">
+          <div className="max-h-48 overflow-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/50 text-muted-foreground">
                   <th className="px-2 py-1.5 text-left font-medium">Code</th>
                   <th className="px-2 py-1.5 text-left font-medium">Brand</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Price</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Cost</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
               <tbody>
-                {analogs.map((analog, idx) => (
-                  <tr
-                    key={analog.part_brand_key}
-                    className={idx < analogs.length - 1 ? "border-b border-border/30" : ""}
-                  >
-                    <td className="px-2 py-1.5 font-mono text-foreground/80">
-                      {analog.part_brand_key}
-                    </td>
-                    <td className="px-2 py-1.5 text-muted-foreground">
-                      {analog.brand}
-                    </td>
-                    <td
-                      className={`px-2 py-1.5 text-right font-mono ${
-                        analog.price === bestPrice
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-foreground/80"
+                {analogs.map((analog, idx) => {
+                  const isCurrentPart = analog.part_brand_key === currentPartKey
+                  return (
+                    <tr
+                      key={analog.part_brand_key}
+                      className={`${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
+                        isCurrentPart ? "bg-primary/10" : ""
                       }`}
                     >
-                      {analog.price}
-                    </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-foreground/80">
-                      {analog.stock}
-                    </td>
-                  </tr>
-                ))}
+                      <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
+                        {analog.part_brand_key}
+                      </td>
+                      <td className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-muted-foreground"}`}>
+                        {analog.brand}
+                      </td>
+                      <td
+                        className={`px-2 py-1.5 text-right font-mono ${
+                          analog.price === bestPrice
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : isCurrentPart ? "text-foreground" : "text-foreground/80"
+                        }`}
+                      >
+                        {analog.price}
+                      </td>
+                      <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                        {analog.purchase_price}
+                      </td>
+                      <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                        {analog.stock}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -416,52 +452,46 @@ function HistoryBlock({
 
 export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
-  const [detailsData, setDetailsData] = useState<DetailsResponse | null>(null)
+  const [analogsRaw, setAnalogsRaw] = useState<AnalogItem[]>([])
+  const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const lastKeyRef = useRef<string | null>(null)
+  const [includeZeroStock, setIncludeZeroStock] = useState(false)
 
-  // Fetch part details from API using part_brand_key from Supabase
+  // Get part_brand_key from row, or construct from partCode_manufacturer
+  const partBrandKey = row?.part_brand_key || 
+    (row?.partCode && row?.manufacturer ? `${row.partCode}_${row.manufacturer}` : null)
+
+  // Fetch part details - depends ONLY on partBrandKey
   useEffect(() => {
-    const partBrandKey = row?.part_brand_key
+    if (!partBrandKey) return
 
-    if (!panelEnabled) {
-      return
-    }
+    const fetchPartDetails = async () => {
+      setIsLoading(true)
 
-    if (!partBrandKey) {
-      return
-    }
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ part_brand_key: partBrandKey }),
+        })
 
-    // Prevent duplicate requests for same key
-    if (lastKeyRef.current === partBrandKey) {
-      return
-    }
-    lastKeyRef.current = partBrandKey
+        const data = await res.json()
 
-    console.log("[DETAILS] REQUEST:", partBrandKey)
-    setIsLoading(true)
-    setDetailsData(null)
-
-    fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ part_brand_key: partBrandKey }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("[DETAILS] RESPONSE:", data)
-        setDetailsData(data)
-      })
-      .catch((err) => {
+        setAnalogsRaw(data.analogs || [])
+        setHistoryRaw(data.history || [])
+      } catch (err) {
         console.error("[DETAILS] ERROR:", err)
-        setDetailsData(null)
-      })
-      .finally(() => {
+        setAnalogsRaw([])
+        setHistoryRaw([])
+      } finally {
         setIsLoading(false)
-      })
-  }, [row?.part_brand_key, panelEnabled])
+      }
+    }
+
+    fetchPartDetails()
+  }, [partBrandKey])
 
   // Load order from localStorage
   useEffect(() => {
@@ -523,15 +553,40 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     [blocksOrder, saveOrder]
   )
 
-  // Get analogs data from response (no fallback)
+  // Filtered analogs - current part first, then apply stock filter
   const analogsData = useMemo(() => {
-    return detailsData?.analogs || []
-  }, [detailsData])
+    const currentPartKey = row?.part_brand_key || `${row.partCode}_${row.manufacturer}`
+    
+    // Find current part in n8n response to get its price
+    const currentPartFromApi = analogsRaw.find(
+      (a) => a.part_brand_key === currentPartKey
+    )
+    
+    // Create current part row - price and purchase_price come from n8n response
+    const currentPart: AnalogItem = {
+      part_brand_key: currentPartKey,
+      brand: row.manufacturer,
+      price: currentPartFromApi?.price ?? 0,
+      purchase_price: currentPartFromApi?.purchase_price,
+      stock: currentPartFromApi?.stock ?? row.stock,
+    }
+    
+    // Filter out current part from raw analogs (avoid duplicates)
+    const otherAnalogs = analogsRaw.filter(
+      (a) => a.part_brand_key !== currentPartKey
+    )
+    
+    // Apply zero stock filter if toggle is OFF
+    const filteredAnalogs = includeZeroStock
+      ? otherAnalogs
+      : otherAnalogs.filter((a) => a.stock > 0)
+    
+    // Current part is always first
+    return [currentPart, ...filteredAnalogs]
+  }, [analogsRaw, row, includeZeroStock])
 
-  // Get history data from response (no fallback)
-  const historyData = useMemo(() => {
-    return detailsData?.history || []
-  }, [detailsData])
+  // History data (no filtering needed)
+  const historyData = historyRaw
 
   // Render a block by ID
   const renderBlock = useCallback(
@@ -548,14 +603,22 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         case "sales":
           return <SalesBlock row={row} />
         case "analogs":
-          return <AnalogsBlock analogs={analogsData} isLoading={isLoading} />
+          return (
+            <AnalogsBlock
+              analogs={analogsData}
+              isLoading={isLoading}
+              includeZeroStock={includeZeroStock}
+              onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
+              currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
+            />
+          )
         case "history":
           return <HistoryBlock history={historyData} isLoading={isLoading} />
         default:
           return null
       }
     },
-    [row, analogsData, historyData, isLoading]
+    [row, analogsData, historyData, isLoading, includeZeroStock]
   )
 
   return (
