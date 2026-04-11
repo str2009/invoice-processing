@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -447,53 +447,45 @@ function HistoryBlock({
 
 export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
-  const [detailsData, setDetailsData] = useState<DetailsResponse | null>(null)
+  const [analogsRaw, setAnalogsRaw] = useState<AnalogItem[]>([])
+  const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
-  const lastKeyRef = useRef<string | null>(null)
 
-  // Fetch part details from API using part_brand_key from Supabase
+  // Get part_brand_key from row
+  const partBrandKey = row?.part_brand_key
+
+  // Fetch part details - depends ONLY on partBrandKey
   useEffect(() => {
-    const partBrandKey = row?.part_brand_key
+    if (!partBrandKey) return
 
-    if (!panelEnabled) {
-      return
-    }
+    const fetchPartDetails = async () => {
+      setIsLoading(true)
 
-    if (!partBrandKey) {
-      return
-    }
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ part_brand_key: partBrandKey }),
+        })
 
-    // Prevent duplicate requests for same key
-    if (lastKeyRef.current === partBrandKey) {
-      return
-    }
-    lastKeyRef.current = partBrandKey
+        const data = await res.json()
 
-    console.log("[DETAILS] REQUEST:", partBrandKey)
-    setIsLoading(true)
-    setDetailsData(null)
-
-    fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ part_brand_key: partBrandKey }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("[DETAILS] RESPONSE:", data)
-        setDetailsData(data)
-      })
-      .catch((err) => {
+        setAnalogsRaw(data.analogs || [])
+        setHistoryRaw(data.history || [])
+      } catch (err) {
         console.error("[DETAILS] ERROR:", err)
-        setDetailsData(null)
-      })
-      .finally(() => {
+        setAnalogsRaw([])
+        setHistoryRaw([])
+      } finally {
         setIsLoading(false)
-      })
-  }, [row?.part_brand_key, panelEnabled])
+      }
+    }
+
+    fetchPartDetails()
+  }, [partBrandKey])
 
   // Load order from localStorage
   useEffect(() => {
@@ -555,10 +547,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     [blocksOrder, saveOrder]
   )
 
-  // Get analogs data with current part first, filtered by stock toggle
+  // Filtered analogs - current part first, then apply stock filter
   const analogsData = useMemo(() => {
-    const rawAnalogs = detailsData?.analogs || []
-    
     // Create current part row from Identity data
     const currentPartKey = row?.part_brand_key
     const currentPart: AnalogItem = {
@@ -568,8 +558,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       stock: row.stock,
     }
     
-    // Filter out current part from analogs (avoid duplicates)
-    const otherAnalogs = rawAnalogs.filter(
+    // Filter out current part from raw analogs (avoid duplicates)
+    const otherAnalogs = analogsRaw.filter(
       (a) => a.part_brand_key !== currentPart.part_brand_key
     )
     
@@ -580,12 +570,10 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     
     // Current part is always first
     return [currentPart, ...filteredAnalogs]
-  }, [detailsData, row, includeZeroStock])
+  }, [analogsRaw, row, includeZeroStock])
 
-  // Get history data from response (no fallback)
-  const historyData = useMemo(() => {
-    return detailsData?.history || []
-  }, [detailsData])
+  // History data (no filtering needed)
+  const historyData = historyRaw
 
   // Render a block by ID
   const renderBlock = useCallback(
