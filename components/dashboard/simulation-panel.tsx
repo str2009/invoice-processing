@@ -2337,7 +2337,7 @@ export function SimulationPanel({
             </div>
 
             {/* Main Grid Area - no global scroll, each panel scrolls independently */}
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 min-h-0 p-4 overflow-hidden flex flex-col">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -2346,7 +2346,7 @@ export function SimulationPanel({
                 <SortableContext items={panelIds} strategy={horizontalListSortingStrategy}>
                   {/* 12-Column Grid - NO wrapping, explicit positioning */}
                   <div
-                    className="grid gap-3 h-[calc(100vh-140px)]"
+                    className="grid gap-3 flex-1 min-h-0"
                     style={{
                       gridTemplateColumns: "repeat(12, 1fr)",
                       gridAutoFlow: "column",
@@ -2564,7 +2564,7 @@ export function SimulationPanel({
                             onResize={(delta) => handlePanelResize(panel.id, panel.colSpan + delta)}
                             onToggleCollapse={() => togglePanelCollapse(panel.id)}
                           >
-                            <div className="flex-1 min-h-0 overflow-hidden">
+                            <div className="shrink-0 overflow-hidden">
                               <div className="flex flex-col gap-1.5 p-2.5">
                                 {/* Active rows indicator - uses data prop (same as main table) */}
                                 <div className="text-[9px] text-muted-foreground/70 mb-1">
