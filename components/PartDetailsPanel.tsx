@@ -46,6 +46,11 @@ interface PurchaseHistoryItem {
   date: string
 }
 
+interface LastSale {
+  price: number
+  date: string
+}
+
 interface AnalogItem {
   part_brand_key: string
   code?: string
@@ -54,6 +59,8 @@ interface AnalogItem {
   purchase_price?: number
   stock: number
   purchase_history?: PurchaseHistoryItem[]
+  last_sale?: LastSale
+  out_of_stock_since?: string
 }
 
 interface HistoryItem {
@@ -472,68 +479,117 @@ function AnalogDetailsBlock({
   if (!selectedAnalog) {
     return (
       <div className="pl-6">
-        <div className="mb-2 flex items-center gap-2">
-          <Package className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Analog Details
-          </span>
-        </div>
-        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
           <p className="text-xs text-muted-foreground/60">Select an analog to view details</p>
         </div>
       </div>
     )
   }
 
-  // Extract code from part_brand_key if not provided
-  const code = selectedAnalog.code || selectedAnalog.part_brand_key.split("_")[0]
-  
-  // Sort purchase history by date descending
+  // Sort purchase history by date descending, limit to 5 rows
   const sortedHistory = [...(selectedAnalog.purchase_history || [])].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  )
+  ).slice(0, 5)
 
-  // Get last purchase date from history
-  const lastPurchaseDate = sortedHistory.length > 0 ? sortedHistory[0].date : null
+  // Check if purchase is recent (<90 days) or old (>1 year)
+  const isRecent = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    return diffDays < 90
+  }
+
+  const isOld = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    return diffDays > 365
+  }
 
   return (
     <div className="pl-6">
-      <div className="mb-2 flex items-center gap-2">
-        <Package className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Analog Details
-        </span>
-      </div>
-      <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-        <InfoRow label="Code" value={code} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Brand" value={selectedAnalog.brand} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Now (price)" value={selectedAnalog.price} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Cost (purchase)" value={selectedAnalog.purchase_price ?? "—"} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Last purchase" value={lastPurchaseDate || "—"} />
-        
-        {/* Purchase History */}
-        {sortedHistory.length > 0 && (
-          <>
-            <div className="border-t border-border/50 my-1" />
-            <div className="py-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                Purchase History
-              </span>
-              <div className="mt-1.5 space-y-0.5">
-                {sortedHistory.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs">
-                    <span className="font-mono text-foreground">{item.price}</span>
-                    <span className="text-muted-foreground">— {item.date}</span>
-                  </div>
-                ))}
+      <div 
+        className="rounded-lg border border-border bg-muted/30 px-4 py-3 grid gap-5"
+        style={{ gridTemplateColumns: "2.5fr 1fr 1fr" }}
+      >
+        {/* Purchase History (Primary, Left) */}
+        <div>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Purchase
+          </span>
+          <div className="mt-2 space-y-1">
+            {sortedHistory.length > 0 ? (
+              sortedHistory.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex items-center gap-3 text-sm ${
+                    isOld(item.date) ? "text-muted-foreground" : ""
+                  }`}
+                >
+                  <span className="font-mono font-medium tabular-nums">
+                    {item.price.toLocaleString("ru-RU")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {item.date}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground/60">No history</span>
+            )}
+          </div>
+        </div>
+
+        {/* Last Sale (Center) */}
+        <div>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Last Sale
+          </span>
+          <div className="mt-2">
+            {selectedAnalog.last_sale ? (
+              <div className="flex flex-col">
+                <span className="font-mono text-base font-medium tabular-nums">
+                  {selectedAnalog.last_sale.price.toLocaleString("ru-RU")}
+                </span>
+                <span className="text-xs text-muted-foreground mt-0.5">
+                  {selectedAnalog.last_sale.date}
+                </span>
               </div>
-            </div>
-          </>
-        )}
+            ) : (
+              <span className="text-xs text-muted-foreground/60">No data</span>
+            )}
+          </div>
+        </div>
+
+        {/* Stock Status (Right) */}
+        <div>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Stock
+          </span>
+          <div className="mt-2">
+            {selectedAnalog.stock > 0 ? (
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  IN STOCK
+                </span>
+                <span className="text-xs text-muted-foreground mt-0.5">
+                  qty: {selectedAnalog.stock}
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-destructive">
+                  OUT OF STOCK
+                </span>
+                {selectedAnalog.out_of_stock_since && (
+                  <span className="text-xs text-muted-foreground mt-0.5">
+                    since {selectedAnalog.out_of_stock_since}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -652,7 +708,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       (a) => a.part_brand_key === currentPartKey
     )
     
-    // Create current part row - price, purchase_price and purchase_history come from n8n response
+    // Create current part row - all fields come from n8n response
     const currentPart: AnalogItem = {
       part_brand_key: currentPartKey,
       code: currentPartFromApi?.code || row.partCode,
@@ -661,6 +717,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       purchase_price: currentPartFromApi?.purchase_price,
       stock: currentPartFromApi?.stock ?? row.stock,
       purchase_history: currentPartFromApi?.purchase_history,
+      last_sale: currentPartFromApi?.last_sale,
+      out_of_stock_since: currentPartFromApi?.out_of_stock_since,
     }
     
     // Filter out current part from raw analogs (avoid duplicates)
