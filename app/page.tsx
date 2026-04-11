@@ -523,43 +523,9 @@ useEffect(() => {
         `[${ts()}] Enrichment complete. ${enrichedRows.length} rows received.`,
       ])
 
-      // Key resolver and normalizer for reliable matching
-      const getKey = (r: Record<string, unknown>) =>
-        (r.part_brand_key as string) ||
-        (r.part_brand_key_final as string) ||
-        (r.partBrandKey as string) ||
-        ""
-
-      const normalize = (v: string) => (v || "").toUpperCase().trim()
-
-      // Build enrichedMap with normalized keys
-      const enrichedMap: Record<string, Record<string, unknown>> = {}
-      for (const r of enrichedRows) {
-        const key = normalize(getKey(r))
-        if (key) enrichedMap[key] = r
-      }
-
-      console.log("[v0] ENRICHED KEYS:", Object.keys(enrichedMap))
-
-      setRows((prev) =>
-        prev.map((row) => {
-          const key = normalize(
-            row.part_brand_key ||
-            (row as unknown as Record<string, unknown>).part_brand_key_final as string ||
-            ""
-          )
-          console.log("[v0] ROW KEY:", key)
-          const enriched = enrichedMap[key]
-          if (!enriched) return row
-
-          const merged = mapRow({ ...enriched }, 0)
-          return {
-            ...row,
-            ...merged,
-            part_brand_key: row.part_brand_key, // Always preserve original key
-          }
-        })
-      )
+      // Simply replace all rows with enriched data
+      const mapped = enrichedRows.map(mapRow)
+      setRows(mapped)
       setIsEnriched(true)
       setDataVersion((v) => v + 1)
 
@@ -645,39 +611,10 @@ useEffect(() => {
         )
       )
   
-      // 🔥 3. Merge enriched data into existing rows, preserving part_brand_key
-      const getKey = (r: InvoiceRow) =>
-        r.part_brand_key ||
-        (r as unknown as Record<string, unknown>).part_brand_key_final as string ||
-        ""
-
-      const normalize = (v: string) => (v || "").toUpperCase().trim()
-
-      // Build enrichedMap with normalized keys
-      const enrichedMap: Record<string, InvoiceRow> = {}
-      for (const r of allRows) {
-        const key = normalize(getKey(r))
-        if (key) enrichedMap[key] = r
-      }
-
-      console.log("[v0] BATCH ENRICHED KEYS:", Object.keys(enrichedMap))
-
+      // 🔥 3. Simply replace all rows with enriched data
       setScenarioData(null)
       setIsScenarioActive(false)
-      setRows((prev) =>
-        prev.map((row) => {
-          const key = normalize(getKey(row))
-          console.log("[v0] BATCH ROW KEY:", key)
-          const enriched = enrichedMap[key]
-          if (!enriched) return row
-
-          return {
-            ...row,
-            ...enriched,
-            part_brand_key: row.part_brand_key, // Always preserve original key
-          }
-        })
-      )
+      setRows(allRows)
       setIsEnriched(true)
       setDataVersion((v) => v + 1)
   
