@@ -365,8 +365,8 @@ function AnalogsBlock({
                     <tr
                       key={analog.part_brand_key}
                       onClick={() => onSelectAnalog(analog)}
-                      className={`cursor-pointer transition-colors hover:bg-muted/50 ${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
-                        isSelected ? "bg-primary/20" : isCurrentPart ? "bg-primary/10" : ""
+                      className={`cursor-pointer transition-colors ${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
+                        isSelected ? "bg-muted" : isCurrentPart ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50"
                       }`}
                     >
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
@@ -513,11 +513,11 @@ function AnalogDetailsBlock({
         style={{ gridTemplateColumns: "2.5fr 1fr 1fr" }}
       >
         {/* Purchase History (Primary, Left) */}
-        <div>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Purchase
           </span>
-          <div className="mt-2 space-y-1">
+          <div className="mt-2 space-y-1 flex-1">
             {sortedHistory.length > 0 ? (
               sortedHistory.map((item, idx) => (
                 <div 
@@ -535,17 +535,17 @@ function AnalogDetailsBlock({
                 </div>
               ))
             ) : (
-              <span className="text-xs text-muted-foreground/60">No history</span>
+              <span className="text-sm text-muted-foreground">—</span>
             )}
           </div>
         </div>
 
         {/* Last Sale (Center) */}
-        <div>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Last Sale
           </span>
-          <div className="mt-2">
+          <div className="mt-2 flex-1">
             {selectedAnalog.last_sale ? (
               <div className="flex flex-col">
                 <span className="font-mono text-base font-medium tabular-nums">
@@ -556,20 +556,20 @@ function AnalogDetailsBlock({
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground/60">No data</span>
+              <span className="text-sm text-muted-foreground">—</span>
             )}
           </div>
         </div>
 
         {/* Stock Status (Right) */}
-        <div>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Stock
           </span>
-          <div className="mt-2">
+          <div className="mt-2 flex-1">
             {selectedAnalog.stock > 0 ? (
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="text-sm font-medium text-green-500">
                   IN STOCK
                 </span>
                 <span className="text-xs text-muted-foreground mt-0.5">
