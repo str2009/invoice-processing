@@ -562,11 +562,12 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       (a) => a.part_brand_key === currentPartKey
     )
     
-    // Create current part row - price comes from n8n response
+    // Create current part row - price and purchase_price come from n8n response
     const currentPart: AnalogItem = {
       part_brand_key: currentPartKey,
       brand: row.manufacturer,
       price: currentPartFromApi?.price ?? 0,
+      purchase_price: currentPartFromApi?.purchase_price,
       stock: currentPartFromApi?.stock ?? row.stock,
     }
     
