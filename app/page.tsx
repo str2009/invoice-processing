@@ -523,8 +523,26 @@ useEffect(() => {
         `[${ts()}] Enrichment complete. ${enrichedRows.length} rows received.`,
       ])
 
-      // Simply replace all rows with enriched data
-      const mapped = enrichedRows.map(mapRow)
+      // Save original part_brand_key values before replacing
+      const keyMap = new Map<string, string>()
+      rows.forEach((row) => {
+        if (row.part_brand_key) {
+          // Use partCode_manufacturer as lookup key
+          keyMap.set(`${row.partCode}_${row.manufacturer}`, row.part_brand_key)
+        }
+      })
+
+      // Map enriched data and restore part_brand_key
+      const mapped = enrichedRows.map((r, idx) => {
+        const row = mapRow(r, idx)
+        const lookupKey = `${row.partCode}_${row.manufacturer}`
+        const originalKey = keyMap.get(lookupKey)
+        return {
+          ...row,
+          part_brand_key: row.part_brand_key || originalKey || null,
+        }
+      })
+
       setRows(mapped)
       setIsEnriched(true)
       setDataVersion((v) => v + 1)
@@ -611,10 +629,27 @@ useEffect(() => {
         )
       )
   
-      // 🔥 3. Simply replace all rows with enriched data
+      // 🔥 3. Save original part_brand_key values before replacing
+      const keyMap = new Map<string, string>()
+      rows.forEach((row) => {
+        if (row.part_brand_key) {
+          keyMap.set(`${row.partCode}_${row.manufacturer}`, row.part_brand_key)
+        }
+      })
+
+      // Restore part_brand_key from original rows
+      const mergedRows = allRows.map((row) => {
+        const lookupKey = `${row.partCode}_${row.manufacturer}`
+        const originalKey = keyMap.get(lookupKey)
+        return {
+          ...row,
+          part_brand_key: row.part_brand_key || originalKey || null,
+        }
+      })
+
       setScenarioData(null)
       setIsScenarioActive(false)
-      setRows(allRows)
+      setRows(mergedRows)
       setIsEnriched(true)
       setDataVersion((v) => v + 1)
   
