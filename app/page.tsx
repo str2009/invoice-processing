@@ -559,7 +559,7 @@ useEffect(() => {
     } finally {
       setIsEnriching(false)
     }
-  }, [selectedInvoice, mapRow])
+  }, [selectedInvoice, mapRow, rows])
 
   const handleEnrichSelected = useCallback(async (ids: string[]) => {
     if (!ids.length) return
@@ -673,7 +673,7 @@ useEffect(() => {
     } finally {
       setIsEnriching(false)
     }
-  }, [mapRow])
+  }, [mapRow, rows])
  
 
   const handleExport = useCallback(() => {
