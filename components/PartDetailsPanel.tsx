@@ -533,21 +533,21 @@ function AnalogDetailsBlock({
             Last Sale
           </span>
           <div className="mt-2 flex-1">
-            {selectedAnalog.last_sale_price ? (
+            {selectedAnalog.last_sale_date ? (
               <div className={`flex flex-col ${lastSaleIsOld ? "text-muted-foreground" : ""}`}>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-base tabular-nums">
-                    {selectedAnalog.last_sale_price.toLocaleString("ru-RU")}
+                    {selectedAnalog.last_sale_price 
+                      ? selectedAnalog.last_sale_price.toLocaleString("ru-RU") 
+                      : "—"}
                   </span>
                   {lastSaleIsOld && (
                     <span className="text-amber-500 text-xs" title="Sale older than 90 days">!</span>
                   )}
                 </div>
-                {selectedAnalog.last_sale_date && (
-                  <span className="font-mono text-xs text-muted-foreground mt-0.5 tabular-nums">
-                    {formatDateShort(selectedAnalog.last_sale_date)}
-                  </span>
-                )}
+                <span className="font-mono text-xs text-muted-foreground mt-0.5 tabular-nums">
+                  {formatDateShort(selectedAnalog.last_sale_date)}
+                </span>
               </div>
             ) : (
               <span className="text-sm text-muted-foreground">—</span>
