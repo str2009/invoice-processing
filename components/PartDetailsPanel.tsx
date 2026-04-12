@@ -72,18 +72,17 @@ interface DetailsResponse {
   analytics?: Record<string, unknown>
 }
 
-type BlockId = "identity" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
+type BlockId = "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
 
 const STORAGE_KEY = "part-details-layout"
 
 const DEFAULT_ORDER: BlockId[] = [
-  "identity",
+  "analogs",
+  "analogDetails",
   "pricing",
   "inventory",
   "physical",
   "sales",
-  "analogs",
-  "analogDetails",
   "history",
 ]
 
@@ -149,33 +148,21 @@ function SortableBlock({
   )
 }
 
-// Block components
-function IdentityBlock({ row }: { row: InvoiceRow }) {
+// Product Header (sticky, non-draggable)
+function ProductHeader({ row }: { row: InvoiceRow }) {
   return (
-    <div className="pl-6">
-      <div className="mb-2 flex items-center gap-2">
-        <Package className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Identity
-        </span>
-      </div>
-      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-        <p className="font-mono text-sm font-semibold text-foreground">
-          {row.partCode}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {row.manufacturer}
-        </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
-          {row.partName}
-        </p>
-        <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-          {row.productGroup}
-        </p>
-      </div>
+    <div className="sticky top-0 z-10 bg-card px-4 py-3 border-b border-border/50 shadow-sm">
+      <h3 
+        className="text-xl font-semibold leading-tight text-foreground line-clamp-2"
+        title={row.partName}
+      >
+        {row.partName}
+      </h3>
     </div>
   )
 }
+
+// Block components
 
 function PricingBlock({ row }: { row: InvoiceRow }) {
   const margin = row.now > 0 ? ((row.now - row.cost) / row.now) * 100 : 0
@@ -761,8 +748,6 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const renderBlock = useCallback(
     (blockId: BlockId) => {
       switch (blockId) {
-        case "identity":
-          return <IdentityBlock row={row} />
         case "pricing":
           return <PricingBlock row={row} />
         case "inventory":
@@ -816,6 +801,9 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
       {/* Scrollable content with draggable blocks */}
       <ScrollArea className="flex-1">
+        {/* Sticky Product Name Header */}
+        <ProductHeader row={row} />
+        
         <div className="flex flex-col gap-4 p-4">
           <DndContext
             sensors={sensors}
