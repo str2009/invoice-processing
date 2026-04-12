@@ -746,12 +746,16 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   // History data (no filtering needed)
   const historyData = historyRaw
 
-  // Auto-select first analog when data loads
+  // Auto-select first analog when data loads or part changes
   useEffect(() => {
-    if (analogsData.length > 0 && !selectedAnalog) {
+    if (analogsData.length > 0) {
+      // Always select first analog when analogsData changes
       setSelectedAnalog(analogsData[0])
+    } else {
+      // Clear selection when no analogs
+      setSelectedAnalog(null)
     }
-  }, [analogsData, selectedAnalog])
+  }, [analogsData])
 
   // Render a block by ID
   const renderBlock = useCallback(
