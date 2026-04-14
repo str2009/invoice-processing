@@ -227,12 +227,7 @@ onToggleInvoice,
 
 const hasSelection = selectedIds.size > 0
 
-useEffect(() => {
-  if (!hasSelection) return
-  
-  // вызываем загрузку как раньше по кнопке Apply
-  onWorkWithSelected?.(Array.from(selectedIds))
-  }, [selectedIds])
+
 
   const formatTotal = (val: number | null) =>
     val != null
@@ -316,6 +311,8 @@ useEffect(() => {
   invoiceList={invoiceList}
   selectedInvoices={Array.from(selectedIds)}
   onInvoiceToggle={toggleId}
+  activeInvoiceId={selectedInvoice}
+  onInvoiceClick={onInvoiceChange}
 />
             </section>
 
@@ -1072,10 +1069,14 @@ function InvoiceSearchDropdown({
   invoiceList,
   selectedInvoices,
   onInvoiceToggle,
+  activeInvoiceId,
+  onInvoiceClick,
 }: {
   invoiceList: InvoiceListItem[]
   selectedInvoices: string[]
   onInvoiceToggle: (id: string) => void
+  activeInvoiceId?: string | null
+  onInvoiceClick?: (id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [query, setQuery] = useState("")
@@ -1129,7 +1130,7 @@ function InvoiceSearchDropdown({
     if (e.key === "Enter") {
       e.preventDefault()
       const item = filtered[highlightIdx]
-      if (item) onInvoiceToggle(item.invoice_id)
+      if (item) onInvoiceClick?.(item.invoice_id)
     }
     if (e.key === "Escape") {
       setExpanded(false)
@@ -1194,21 +1195,28 @@ function InvoiceSearchDropdown({
               filtered.map((inv, idx) => {
                 const isSelected = selectedSet.has(inv.invoice_id)
                 const isHighlighted = idx === highlightIdx
+                const isActive = activeInvoiceId === inv.invoice_id
 
                 return (
                   <div
                     key={inv.invoice_id}
                     data-idx={idx}
-                    onClick={() => onInvoiceToggle(inv.invoice_id)}
+                    onClick={() => onInvoiceClick?.(inv.invoice_id)}
                     onMouseEnter={() => setHighlightIdx(idx)}
                     className={`flex cursor-pointer items-start gap-2 px-3 py-1.5 ${
-                      isHighlighted
-                        ? "bg-accent"
-                        : "hover:bg-muted/50"
+                      isActive
+                        ? "bg-primary/10"
+                        : isHighlighted
+                          ? "bg-accent"
+                          : "hover:bg-muted/50"
                     }`}
                   >
                     <Checkbox
                       checked={isSelected}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onInvoiceToggle(inv.invoice_id)
+                      }}
                       className="mt-0.5 h-3.5 w-3.5"
                     />
 
