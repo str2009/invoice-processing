@@ -111,6 +111,7 @@ useEffect(() => {
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
   const [isEnriched, setIsEnriched] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
 
   // Bottom simulation panel state
@@ -466,6 +467,10 @@ useEffect(() => {
   const id = invoiceId ?? selectedInvoice
 
   if (!id) return
+  
+  // Prevent duplicate requests
+  if (isRefreshing) return
+  setIsRefreshing(true)
 
   setLogs(prev => [
     ...prev,
@@ -475,28 +480,35 @@ useEffect(() => {
   setScenarioData(null)
   setIsScenarioActive(false)
 
-  // 👇 ВАЖНО: обновить список
   try {
+    // Refresh invoice list
     const listRes = await fetch("/api/invoice/list")
     if (listRes.ok) {
       const listData = await listRes.json()
       setInvoiceList(listData)
     }
-  } catch {}
 
-  // 👇 загрузить конкретный invoice
-  await loadInvoice(id, source)
+    // Reload current invoice rows
+    await loadInvoice(id, source)
 
-  setStatus("idle")
-  setProgress(0)
-  setIsProcessing(false)
-  setDataVersion(v => v + 1)
+    setStatus("idle")
+    setProgress(0)
+    setIsProcessing(false)
+    setDataVersion(v => v + 1)
 
-  setLogs(prev => [
-    ...prev,
-    `[${ts()}] Refresh complete — invoice ${id} loaded.`,
-  ])
-}, [isEnriched, selectedInvoice, loadInvoice])
+    setLogs(prev => [
+      ...prev,
+      `[${ts()}] Refresh complete — invoice ${id} loaded.`,
+    ])
+  } catch (err) {
+    setLogs(prev => [
+      ...prev,
+      `[${ts()}] Refresh failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+    ])
+  } finally {
+    setIsRefreshing(false)
+  }
+}, [isEnriched, selectedInvoice, loadInvoice, isRefreshing])
 
   const handleEnrich = useCallback(async () => {
     if (!selectedInvoice) return
@@ -922,6 +934,7 @@ console.log("scenario active:", isScenarioActive)
         onParseFile={simulateParsing}
         onUploadFile={handleUploadFile}
         onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
         onEnrich={handleEnrich}
         onExport={handleExport}
         onClear={handleClear}
