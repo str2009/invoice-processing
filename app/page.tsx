@@ -324,7 +324,7 @@ useEffect(() => {
   
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
   
-      // очистка UI
+      // очи��тка UI
       setRows([])
       setSelectedInvoice(null)
       setIsEnriched(false)

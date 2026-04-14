@@ -412,7 +412,7 @@ useEffect(() => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onRefresh}
+                  onClick={() => onRefresh()}
                   disabled={!hasData || isRefreshing}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
                 >
