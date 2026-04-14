@@ -219,11 +219,21 @@ onToggleInvoice,
       ),
     }
   }, [selectedInvoicesData])
+  // Combined loading logic: checkboxes control multi-invoice, row click controls single
+  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds])
+  
   useEffect(() => {
-    console.log("selectedIds:", Array.from(selectedIds))
-    console.log("selectedInvoicesData:", selectedInvoicesData)
-    console.log("selectedSummary:", selectedSummary)
-  }, [selectedIds, selectedInvoicesData, selectedSummary])
+    // Determine which invoices to load
+    const idsToLoad = selectedIdsArray.length > 0
+      ? selectedIdsArray
+      : selectedInvoice
+        ? [selectedInvoice]
+        : []
+    
+    if (idsToLoad.length > 0 && onWorkWithSelected) {
+      onWorkWithSelected(idsToLoad)
+    }
+  }, [selectedInvoice, selectedIdsArray, onWorkWithSelected])
 
 const hasSelection = selectedIds.size > 0
 
