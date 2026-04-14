@@ -792,6 +792,31 @@ useEffect(() => {
     setDataVersion((v) => v + 1)
   }, [])
 
+  const handleReset = useCallback(() => {
+    const ts = () => {
+      const d = new Date()
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+    }
+    
+    // Full reset: clear all data, selections, and states
+    setRows([])
+    setScenarioData(null)
+    setIsScenarioActive(false)
+    setSelectedInvoice(null)
+    setSelectedInvoices([])
+    setIsEnriched(false)
+    setStatus("idle")
+    setProgress(0)
+    setIsProcessing(false)
+    setSelectedRow(null)
+    setDataVersion((v) => v + 1)
+    
+    setLogs((prev) => [
+      ...prev,
+      `[${ts()}] Full reset completed.`,
+    ])
+  }, [])
+
   const handleRollback = useCallback(() => {
     setLogs((prev) => [...prev, "[10:26:00] Rolling back last operation..."])
     setTimeout(() => {
@@ -967,6 +992,7 @@ console.log("scenario active:", isScenarioActive)
   onDeleteSelected={handleDeleteSelected}
   selectedInvoices={selectedInvoices}
         onToggleInvoice={toggleInvoice}
+        onReset={handleReset}
       />
 
       {/* Main Content - shifts right when panel is open */}

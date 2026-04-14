@@ -33,6 +33,7 @@ import {
   SquareStack,
   Calculator,
   TrendingUp,
+  RotateCcw,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -83,6 +84,8 @@ interface ControlPanelProps {
 onResetEnrich?: (ids: string[]) => void
 onSimulate?: (ids: string[]) => void
 onExportSelected?: (ids: string[]) => void
+/** Full reset: clears checkboxes, active invoice, and table data */
+onReset?: () => void
 /** External multi-select state from parent */
 selectedInvoices?: string[]
 /** Callback to toggle invoice selection */
@@ -116,6 +119,7 @@ export function ControlPanel({
   onUpdateMarket,
   onEnrichSelected,
 onResetEnrich,
+  onReset,
   onDeleteInvoice,
   onDeleteSelected,
   onExportSelected,
@@ -398,23 +402,17 @@ const hasSelection = selectedIds.size > 0
                   </Button>
                 )}
 <Button
+  variant="outline"
   size="sm"
   onClick={() => {
-    if (selectedIds.size > 0) {
-      onEnrichSelected?.(Array.from(selectedIds))
-    } else if (selectedInvoice) {
-      onEnrich?.()
-    }
+    setSelectedIds(new Set())
+    onReset?.()
   }}
-  disabled={isEnriching || (!hasData && selectedIds.size === 0)}
-  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
+  disabled={!hasData && selectedIds.size === 0 && !selectedInvoice}
+  className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive hover:bg-destructive/10"
 >
-  {isEnriching ? (
-    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-  ) : (
-    <Sparkles className="h-3 w-3 shrink-0" />
-  )}
-  {isEnriching ? "Enriching..." : "Enrich"}
+  <RotateCcw className="h-3 w-3 shrink-0" />
+  Reset
 </Button>
                 <Button
                   variant="outline"
@@ -433,8 +431,8 @@ const hasSelection = selectedIds.size > 0
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onClear}
-                  disabled={!hasData}
+                  onClick={() => setSelectedIds(new Set())}
+                  disabled={selectedIds.size === 0}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3 w-3 shrink-0" />
