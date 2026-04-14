@@ -50,6 +50,7 @@ interface ControlPanelProps {
   onParseFile: () => void
   onUploadFile: (file: File) => void
   onRefresh: () => void
+  isRefreshing?: boolean
   onEnrich: () => void
   onExport: () => void
   onClear: () => void
@@ -99,6 +100,7 @@ export function ControlPanel({
   hasData,
   onUploadFile,
   onRefresh,
+  isRefreshing = false,
   onEnrich,
   onExport,
   onClear,
@@ -410,12 +412,16 @@ useEffect(() => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onRefresh}
-                  disabled={!hasData}
+                  onClick={() => onRefresh()}
+                  disabled={!hasData || isRefreshing}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
                 >
-                  <RefreshCw className="h-3 w-3 shrink-0" />
-                  Refresh
+                  {isRefreshing ? (
+                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 shrink-0" />
+                  )}
+                  {isRefreshing ? "Refreshing..." : "Refresh"}
                 </Button>
                 <Button
                   variant="outline"

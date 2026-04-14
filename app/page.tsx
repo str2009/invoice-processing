@@ -111,6 +111,7 @@ useEffect(() => {
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
   const [isEnriched, setIsEnriched] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
 
   // Bottom simulation panel state
@@ -323,7 +324,7 @@ useEffect(() => {
   
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
   
-      // очистка UI
+      // очи��тка UI
       setRows([])
       setSelectedInvoice(null)
       setIsEnriched(false)
@@ -463,9 +464,14 @@ useEffect(() => {
   }
 
   const source = isEnriched ? "enriched" : "raw"
-  const id = invoiceId ?? selectedInvoice
+  // Store current selection BEFORE any state changes
+  const currentInvoiceId = invoiceId ?? selectedInvoice
 
-  if (!id) return
+  if (!currentInvoiceId) return
+  
+  // Prevent duplicate requests
+  if (isRefreshing) return
+  setIsRefreshing(true)
 
   setLogs(prev => [
     ...prev,
@@ -475,28 +481,49 @@ useEffect(() => {
   setScenarioData(null)
   setIsScenarioActive(false)
 
-  // 👇 ВАЖНО: обновить список
   try {
+    // Step 1: Refresh invoice list
     const listRes = await fetch("/api/invoice/list")
+    let newInvoiceList: InvoiceListItem[] = []
     if (listRes.ok) {
-      const listData = await listRes.json()
-      setInvoiceList(listData)
+      newInvoiceList = await listRes.json()
+      setInvoiceList(newInvoiceList)
     }
-  } catch {}
 
-  // 👇 загрузить конкретный invoice
-  await loadInvoice(id, source)
+    // Step 2: Check if current invoice still exists in the new list
+    const invoiceStillExists = newInvoiceList.some(inv => inv.invoice_id === currentInvoiceId)
 
-  setStatus("idle")
-  setProgress(0)
-  setIsProcessing(false)
-  setDataVersion(v => v + 1)
+    if (invoiceStillExists) {
+      // Step 3: Reload rows for the preserved selection
+      await loadInvoice(currentInvoiceId, source)
+      
+      setLogs(prev => [
+        ...prev,
+        `[${ts()}] Refresh complete — invoice ${currentInvoiceId} loaded.`,
+      ])
+    } else {
+      // Invoice was deleted - clear selection safely
+      setSelectedInvoice(null)
+      setRows([])
+      setLogs(prev => [
+        ...prev,
+        `[${ts()}] Invoice ${currentInvoiceId} no longer exists. Selection cleared.`,
+      ])
+    }
 
-  setLogs(prev => [
-    ...prev,
-    `[${ts()}] Refresh complete — invoice ${id} loaded.`,
-  ])
-}, [isEnriched, selectedInvoice, loadInvoice])
+    setStatus("idle")
+    setProgress(0)
+    setIsProcessing(false)
+    setDataVersion(v => v + 1)
+  } catch (err) {
+    setLogs(prev => [
+      ...prev,
+      `[${ts()}] Refresh failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+    ])
+  } finally {
+    setIsRefreshing(false)
+  }
+}, [isEnriched, selectedInvoice, loadInvoice, isRefreshing])
 
   const handleEnrich = useCallback(async () => {
     if (!selectedInvoice) return
@@ -922,6 +949,7 @@ console.log("scenario active:", isScenarioActive)
         onParseFile={simulateParsing}
         onUploadFile={handleUploadFile}
         onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
         onEnrich={handleEnrich}
         onExport={handleExport}
         onClear={handleClear}
