@@ -771,26 +771,59 @@ useEffect(() => {
     ])
   }, [rows, selectedInvoice])
 
-  const handleClear = useCallback(() => {
-    const ts = () => {
-      const d = new Date()
-      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
-    }
-
+const handleClear = useCallback(async () => {
+  const ts = () => {
+    const d = new Date()
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+  }
+  
+  console.log("[v0] handleClear called, selectedInvoice:", selectedInvoice)
+  
+  if (!selectedInvoice) {
+    setLogs((prev) => [...prev, `[${ts()}] Clear: No invoice selected.`])
+    return
+  }
+  
+  setLogs((prev) => [...prev, `[${ts()}] Deleting rows for invoice ${selectedInvoice}...`])
+  
+  try {
+    // Delete invoice rows from database
+    const response = await fetch("/api/invoice/delete-rows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoice_id: selectedInvoice }),
+    })
     
-    // Reset everything to empty state
+    console.log("[v0] Clear API response:", response.status)
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Failed to delete: ${response.status}`)
+    }
+    
+    const result = await response.json()
+    console.log("[v0] Clear result:", result)
+    
+    // Clear UI state after successful delete
     setRows([])
     setScenarioData(null)
     setIsScenarioActive(false)
-    setSelectedInvoice(null)
     setIsEnriched(false)
-    setStatus("idle")
-    setProgress(0)
-    setIsProcessing(false)
     setSelectedRow(null)
-    setLogs([])
     setDataVersion((v) => v + 1)
-  }, [])
+    
+    setLogs((prev) => [
+      ...prev,
+      `[${ts()}] Cleared ${result.deletedCount || 0} rows for invoice ${selectedInvoice}.`,
+    ])
+  } catch (error) {
+    console.error("[v0] Clear error:", error)
+    setLogs((prev) => [
+      ...prev,
+      `[${ts()}] Error clearing invoice: ${error instanceof Error ? error.message : "Unknown error"}`,
+    ])
+  }
+}, [selectedInvoice])
 
   const handleReset = useCallback(() => {
     const ts = () => {
@@ -798,22 +831,19 @@ useEffect(() => {
       return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
     }
     
-    // Full reset: clear all data, selections, and states
-    setRows([])
-    setScenarioData(null)
-    setIsScenarioActive(false)
+    console.log("[v0] handleReset called - clearing selections and progress only")
+    
+    // Reset: clear selections and progress, but NOT table data
     setSelectedInvoice(null)
     setSelectedInvoices([])
-    setIsEnriched(false)
     setStatus("idle")
     setProgress(0)
     setIsProcessing(false)
     setSelectedRow(null)
-    setDataVersion((v) => v + 1)
     
     setLogs((prev) => [
       ...prev,
-      `[${ts()}] Full reset completed.`,
+      `[${ts()}] Reset completed - selections cleared.`,
     ])
   }, [])
 

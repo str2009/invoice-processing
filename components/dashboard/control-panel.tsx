@@ -408,12 +408,16 @@ const hasSelection = selectedIds.size > 0
   variant="outline"
   size="sm"
   onClick={() => {
+    console.log("[v0] Reset clicked")
+    // Reset only UI state, not table data
     setSelectedIds(new Set())
     onClearSelection?.()
+    setFile(null)
+    // Call onReset for progress reset in parent
     onReset?.()
   }}
-  disabled={!hasData && selectedIds.size === 0 && !selectedInvoice}
-  className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive hover:bg-destructive/10"
+  disabled={selectedIds.size === 0 && !selectedInvoice && !file}
+  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
 >
   <RotateCcw className="h-3 w-3 shrink-0" />
   Reset
@@ -436,10 +440,11 @@ const hasSelection = selectedIds.size > 0
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSelectedIds(new Set())
-                    onClearSelection?.()
+                    console.log("[v0] Clear clicked, calling onClear")
+                    // Clear deletes data from database
+                    onClear?.()
                   }}
-                  disabled={selectedIds.size === 0}
+                  disabled={!hasData}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3 w-3 shrink-0" />
