@@ -227,6 +227,12 @@ selectedInvoices: externalSelectedInvoices,
   const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds])
   
   useEffect(() => {
+    // Don't auto-fetch if nothing is selected (e.g. after clear)
+    if (selectedIdsArray.length === 0 && !selectedInvoice) {
+      console.log("[v0] No invoices selected, skipping auto-fetch")
+      return
+    }
+    
     // Determine which invoices to load
     const idsToLoad = selectedIdsArray.length > 0
       ? selectedIdsArray
@@ -235,6 +241,7 @@ selectedInvoices: externalSelectedInvoices,
         : []
     
     if (idsToLoad.length > 0 && onWorkWithSelected) {
+      console.log("[v0] Auto-fetching invoices:", idsToLoad)
       onWorkWithSelected(idsToLoad)
     }
   }, [selectedInvoice, selectedIdsArray, onWorkWithSelected])
@@ -420,11 +427,13 @@ const hasSelection = selectedIds.size > 0
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    console.log("[v0] CLEAR CLICKED")
                     // UI-only clear: reset selections and table, no API calls
-                    setSelectedIds(new Set())
-                    onClearSelection?.()
+                    // Note: setSelectedIds only affects internal state, not external
+                    setInternalSelectedIds(new Set())
+                    onClearSelection?.() // This clears parent's selectedInvoices[]
                     setFile(null)
-                    onClear?.()
+                    onClear?.() // This clears rows, selectedInvoice, etc in parent
                   }}
                   disabled={!hasData && selectedIds.size === 0 && !selectedInvoice}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive/70 hover:bg-destructive/10 hover:text-destructive"

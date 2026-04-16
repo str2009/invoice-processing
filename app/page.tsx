@@ -324,7 +324,7 @@ useEffect(() => {
   
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
   
-      // очи��тка UI
+      // очи����тка UI
       setRows([])
       setSelectedInvoice(null)
       setIsEnriched(false)
@@ -772,12 +772,14 @@ useEffect(() => {
   }, [rows, selectedInvoice])
 
 const handleClear = useCallback(() => {
+  console.log("[v0] handleClear called in page.tsx")
   const ts = () => {
     const d = new Date()
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
   }
   
   // UI-only clear: no API calls, no database changes
+  console.log("[v0] Clearing rows, selectedInvoice, selectedInvoices...")
   setRows([])
   setScenarioData(null)
   setIsScenarioActive(false)
@@ -794,6 +796,7 @@ const handleClear = useCallback(() => {
     ...prev,
     `[${ts()}] UI cleared - all selections reset.`,
   ])
+  console.log("[v0] handleClear completed")
 }, [])
 
   const handleRollback = useCallback(() => {
