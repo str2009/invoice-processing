@@ -33,7 +33,6 @@ import {
   SquareStack,
   Calculator,
   TrendingUp,
-  RotateCcw,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -84,8 +83,7 @@ interface ControlPanelProps {
 onResetEnrich?: (ids: string[]) => void
 onSimulate?: (ids: string[]) => void
 onExportSelected?: (ids: string[]) => void
-/** Full reset: clears checkboxes, active invoice, and table data */
-onReset?: () => void
+
 /** External multi-select state from parent */
 selectedInvoices?: string[]
   /** Callback to toggle invoice selection */
@@ -121,7 +119,6 @@ export function ControlPanel({
   onUpdateMarket,
   onEnrichSelected,
 onResetEnrich,
-  onReset,
   onDeleteInvoice,
   onDeleteSelected,
   onExportSelected,
@@ -404,24 +401,7 @@ const hasSelection = selectedIds.size > 0
                     {isUploading ? "Processing..." : "Process"}
                   </Button>
                 )}
-<Button
-  variant="outline"
-  size="sm"
-  onClick={() => {
-    console.log("[v0] Reset clicked")
-    // Reset only UI state, not table data
-    setSelectedIds(new Set())
-    onClearSelection?.()
-    setFile(null)
-    // Call onReset for progress reset in parent
-    onReset?.()
-  }}
-  disabled={selectedIds.size === 0 && !selectedInvoice && !file}
-  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
->
-  <RotateCcw className="h-3 w-3 shrink-0" />
-  Reset
-</Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -440,11 +420,13 @@ const hasSelection = selectedIds.size > 0
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    console.log("[v0] Clear clicked, calling onClear")
-                    // Clear deletes data from database
+                    // UI-only clear: reset selections and table, no API calls
+                    setSelectedIds(new Set())
+                    onClearSelection?.()
+                    setFile(null)
                     onClear?.()
                   }}
-                  disabled={!hasData}
+                  disabled={!hasData && selectedIds.size === 0 && !selectedInvoice}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3 w-3 shrink-0" />
