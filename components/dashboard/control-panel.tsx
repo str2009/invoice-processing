@@ -83,10 +83,13 @@ interface ControlPanelProps {
 onResetEnrich?: (ids: string[]) => void
 onSimulate?: (ids: string[]) => void
 onExportSelected?: (ids: string[]) => void
+
 /** External multi-select state from parent */
 selectedInvoices?: string[]
-/** Callback to toggle invoice selection */
-onToggleInvoice?: (id: string) => void
+  /** Callback to toggle invoice selection */
+  onToggleInvoice?: (id: string) => void
+  /** Callback to clear all selected invoices */
+  onClearSelection?: () => void
 }
 
 export function ControlPanel({
@@ -120,8 +123,9 @@ onResetEnrich,
   onDeleteSelected,
   onExportSelected,
 selectedInvoices: externalSelectedInvoices,
-onToggleInvoice,
-}: ControlPanelProps) {
+  onToggleInvoice,
+  onClearSelection,
+  }: ControlPanelProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState(false)
@@ -219,20 +223,32 @@ onToggleInvoice,
       ),
     }
   }, [selectedInvoicesData])
+  // Combined loading logic: checkboxes control multi-invoice, row click controls single
+  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds])
+  
   useEffect(() => {
-    console.log("selectedIds:", Array.from(selectedIds))
-    console.log("selectedInvoicesData:", selectedInvoicesData)
-    console.log("selectedSummary:", selectedSummary)
-  }, [selectedIds, selectedInvoicesData, selectedSummary])
+    // Don't auto-fetch if nothing is selected (e.g. after clear)
+    if (selectedIdsArray.length === 0 && !selectedInvoice) {
+      console.log("[v0] No invoices selected, skipping auto-fetch")
+      return
+    }
+    
+    // Determine which invoices to load
+    const idsToLoad = selectedIdsArray.length > 0
+      ? selectedIdsArray
+      : selectedInvoice
+        ? [selectedInvoice]
+        : []
+    
+    if (idsToLoad.length > 0 && onWorkWithSelected) {
+      console.log("[v0] Auto-fetching invoices:", idsToLoad)
+      onWorkWithSelected(idsToLoad)
+    }
+  }, [selectedInvoice, selectedIdsArray, onWorkWithSelected])
 
 const hasSelection = selectedIds.size > 0
 
-useEffect(() => {
-  if (!hasSelection) return
-  
-  // вызываем загрузку как раньше по кнопке Apply
-  onWorkWithSelected?.(Array.from(selectedIds))
-  }, [selectedIds])
+
 
   const formatTotal = (val: number | null) =>
     val != null
@@ -316,6 +332,8 @@ useEffect(() => {
   invoiceList={invoiceList}
   selectedInvoices={Array.from(selectedIds)}
   onInvoiceToggle={toggleId}
+  activeInvoiceId={selectedInvoice}
+  onInvoiceClick={onInvoiceChange}
 />
             </section>
 
@@ -390,25 +408,7 @@ useEffect(() => {
                     {isUploading ? "Processing..." : "Process"}
                   </Button>
                 )}
-<Button
-  size="sm"
-  onClick={() => {
-    if (selectedIds.size > 0) {
-      onEnrichSelected?.(Array.from(selectedIds))
-    } else if (selectedInvoice) {
-      onEnrich?.()
-    }
-  }}
-  disabled={isEnriching || (!hasData && selectedIds.size === 0)}
-  className="h-8 gap-1.5 rounded-md px-3 text-[11px]"
->
-  {isEnriching ? (
-    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-  ) : (
-    <Sparkles className="h-3 w-3 shrink-0" />
-  )}
-  {isEnriching ? "Enriching..." : "Enrich"}
-</Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -426,8 +426,16 @@ useEffect(() => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onClear}
-                  disabled={!hasData}
+                  onClick={() => {
+                    console.log("[v0] CLEAR CLICKED")
+                    // UI-only clear: reset selections and table, no API calls
+                    // Note: setSelectedIds only affects internal state, not external
+                    setInternalSelectedIds(new Set())
+                    onClearSelection?.() // This clears parent's selectedInvoices[]
+                    setFile(null)
+                    onClear?.() // This clears rows, selectedInvoice, etc in parent
+                  }}
+                  disabled={!hasData && selectedIds.size === 0 && !selectedInvoice}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3 w-3 shrink-0" />
@@ -1072,10 +1080,14 @@ function InvoiceSearchDropdown({
   invoiceList,
   selectedInvoices,
   onInvoiceToggle,
+  activeInvoiceId,
+  onInvoiceClick,
 }: {
   invoiceList: InvoiceListItem[]
   selectedInvoices: string[]
   onInvoiceToggle: (id: string) => void
+  activeInvoiceId?: string | null
+  onInvoiceClick?: (id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [query, setQuery] = useState("")
@@ -1129,7 +1141,7 @@ function InvoiceSearchDropdown({
     if (e.key === "Enter") {
       e.preventDefault()
       const item = filtered[highlightIdx]
-      if (item) onInvoiceToggle(item.invoice_id)
+      if (item) onInvoiceClick?.(item.invoice_id)
     }
     if (e.key === "Escape") {
       setExpanded(false)
@@ -1194,21 +1206,28 @@ function InvoiceSearchDropdown({
               filtered.map((inv, idx) => {
                 const isSelected = selectedSet.has(inv.invoice_id)
                 const isHighlighted = idx === highlightIdx
+                const isActive = activeInvoiceId === inv.invoice_id
 
                 return (
                   <div
                     key={inv.invoice_id}
                     data-idx={idx}
-                    onClick={() => onInvoiceToggle(inv.invoice_id)}
+                    onClick={() => onInvoiceClick?.(inv.invoice_id)}
                     onMouseEnter={() => setHighlightIdx(idx)}
                     className={`flex cursor-pointer items-start gap-2 px-3 py-1.5 ${
-                      isHighlighted
-                        ? "bg-accent"
-                        : "hover:bg-muted/50"
+                      isActive
+                        ? "bg-primary/10"
+                        : isHighlighted
+                          ? "bg-accent"
+                          : "hover:bg-muted/50"
                     }`}
                   >
                     <Checkbox
                       checked={isSelected}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onInvoiceToggle(inv.invoice_id)
+                      }}
                       className="mt-0.5 h-3.5 w-3.5"
                     />
 

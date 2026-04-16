@@ -324,7 +324,7 @@ useEffect(() => {
   
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
   
-      // очи��тка UI
+      // очи����тка UI
       setRows([])
       setSelectedInvoice(null)
       setIsEnriched(false)
@@ -375,7 +375,7 @@ useEffect(() => {
     // Clear UI
     setRows([])
     setSelectedInvoice(null)
-    setSelectedInvoices(new Set())
+    setSelectedInvoices([])
     setIsEnriched(false)
     
     // Refresh list
@@ -771,26 +771,33 @@ useEffect(() => {
     ])
   }, [rows, selectedInvoice])
 
-  const handleClear = useCallback(() => {
-    const ts = () => {
-      const d = new Date()
-      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
-    }
-
-    
-    // Reset everything to empty state
-    setRows([])
-    setScenarioData(null)
-    setIsScenarioActive(false)
-    setSelectedInvoice(null)
-    setIsEnriched(false)
-    setStatus("idle")
-    setProgress(0)
-    setIsProcessing(false)
-    setSelectedRow(null)
-    setLogs([])
-    setDataVersion((v) => v + 1)
-  }, [])
+const handleClear = useCallback(() => {
+  console.log("[v0] handleClear called in page.tsx")
+  const ts = () => {
+    const d = new Date()
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+  }
+  
+  // UI-only clear: no API calls, no database changes
+  console.log("[v0] Clearing rows, selectedInvoice, selectedInvoices...")
+  setRows([])
+  setScenarioData(null)
+  setIsScenarioActive(false)
+  setSelectedInvoice(null)
+  setSelectedInvoices([])
+  setIsEnriched(false)
+  setStatus("idle")
+  setProgress(0)
+  setIsProcessing(false)
+  setSelectedRow(null)
+  setDataVersion((v) => v + 1)
+  
+  setLogs((prev) => [
+    ...prev,
+    `[${ts()}] UI cleared - all selections reset.`,
+  ])
+  console.log("[v0] handleClear completed")
+}, [])
 
   const handleRollback = useCallback(() => {
     setLogs((prev) => [...prev, "[10:26:00] Rolling back last operation..."])
@@ -966,7 +973,8 @@ console.log("scenario active:", isScenarioActive)
   onDeleteInvoice={handleDeleteInvoice}
   onDeleteSelected={handleDeleteSelected}
   selectedInvoices={selectedInvoices}
-        onToggleInvoice={toggleInvoice}
+onToggleInvoice={toggleInvoice}
+        onClearSelection={() => setSelectedInvoices([])}
       />
 
       {/* Main Content - shifts right when panel is open */}
