@@ -375,7 +375,7 @@ useEffect(() => {
     // Clear UI
     setRows([])
     setSelectedInvoice(null)
-    setSelectedInvoices(new Set())
+    setSelectedInvoices([])
     setIsEnriched(false)
     
     // Refresh list
@@ -991,7 +991,8 @@ console.log("scenario active:", isScenarioActive)
   onDeleteInvoice={handleDeleteInvoice}
   onDeleteSelected={handleDeleteSelected}
   selectedInvoices={selectedInvoices}
-        onToggleInvoice={toggleInvoice}
+onToggleInvoice={toggleInvoice}
+        onClearSelection={() => setSelectedInvoices([])}
         onReset={handleReset}
       />
 

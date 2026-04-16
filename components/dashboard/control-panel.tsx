@@ -88,8 +88,10 @@ onExportSelected?: (ids: string[]) => void
 onReset?: () => void
 /** External multi-select state from parent */
 selectedInvoices?: string[]
-/** Callback to toggle invoice selection */
-onToggleInvoice?: (id: string) => void
+  /** Callback to toggle invoice selection */
+  onToggleInvoice?: (id: string) => void
+  /** Callback to clear all selected invoices */
+  onClearSelection?: () => void
 }
 
 export function ControlPanel({
@@ -124,8 +126,9 @@ onResetEnrich,
   onDeleteSelected,
   onExportSelected,
 selectedInvoices: externalSelectedInvoices,
-onToggleInvoice,
-}: ControlPanelProps) {
+  onToggleInvoice,
+  onClearSelection,
+  }: ControlPanelProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState(false)
@@ -406,6 +409,7 @@ const hasSelection = selectedIds.size > 0
   size="sm"
   onClick={() => {
     setSelectedIds(new Set())
+    onClearSelection?.()
     onReset?.()
   }}
   disabled={!hasData && selectedIds.size === 0 && !selectedInvoice}
@@ -431,7 +435,10 @@ const hasSelection = selectedIds.size > 0
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSelectedIds(new Set())}
+                  onClick={() => {
+                    setSelectedIds(new Set())
+                    onClearSelection?.()
+                  }}
                   disabled={selectedIds.size === 0}
                   className="h-8 gap-1.5 rounded-md px-3 text-[11px] text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
                 >
