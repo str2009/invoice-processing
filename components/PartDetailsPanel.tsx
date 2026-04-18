@@ -273,7 +273,7 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
   )
 }
 
-function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
+function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
   // Generate last 12 months dynamically (from -11 months to current)
   const months = useMemo(() => {
     const result: { key: string; label: string }[] = []
@@ -299,7 +299,16 @@ function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
     return name.charAt(0).toUpperCase()
   }
 
-  const salesData = selectedAnalog?.sales_monthly ?? []
+  // Find the first analog that has actual sales (qty > 0)
+  const analogWithSales = useMemo(() => {
+    return analogs.find(a =>
+      a.sales_monthly?.some(row =>
+        row.data.some(cell => cell.qty > 0)
+      )
+    )
+  }, [analogs])
+
+  const salesData = analogWithSales?.sales_monthly ?? []
 
   return (
     <div className="pl-6">
@@ -862,7 +871,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         case "physical":
           return <PhysicalBlock row={row} />
 case "sales":
-          return <SalesBlock selectedAnalog={selectedAnalog} />
+          return <SalesBlock analogs={analogsData} />
         case "analogs":
           return (
             <AnalogsBlock
