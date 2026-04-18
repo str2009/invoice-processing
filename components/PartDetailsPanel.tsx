@@ -57,6 +57,7 @@ interface AnalogItem {
   part_brand_key: string
   code?: string
   brand: string
+  sold_12m?: number
   price: number
   purchase_price?: number
   stock: number
@@ -340,9 +341,9 @@ function AnalogsBlock({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/50 text-muted-foreground">
-                  <th className="px-2 py-1.5 text-left font-medium">Code</th>
-                  <th className="px-2 py-1.5 text-left font-medium">Brand</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
+<th className="px-2 py-1.5 text-left font-medium">Code</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
@@ -362,8 +363,16 @@ function AnalogsBlock({
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
                       </td>
-                      <td className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-muted-foreground"}`}>
-                        {analog.brand}
+                      <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${
+                        analog.sold_12m === undefined 
+                          ? "text-muted-foreground" 
+                          : analog.sold_12m === 0 
+                            ? "text-muted-foreground/60" 
+                            : analog.sold_12m >= 10 
+                              ? "text-emerald-600 dark:text-emerald-400" 
+                              : "text-foreground/80"
+                      }`}>
+                        {analog.sold_12m === undefined ? "—" : analog.sold_12m}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right font-mono ${
