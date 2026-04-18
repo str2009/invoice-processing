@@ -53,11 +53,17 @@ interface PurchaseHistoryItem {
   date: string
 }
 
+interface SalesMonthlyItem {
+  month: string // "YYYY-MM"
+  qty: number
+}
+
 interface AnalogItem {
   part_brand_key: string
   code?: string
   brand: string
   sold_12m?: number
+  sales_monthly?: SalesMonthlyItem[]
   price: number
   purchase_price?: number
   stock: number
@@ -262,8 +268,8 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
   )
 }
 
-function SalesBlock({ row }: { row: InvoiceRow }) {
-  // Generate last 12 months dynamically
+function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
+  // Generate last 12 months dynamically (from -11 months to current)
   const months = useMemo(() => {
     const result: { key: string; label: string }[] = []
     const now = new Date()
@@ -279,19 +285,16 @@ function SalesBlock({ row }: { row: InvoiceRow }) {
     return result
   }, [])
 
-  // Mock data structure - will be replaced with real API data
-  // Format: { [warehouseId]: { [monthKey]: salesCount } }
-  const salesData: Record<string, Record<string, number | undefined>> = useMemo(() => ({
-    koms18: {},
-    salut: {},
-    talnakh: {},
-  }), [])
-
-  const warehouses = [
-    { id: "koms18", name: "Комс 18" },
-    { id: "salut", name: "Салют" },
-    { id: "talnakh", name: "Талнах" },
-  ]
+  // Convert sales_monthly array to map: { "YYYY-MM": qty }
+  const salesMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    if (selectedAnalog?.sales_monthly) {
+      for (const item of selectedAnalog.sales_monthly) {
+        map[item.month] = item.qty
+      }
+    }
+    return map
+  }, [selectedAnalog?.sales_monthly])
 
   return (
     <div className="pl-6">
@@ -317,25 +320,21 @@ function SalesBlock({ row }: { row: InvoiceRow }) {
             </tr>
           </thead>
           <tbody>
-            {warehouses.map((wh) => (
-              <tr
-                key={wh.id}
-                className="hover:bg-muted/50 transition-colors cursor-default group"
-                title={wh.name}
-              >
-                {months.map((m) => {
-                  const value = salesData[wh.id]?.[m.key]
-                  return (
-                    <td
-                      key={m.key}
-                      className="px-1 py-1 text-center font-mono tabular-nums text-foreground/80"
-                    >
-                      {value === undefined ? "–" : value}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+            <tr>
+              {months.map((m) => {
+                const value = salesMap[m.key] ?? 0
+                return (
+                  <td
+                    key={m.key}
+                    className={`px-1 py-1.5 text-center font-mono tabular-nums ${
+                      value > 0 ? "text-foreground" : "text-muted-foreground/50"
+                    }`}
+                  >
+                    {value > 0 ? value : "–"}
+                  </td>
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
@@ -834,8 +833,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
           return <InventoryBlock row={row} />
         case "physical":
           return <PhysicalBlock row={row} />
-        case "sales":
-          return <SalesBlock row={row} />
+case "sales":
+          return <SalesBlock selectedAnalog={selectedAnalog} />
         case "analogs":
           return (
             <AnalogsBlock
