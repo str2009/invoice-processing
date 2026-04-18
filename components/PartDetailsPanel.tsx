@@ -369,65 +369,6 @@ function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
     </div>
   )
 }
-    return result
-  }, [])
-
-  // Convert sales_monthly array to map: { "YYYY-MM": qty }
-  const salesMap = useMemo(() => {
-    const map: Record<string, number> = {}
-    if (selectedAnalog?.sales_monthly) {
-      for (const item of selectedAnalog.sales_monthly) {
-        map[item.month] = item.qty
-      }
-    }
-    return map
-  }, [selectedAnalog?.sales_monthly])
-
-  return (
-    <div className="pl-6">
-      <div className="mb-2 flex items-center gap-2">
-        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Sales
-        </span>
-      </div>
-      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
-        <table className="w-full text-[10px]">
-          <thead>
-            <tr className="border-b border-border/50">
-              {months.map((m) => (
-                <th
-                  key={m.key}
-                  className="px-1 py-1 text-center font-normal text-muted-foreground"
-                  style={{ width: `${100 / 12}%` }}
-                >
-                  {m.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {months.map((m) => {
-                const value = salesMap[m.key] ?? 0
-                return (
-                  <td
-                    key={m.key}
-                    className={`px-1 py-1.5 text-center font-mono tabular-nums ${
-                      value > 0 ? "text-foreground" : "text-muted-foreground/50"
-                    }`}
-                  >
-                    {value > 0 ? value : "–"}
-                  </td>
-                )
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
 
 function AnalogsBlock({
   analogs,
