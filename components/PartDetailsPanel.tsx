@@ -53,9 +53,14 @@ interface PurchaseHistoryItem {
   date: string
 }
 
-interface SalesMonthlyItem {
+interface SalesMonthlyDataPoint {
   month: string // "YYYY-MM"
   qty: number
+}
+
+interface SalesMonthlyWarehouse {
+  warehouse: string
+  data: SalesMonthlyDataPoint[]
 }
 
 interface AnalogItem {
@@ -63,7 +68,7 @@ interface AnalogItem {
   code?: string
   brand: string
   sold_12m?: number
-  sales_monthly?: SalesMonthlyItem[]
+  sales_monthly?: SalesMonthlyWarehouse[]
   price: number
   purchase_price?: number
   stock: number
@@ -282,6 +287,88 @@ function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
         label: monthNames[d.getMonth()],
       })
     }
+    return result
+  }, [])
+
+  // Warehouse short labels mapping
+  const warehouseShortLabel = (name: string): string => {
+    if (name.includes("Комс")) return "K"
+    if (name.includes("Салют")) return "S"
+    if (name.includes("Талнах")) return "T"
+    if (name.includes("Гараж")) return "G"
+    return name.charAt(0).toUpperCase()
+  }
+
+  const salesData = selectedAnalog?.sales_monthly ?? []
+
+  return (
+    <div className="pl-6">
+      <div className="mb-2 flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Sales
+        </span>
+      </div>
+      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+        <table className="w-full text-[10px]">
+          <thead>
+            <tr className="border-b border-border/50">
+              <th className="w-5 px-1 py-1 text-center font-normal text-muted-foreground"></th>
+              {months.map((m) => (
+                <th
+                  key={m.key}
+                  className="px-1 py-1 text-center font-normal text-muted-foreground"
+                >
+                  {m.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {salesData.length === 0 ? (
+              <tr>
+                <td colSpan={13} className="px-2 py-2 text-center text-muted-foreground">
+                  No data
+                </td>
+              </tr>
+            ) : (
+              salesData.map((row) => {
+                // Convert row.data array to map for O(1) lookup
+                const dataMap = Object.fromEntries(
+                  row.data.map((x) => [x.month, x.qty])
+                )
+                
+                return (
+                  <tr key={row.warehouse} className="hover:bg-muted/50 transition-colors">
+                    <td 
+                      className="w-5 px-1 py-1 text-center font-medium text-muted-foreground"
+                      title={row.warehouse}
+                    >
+                      {warehouseShortLabel(row.warehouse)}
+                    </td>
+                    {months.map((m) => {
+                      const value = dataMap[m.key] ?? 0
+                      return (
+                        <td
+                          key={m.key}
+                          className={`px-1 py-1.5 text-center font-mono tabular-nums ${
+                            value > 0 ? "text-foreground" : "text-muted-foreground/50"
+                          }`}
+                        >
+                          {value > 0 ? value : "–"}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
     return result
   }, [])
 
