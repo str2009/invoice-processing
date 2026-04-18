@@ -263,6 +263,36 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
 }
 
 function SalesBlock({ row }: { row: InvoiceRow }) {
+  // Generate last 12 months dynamically
+  const months = useMemo(() => {
+    const result: { key: string; label: string }[] = []
+    const now = new Date()
+    const monthNames = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
+    
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      result.push({
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        label: monthNames[d.getMonth()],
+      })
+    }
+    return result
+  }, [])
+
+  // Mock data structure - will be replaced with real API data
+  // Format: { [warehouseId]: { [monthKey]: salesCount } }
+  const salesData: Record<string, Record<string, number | undefined>> = useMemo(() => ({
+    koms18: {},
+    salut: {},
+    talnakh: {},
+  }), [])
+
+  const warehouses = [
+    { id: "koms18", name: "Комс 18" },
+    { id: "salut", name: "Салют" },
+    { id: "talnakh", name: "Талнах" },
+  ]
+
   return (
     <div className="pl-6">
       <div className="mb-2 flex items-center gap-2">
@@ -271,10 +301,43 @@ function SalesBlock({ row }: { row: InvoiceRow }) {
           Sales
         </span>
       </div>
-      <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-        <InfoRow label="12-month sales" value={row.sales12m} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Monthly avg" value={Math.round(row.sales12m / 12)} />
+      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+        <table className="w-full text-[10px]">
+          <thead>
+            <tr className="border-b border-border/50">
+              {months.map((m) => (
+                <th
+                  key={m.key}
+                  className="px-1 py-1 text-center font-normal text-muted-foreground"
+                  style={{ width: `${100 / 12}%` }}
+                >
+                  {m.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {warehouses.map((wh) => (
+              <tr
+                key={wh.id}
+                className="hover:bg-muted/50 transition-colors cursor-default group"
+                title={wh.name}
+              >
+                {months.map((m) => {
+                  const value = salesData[wh.id]?.[m.key]
+                  return (
+                    <td
+                      key={m.key}
+                      className="px-1 py-1 text-center font-mono tabular-nums text-foreground/80"
+                    >
+                      {value === undefined ? "–" : value}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
