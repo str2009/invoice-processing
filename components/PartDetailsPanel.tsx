@@ -5,10 +5,17 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   X,
   Package,
   TrendingUp,
-  Warehouse,
+  Warehouse as WarehouseIcon,
   Weight,
   BarChart3,
   GitCompareArrows,
@@ -208,7 +215,7 @@ function InventoryBlock({ row }: { row: InvoiceRow }) {
   return (
     <div className="pl-6">
       <div className="mb-2 flex items-center gap-2">
-        <Warehouse className="h-4 w-4 text-muted-foreground" />
+        <WarehouseIcon className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Inventory
         </span>
@@ -591,6 +598,7 @@ function AnalogDetailsBlock({
 
 export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all")
   const [analogsRaw, setAnalogsRaw] = useState<AnalogItem[]>([])
   const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -786,17 +794,45 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       aria-label="Part details"
     >
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={onClose}
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close panel</span>
-        </Button>
+      <div className="flex shrink-0 items-center border-b border-border px-4 py-2">
+        {/* Left: Title */}
+        <div className="w-24">
+          <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
+        </div>
+        
+        {/* Center: Warehouse Selector */}
+        <div className="flex flex-1 justify-center">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Warehouse
+            </span>
+            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+              <SelectTrigger className="h-7 w-[120px] border-border/50 bg-transparent text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="koms18">Комс 18</SelectItem>
+                <SelectItem value="talnakh">Талнах</SelectItem>
+                <SelectItem value="salut">Салют</SelectItem>
+                <SelectItem value="garage">Гараж</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        {/* Right: Close Button */}
+        <div className="w-24 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close panel</span>
+          </Button>
+        </div>
       </div>
 
       {/* Scrollable content with draggable blocks */}
