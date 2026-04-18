@@ -379,6 +379,7 @@ function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
   )
 }
 
+// AnalogsBlock component
 function AnalogsBlock({
   analogs,
   isLoading,
