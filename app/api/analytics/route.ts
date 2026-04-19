@@ -1,25 +1,42 @@
+import { NextResponse } from 'next/server'
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    const res = await fetch('https://max24vin.ru/webhook/analytics-599effdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    })
 
-    const res = await fetch(
-      "https://max24vin.ru/webhook/analytics-599effdf",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    )
+    const text = await res.text()
 
-    const data = await res.json()
-    console.log("[FRONT DATA]", data)
-    
-    // Backend returns a plain JSON array - pass it through directly
-    return Response.json(Array.isArray(data) ? data : [])
+    console.log('RAW RESPONSE TEXT:', text.substring(0, 500))
+
+    let data = []
+
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      console.error('JSON parse error:', e)
+      return NextResponse.json([])
+    }
+
+    console.log('PARSED DATA TYPE:', typeof data, Array.isArray(data), 'length:', Array.isArray(data) ? data.length : 'N/A')
+
+    if (Array.isArray(data)) {
+      return NextResponse.json(data)
+    }
+
+    if (data?.data && Array.isArray(data.data)) {
+      return NextResponse.json(data.data)
+    }
+
+    return NextResponse.json([])
   } catch (error) {
-    console.error("Analytics API ERROR:", error)
-    return Response.json({ error: "Failed to fetch analytics" }, { status: 500 })
+    console.error('API ERROR:', error)
+    return NextResponse.json([])
   }
 }
