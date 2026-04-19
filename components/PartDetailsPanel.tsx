@@ -431,6 +431,20 @@ function AnalogsBlock({
                 {analogs.map((analog, idx) => {
                   const isCurrentPart = analog.part_brand_key === currentPartKey
                   const isSelected = selectedAnalog?.part_brand_key === analog.part_brand_key
+                  
+                  // Calculate inactivity level for row highlighting
+                  const getDaysSince = (dateStr: string | undefined): number | null => {
+                    if (!dateStr) return null
+                    const d = new Date(dateStr)
+                    return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
+                  }
+                  const days = getDaysSince(analog.last_sale_date)
+                  const inactivityBg = days === null || days >= 730
+                    ? "rgba(255, 80, 80, 0.16)"    // dead: soft red
+                    : days >= 365
+                      ? "rgba(255, 120, 150, 0.12)" // slow: soft pink
+                      : undefined
+                  
                   return (
                     <tr
                       key={analog.part_brand_key}
@@ -438,6 +452,7 @@ function AnalogsBlock({
                       className={`cursor-pointer transition-colors ${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
                         isSelected ? "bg-muted" : isCurrentPart ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50"
                       }`}
+                      style={inactivityBg && !isSelected ? { backgroundColor: inactivityBg } : undefined}
                     >
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
@@ -607,18 +622,11 @@ function AnalogDetailsBlock({
   
   const inactivityLevel = getInactivityLevel(daysSinceLastSale)
 
-  // Background style based on inactivity level
-  const inactivityBgStyle = inactivityLevel === "dead"
-    ? { backgroundColor: "rgba(255, 80, 80, 0.18)" }
-    : inactivityLevel === "slow"
-      ? { backgroundColor: "rgba(255, 120, 150, 0.15)" }
-      : {}
-
   return (
     <div className="pl-6">
       <div 
         className="rounded-lg border border-border bg-muted/30 grid"
-        style={{ gridTemplateColumns: "2fr 1fr 1fr", ...inactivityBgStyle }}
+        style={{ gridTemplateColumns: "2fr 1fr 1fr" }}
       >
         {/* Purchase History (Left) */}
         <div className="flex flex-col px-4 py-3">
