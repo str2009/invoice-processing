@@ -11,6 +11,7 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnOrderState,
+  type ColumnSizingState,
   type VisibilityState,
   type Header,
   type Cell,
@@ -52,13 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+// Table components not used - using native table elements for resizing support
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -73,7 +68,21 @@ import {
   Columns3,
   CalendarDays,
   Loader2,
+  Sun,
+  Moon,
+  Monitor,
+  Maximize2,
+  Minimize2,
 } from "lucide-react"
+import { useTheme } from "next-themes"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu"
 import type { InvoiceRow, InvoiceListItem } from "@/lib/mock-data"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 
@@ -164,6 +173,79 @@ const numericCols = new Set([
   "weight", "bulk", "competitorPrice", "competitorStock", "riskScore",
 ])
 
+// --- localStorage helpers for column persistence ---
+const STORAGE_KEY_ORDER = "analytics-column-order"
+const STORAGE_KEY_SIZING = "analytics-column-sizing"
+const STORAGE_KEY_VISIBILITY = "analytics-column-visibility"
+
+function loadFromStorage<T>(key: string): T | null {
+  try {
+    const stored = localStorage.getItem(key)
+    if (!stored) return null
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
+
+function saveToStorage<T>(key: string, value: T) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+// --- Default column widths ---
+const defaultColumnSizing: ColumnSizingState = {
+  partCode: 120,
+  brand: 100,
+  supplier: 100,
+  purchase: 90,
+  current: 90,
+  marginPct: 80,
+  marginAbs: 90,
+  deltaPct: 80,
+  deltaAbs: 80,
+  stock: 70,
+  incoming: 70,
+  totalStock: 80,
+  sales12m: 80,
+  sales3m: 80,
+  coverageDays: 80,
+  pricingGroup: 100,
+  moot: 90,
+  weight: 80,
+  bulk: 60,
+  competitorPrice: 100,
+  competitorStock: 100,
+  lastSaleDate: 90,
+  abcClass: 60,
+  riskScore: 70,
+}
+
+// --- Resize Handle Component ---
+function ResizeHandle({
+  header,
+  onDoubleClick,
+}: {
+  header: Header<AnalyticsRow, unknown>
+  onDoubleClick: () => void
+}) {
+  return (
+    <div
+      onMouseDown={header.getResizeHandler()}
+      onTouchStart={header.getResizeHandler()}
+      onDoubleClick={onDoubleClick}
+      className={`absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize select-none touch-none transition-colors ${header.column.getIsResizing()
+          ? "bg-primary"
+          : "bg-border hover:bg-primary/60"
+        }`}
+      style={{ transform: "translateX(50%)" }}
+    />
+  )
+}
+
 // --- Sort header ---
 function SortHeader({
   column,
@@ -211,50 +293,79 @@ function MootEditor({ row, setMootChanges }: any) {
   )
 }
 
-// --- Draggable header cell ---
-function DraggableHeaderCell({ header }: { header: Header<AnalyticsRow, unknown> }) {
+// --- Draggable header cell with resize handle ---
+function DraggableHeaderCell({ 
+  header,
+  onAutoFit,
+}: { 
+  header: Header<AnalyticsRow, unknown>
+  onAutoFit: (columnId: string) => void
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: header.column.id })
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
     position: "relative",
+    width: header.getSize(),
+    minWidth: 40,
     zIndex: isDragging ? 20 : undefined,
-    cursor: isDragging ? "grabbing" : "grab",
   }
+  const isNumeric = numericCols.has(header.column.id)
   return (
-    <TableHead
+    <th
       ref={setNodeRef}
       style={style}
-      className={`h-8 whitespace-nowrap ${numericCols.has(header.column.id) ? "text-center" : ""}`}
+      data-column-id={header.column.id}
+      className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${isDragging ? "z-20" : ""}`}
       colSpan={header.colSpan}
     >
-      <div className={`flex items-center gap-0.5 ${numericCols.has(header.column.id) ? "justify-center" : ""}`}>
-        <span className="flex items-center text-muted-foreground/40 hover:text-muted-foreground" {...attributes} {...listeners}>
+      <div className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""}`} {...attributes} {...listeners}>
+        <span className="flex items-center text-muted-foreground/40 hover:text-muted-foreground">
           <GripVertical className="h-2.5 w-2.5" />
         </span>
-        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+        <span
+          className="cursor-pointer truncate hover:text-foreground"
+          onClick={(e) => {
+            e.stopPropagation()
+            header.column.toggleSorting()
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            onAutoFit(header.column.id)
+          }}
+        >
+          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+        </span>
       </div>
-    </TableHead>
+      <ResizeHandle
+        header={header}
+        onDoubleClick={() => onAutoFit(header.column.id)}
+      />
+    </th>
   )
 }
 
 // --- Draggable body cell ---
-function DraggableCell({ cell }: { cell: Cell<AnalyticsRow, unknown> }) {
+function DraggableCell({ cell, width }: { cell: Cell<AnalyticsRow, unknown>; width: number }) {
   const { setNodeRef, transform, transition, isDragging } = useSortable({ id: cell.column.id })
+  const isNumeric = numericCols.has(cell.column.id)
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    width,
+    minWidth: 40,
   }
   return (
-    <TableCell
+    <td
       ref={setNodeRef}
       style={style}
-      className={`whitespace-nowrap py-1 ${numericCols.has(cell.column.id) ? "text-center" : ""}`}
+      data-column-id={cell.column.id}
+      className={`truncate border-b border-r border-border px-2 py-1.5 text-xs ${isNumeric ? "text-center" : ""}`}
     >
       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-    </TableCell>
+    </td>
   )
 }
 
@@ -523,6 +634,37 @@ const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", 
 // --- Main page ---
 export default function AnalyticsPage() {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  
+  // Workspace display settings
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
+  const [uiScale, setUiScale] = useState<"90" | "100" | "110">("100")
+
+  useEffect(() => {
+    setMounted(true)
+    // Load workspace settings from localStorage
+    const savedDensity = localStorage.getItem("workspace_density")
+    const savedScale = localStorage.getItem("workspace_ui_scale")
+    if (savedDensity === "comfortable" || savedDensity === "compact") {
+      setDensity(savedDensity)
+    }
+    if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
+      setUiScale(savedScale)
+    }
+  }, [])
+
+  // Persist workspace settings
+  const handleDensityChange = useCallback((value: "comfortable" | "compact") => {
+    setDensity(value)
+    localStorage.setItem("workspace_density", value)
+  }, [])
+
+  const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
+    setUiScale(value)
+    localStorage.setItem("workspace_ui_scale", value)
+  }, [])
+
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "analyticsRightPanelWidth",
     defaultWidth: 450,
@@ -532,15 +674,17 @@ export default function AnalyticsPage() {
   const [globalFilter, setGlobalFilter] = useState("")
   const [sorting, setSorting] = useState<SortingState>([])
   const [mootChanges, setMootChanges] = useState<Record<string, number>>({})
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
+  const [isHydrated, setIsHydrated] = useState(false)
 
-const columns = useMemo(() => getColumns(setMootChanges), [setMootChanges])
+  const columns = useMemo(() => getColumns(setMootChanges), [setMootChanges])
 
-const allColumnIds = useMemo(
-  () => columns.map((c) => c.id!),
-  [columns]
-)
+  const allColumnIds = useMemo(
+    () => columns.map((c) => c.id!),
+    [columns]
+  )
 
-const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined)
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
@@ -570,12 +714,63 @@ const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
     dragStartY.current = null
   }, [])
 
+// Load saved settings from localStorage on mount
 useEffect(() => {
-  setColumnOrder(allColumnIds)
+  const savedOrder = loadFromStorage<string[]>(STORAGE_KEY_ORDER)
+  if (savedOrder) {
+    const filtered = savedOrder.filter((id) => allColumnIds.includes(id))
+    const missing = allColumnIds.filter((id) => !filtered.includes(id))
+    setColumnOrder([...filtered, ...missing])
+  } else {
+    setColumnOrder(allColumnIds)
+  }
+
+  const savedSizing = loadFromStorage<ColumnSizingState>(STORAGE_KEY_SIZING)
+  if (savedSizing) setColumnSizing({ ...defaultColumnSizing, ...savedSizing })
+
+  const savedVisibility = loadFromStorage<VisibilityState>(STORAGE_KEY_VISIBILITY)
+  if (savedVisibility) setColumnVisibility(savedVisibility)
+
+  setIsHydrated(true)
 }, [allColumnIds])
 
+// Persist column order changes
+const handleColumnOrderChange = useCallback(
+  (updater: ColumnOrderState | ((prev: ColumnOrderState) => ColumnOrderState)) => {
+    setColumnOrder((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater
+      saveToStorage(STORAGE_KEY_ORDER, next)
+      return next
+    })
+  },
+  []
+)
 
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+// Persist column sizing changes
+const handleColumnSizingChange = useCallback(
+  (updater: ColumnSizingState | ((prev: ColumnSizingState) => ColumnSizingState)) => {
+    setColumnSizing((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater
+      saveToStorage(STORAGE_KEY_SIZING, next)
+      return next
+    })
+  },
+  []
+)
+
+// Persist column visibility changes
+const handleColumnVisibilityChange = useCallback(
+  (updater: VisibilityState | ((prev: VisibilityState) => VisibilityState)) => {
+    setColumnVisibility((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater
+      saveToStorage(STORAGE_KEY_VISIBILITY, next)
+      return next
+    })
+  },
+  []
+)
+
+const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     const vis: VisibilityState = {}
     defaultHidden.forEach((id) => { vis[id] = false })
     return vis
@@ -655,8 +850,45 @@ useEffect(() => {
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
   
-  console.log("[v0] rawInvoiceRows:", rawInvoiceRows.length, "analyticsData:", analyticsData.length)
+console.log("[v0] rawInvoiceRows:", rawInvoiceRows.length, "analyticsData:", analyticsData.length)
 
+// Auto-fit column width to content
+const handleAutoFit = useCallback((columnId: string) => {
+  // Create a temporary element to measure text
+  const measureEl = document.createElement("span")
+  measureEl.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;font-size:11px;font-family:inherit;padding:0;"
+  document.body.appendChild(measureEl)
+
+  // Measure header text
+  const headerText = columnLabels[columnId] || columnId
+  measureEl.textContent = headerText
+  let maxWidth = measureEl.offsetWidth + 40 // add padding for sort icon and spacing
+
+  // Measure all cell values
+  analyticsData.forEach((row) => {
+    const value = row[columnId as keyof AnalyticsRow]
+    let text = ""
+
+    if (value === null || value === undefined) {
+      text = ""
+    } else if (typeof value === "number") {
+      text = value.toFixed(2)
+    } else {
+      text = String(value)
+    }
+
+    measureEl.textContent = text
+    const cellWidth = measureEl.offsetWidth + 20
+    if (cellWidth > maxWidth) maxWidth = cellWidth
+  })
+
+  document.body.removeChild(measureEl)
+
+  // Clamp width between 50 and 400
+  const finalWidth = Math.max(50, Math.min(400, maxWidth))
+  handleColumnSizingChange((prev) => ({ ...prev, [columnId]: finalWidth }))
+}, [analyticsData, handleColumnSizingChange])
+  
   const suppliers = useMemo(() => [...new Set(analyticsData.map((r) => r.brand))].sort(), [analyticsData])
   const pricingGroups = useMemo(() => [...new Set(analyticsData.map((r) => r.pricingGroup))].sort(), [analyticsData])
 
@@ -692,19 +924,20 @@ useEffect(() => {
     setGlobalFilter("")
   }, [])
 
-  const table = useReactTable({
-    data: filteredData,
-    columns,
-    state: { sorting, globalFilter, columnOrder, columnVisibility },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    onColumnOrderChange: setColumnOrder,
-    onColumnVisibilityChange: setColumnVisibility,
-    columnResizeMode: "onChange",
-    enableColumnResizing: true,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+const table = useReactTable({
+  data: filteredData,
+  columns,
+  state: { sorting, globalFilter, columnOrder, columnSizing, columnVisibility },
+  onSortingChange: setSorting,
+  onGlobalFilterChange: setGlobalFilter,
+  onColumnOrderChange: handleColumnOrderChange,
+  onColumnSizingChange: handleColumnSizingChange,
+  onColumnVisibilityChange: handleColumnVisibilityChange,
+  columnResizeMode: "onChange",
+  enableColumnResizing: true,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
   })
 
   const filteredRows = table.getFilteredRowModel().rows
@@ -860,7 +1093,7 @@ useEffect(() => {
 }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
       {/* Control Panel */}
       <ControlPanel
         mode="analytics"
@@ -1052,17 +1285,129 @@ useEffect(() => {
             <span className="font-mono text-[11px] font-medium text-foreground">{metrics.totalStockValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
           </div>
           <span className="h-4 w-px bg-border" aria-hidden="true" />
-          <Button
-            variant={drawerOpen ? "secondary" : "ghost"}
-            size="sm"
-            className="h-7 gap-1 px-2 text-[11px]"
-            onClick={() => setDrawerOpen((p) => !p)}
-          >
-            {drawerOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            Charts
-          </Button>
-        </div>
-      </header>
+<Button
+  variant={drawerOpen ? "secondary" : "ghost"}
+  size="sm"
+  className="h-7 gap-1 px-2 text-[11px]"
+  onClick={() => setDrawerOpen((p) => !p)}
+  >
+  {drawerOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+  Charts
+  </Button>
+  <span className="h-4 w-px bg-border" aria-hidden="true" />
+  <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 w-7 shrink-0 p-0"
+      aria-label="Change theme"
+    >
+      {mounted && (
+        theme === "light" ? (
+          <Sun className="h-3.5 w-3.5" />
+        ) : theme === "soft" ? (
+          <Sun className="h-3.5 w-3.5 text-amber-400" />
+        ) : theme === "graphite" ? (
+          <Monitor className="h-3.5 w-3.5" />
+        ) : theme === "warm-dark" ? (
+          <Moon className="h-3.5 w-3.5 text-amber-500" />
+        ) : (
+          <Moon className="h-3.5 w-3.5" />
+        )
+      )}
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end" className="min-w-[160px]">
+    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+      Theme
+    </DropdownMenuLabel>
+    <DropdownMenuItem
+      onClick={() => setTheme("light")}
+      className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
+    >
+      <Sun className="h-3.5 w-3.5" />
+      Light
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => setTheme("soft")}
+      className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
+    >
+      <Sun className="h-3.5 w-3.5 text-amber-400" />
+      Soft
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => setTheme("dark")}
+      className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
+    >
+      <Moon className="h-3.5 w-3.5" />
+      Dark
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => setTheme("warm-dark")}
+      className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}
+    >
+      <Moon className="h-3.5 w-3.5 text-amber-500" />
+      Warm Dark
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => setTheme("graphite")}
+      className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}
+    >
+      <Monitor className="h-3.5 w-3.5" />
+      Graphite
+    </DropdownMenuItem>
+
+    <DropdownMenuSeparator />
+    
+    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+      Density
+    </DropdownMenuLabel>
+    <DropdownMenuItem
+      onClick={() => handleDensityChange("comfortable")}
+      className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}
+    >
+      <Maximize2 className="h-3.5 w-3.5" />
+      Comfortable
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleDensityChange("compact")}
+      className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}
+    >
+      <Minimize2 className="h-3.5 w-3.5" />
+      Compact
+    </DropdownMenuItem>
+
+    <DropdownMenuSeparator />
+
+    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+      UI Scale
+    </DropdownMenuLabel>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("90")}
+      className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span>
+      90%
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("100")}
+      className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span>
+      100%
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("110")}
+      className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
+      110%
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
+  </div>
+  </header>
 
       {/* Filter flags + column manager row */}
       <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1">
@@ -1118,45 +1463,45 @@ useEffect(() => {
           onDragEnd={handleDragEnd}
         >
           <div className="min-w-0 flex-1 overflow-x-auto overflow-y-auto">
-            <table className="min-w-full caption-bottom text-sm">
-              <TableHeader className="sticky top-0 z-10 bg-muted dark:bg-card shadow-[0_1px_0_0_hsl(var(--border))]">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:bg-transparent border-0">
-                    <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
-                      {headerGroup.headers.map((header) => (
-                        <DraggableHeaderCell key={header.id} header={header} />
-                      ))}
-                    </SortableContext>
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row, index) => {
-                    const isSelected = selectedRow?.id === row.original.id
-                    return (
-                      <TableRow
-                        key={row.id}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected
-                            ? "bg-primary/10 hover:bg-primary/15"
-                            : index % 2 === 1
-                              ? "bg-muted/40 hover:bg-muted/60"
-                              : "hover:bg-muted/30"
-                        }`}
-                        onClick={() => handleRowClick(row.original)}
-                      >
-                        <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
-                          {row.getVisibleCells().map((cell) => (
-                            <DraggableCell key={cell.id} cell={cell} />
-                          ))}
-                        </SortableContext>
-                      </TableRow>
-                    )
-                  })
+<table className="w-max border-separate border-spacing-0 text-sm">
+  <thead className="sticky top-0 z-10 bg-muted dark:bg-card">
+  {table.getHeaderGroups().map((headerGroup) => (
+  <tr key={headerGroup.id}>
+  <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
+  {headerGroup.headers.map((header) => (
+  <DraggableHeaderCell key={header.id} header={header} onAutoFit={handleAutoFit} />
+  ))}
+  </SortableContext>
+  </tr>
+  ))}
+  </thead>
+<tbody>
+  {table.getRowModel().rows?.length ? (
+  table.getRowModel().rows.map((row, index) => {
+  const isSelected = selectedRow?.id === row.original.id
+  return (
+  <tr
+  key={row.id}
+  className={`cursor-pointer transition-colors ${
+  isSelected
+  ? "bg-primary/10 hover:bg-primary/15"
+  : index % 2 === 1
+  ? "bg-muted/40 hover:bg-muted/60"
+  : "hover:bg-muted/30"
+  }`}
+  onClick={() => handleRowClick(row.original)}
+  >
+  <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
+  {row.getVisibleCells().map((cell) => (
+  <DraggableCell key={cell.id} cell={cell} width={cell.column.getSize()} />
+  ))}
+  </SortableContext>
+  </tr>
+  )
+  })
                 ) : (
-  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-32 text-center">
+  <tr>
+                    <td colSpan={columns.length} className="h-32 text-center border-b border-border">
                       {isDataLoading ? (
                         <div className="flex flex-col items-center gap-2">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -1173,10 +1518,10 @@ useEffect(() => {
                       ) : (
                         <span className="text-sm text-muted-foreground">Нет результатов по текущим фильтрам</span>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 )}
-              </TableBody>
+              </tbody>
             </table>
           </div>
         </DndContext>
