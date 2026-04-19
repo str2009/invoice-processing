@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     )
 
     const data = await res.json()
+    console.log("[v0] Analytics webhook response - isArray:", Array.isArray(data), "length:", Array.isArray(data) ? data.length : "N/A")
 
     // API returns a plain array, pass it through as-is
     return Response.json(data)
