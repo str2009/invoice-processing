@@ -14,10 +14,21 @@ export async function POST(req: Request) {
     )
 
     const data = await res.json()
-    console.log("[v0] Analytics webhook response - isArray:", Array.isArray(data), "length:", Array.isArray(data) ? data.length : "N/A")
-
-    // API returns a plain array, pass it through as-is
-    return Response.json(data)
+    console.log("[v0] Analytics webhook response - isArray:", Array.isArray(data), "type:", typeof data, "keys:", Object.keys(data || {}))
+    
+    // Try to extract array from response - webhook may wrap it in an object
+    let rows: unknown[]
+    if (Array.isArray(data)) {
+      rows = data
+    } else if (data && typeof data === "object") {
+      // Check common wrapper keys
+      rows = data.rows ?? data.data ?? data.items ?? data.result ?? []
+      console.log("[v0] Extracted rows from object, count:", rows.length)
+    } else {
+      rows = []
+    }
+    
+    return Response.json(rows)
   } catch (error) {
     console.error("Analytics API ERROR:", error)
     return Response.json({ error: "Failed to fetch analytics" }, { status: 500 })
