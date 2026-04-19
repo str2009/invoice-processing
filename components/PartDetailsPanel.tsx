@@ -803,6 +803,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       part_brand_key: currentPartKey,
       code: currentPartFromApi?.code || row.partCode,
       brand: row.manufacturer,
+      sold_12m: currentPartFromApi?.sold_12m,
+      sales_monthly: currentPartFromApi?.sales_monthly,
       price: currentPartFromApi?.price ?? 0,
       purchase_price: currentPartFromApi?.purchase_price,
       stock: currentPartFromApi?.stock ?? row.stock,
