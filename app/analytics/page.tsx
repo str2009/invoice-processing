@@ -56,14 +56,14 @@ import {
 // Table components not used - using native table elements for resizing support
 import {
   ArrowLeft,
-  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Search,
   X,
   BarChart3,
   ChevronUp,
   ChevronDown,
   PanelLeft,
-  GripVertical,
   GripHorizontal,
   Columns3,
   CalendarDays,
@@ -309,8 +309,8 @@ function DraggableHeaderCell({
     position: "relative",
     width: header.getSize(),
     minWidth: 40,
-    zIndex: isDragging ? 20 : undefined,
   }
+  const isSorted = header.column.getIsSorted()
   const isNumeric = numericCols.has(header.column.id)
   return (
     <th
@@ -320,16 +320,14 @@ function DraggableHeaderCell({
       className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${isDragging ? "z-20" : ""}`}
       colSpan={header.colSpan}
     >
-      <div className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""}`} {...attributes} {...listeners}>
-        <span className="flex items-center text-muted-foreground/40 hover:text-muted-foreground">
-          <GripVertical className="h-2.5 w-2.5" />
-        </span>
+      <div
+        className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""}`}
+        {...attributes}
+        {...listeners}
+      >
         <span
           className="cursor-pointer truncate hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation()
-            header.column.toggleSorting()
-          }}
+          onClick={() => header.column.toggleSorting()}
           onDoubleClick={(e) => {
             e.stopPropagation()
             onAutoFit(header.column.id)
@@ -337,6 +335,8 @@ function DraggableHeaderCell({
         >
           {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
         </span>
+        {isSorted === "asc" && <ArrowUp className="h-3 w-3 shrink-0 text-primary" />}
+        {isSorted === "desc" && <ArrowDown className="h-3 w-3 shrink-0 text-primary" />}
       </div>
       <ResizeHandle
         header={header}
@@ -817,8 +817,6 @@ const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => 
       
       // Backend returns a plain JSON array
       const data = await response.json()
-      console.log("[FRONT DATA]", data)
-      
       const rows = Array.isArray(data) ? data : []
       
       const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
@@ -840,8 +838,7 @@ const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => 
       
       setRawInvoiceRows(mappedRows)
       setIsDataLoaded(true)
-    } catch (err) {
-      console.error("[FRONT DATA] error:", err)
+    } catch {
       setRawInvoiceRows([])
     } finally {
       setIsDataLoading(false)
@@ -850,7 +847,7 @@ const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => 
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
   
-console.log("[v0] rawInvoiceRows:", rawInvoiceRows.length, "analyticsData:", analyticsData.length)
+
 
 // Auto-fit column width to content
 const handleAutoFit = useCallback((columnId: string) => {
@@ -894,21 +891,15 @@ const handleAutoFit = useCallback((columnId: string) => {
 
   // Filtered data
   const filteredData = useMemo(() => {
-    let d = analyticsData
-    console.log("[v0] Before filters:", d.length, "filterInStock:", filterInStock)
-    if (supplierFilter !== "all") d = d.filter((r) => r.brand === supplierFilter)
+let d = analyticsData
+  if (supplierFilter !== "all") d = d.filter((r) => r.brand === supplierFilter)
     if (pricingGroupFilter !== "all") d = d.filter((r) => r.pricingGroup === pricingGroupFilter)
-    if (filterInStock) {
-      const before = d.length
-      d = d.filter((r) => r.stock > 0)
-      console.log("[v0] After filterInStock:", d.length, "(removed", before - d.length, "rows)")
-    }
+if (filterInStock) d = d.filter((r) => r.stock > 0)
     if (filterSlowMoving) d = d.filter((r) => r.sales12m < 100)
     if (filterNegativeMargin) d = d.filter((r) => r.marginPct < 0)
     if (filterCompetitor) d = d.filter((r) => r.competitorPrice > 0 && r.competitorPrice < r.current)
-    if (filterBulk) d = d.filter((r) => r.bulk >= 50)
-    console.log("[v0] After all filters:", d.length)
-    return d
+if (filterBulk) d = d.filter((r) => r.bulk >= 50)
+  return d
   }, [analyticsData, supplierFilter, pricingGroupFilter, filterInStock, filterSlowMoving, filterNegativeMargin, filterCompetitor, filterBulk])
 
   const hasActiveFilters = filterInStock || filterSlowMoving || filterNegativeMargin || filterCompetitor || filterBulk || supplierFilter !== "all" || pricingGroupFilter !== "all"
@@ -1462,9 +1453,9 @@ const table = useReactTable({
           modifiers={[restrictToHorizontalAxis]}
           onDragEnd={handleDragEnd}
         >
-          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-auto">
-<table className="w-max border-separate border-spacing-0 text-sm">
-  <thead className="sticky top-0 z-10 bg-muted dark:bg-card">
+<div className="min-w-0 flex-1 overflow-x-auto overflow-y-auto">
+  <table className="border-collapse" style={{ width: "max-content", minWidth: "100%", tableLayout: "fixed" }}>
+  <thead className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
   {table.getHeaderGroups().map((headerGroup) => (
   <tr key={headerGroup.id}>
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
@@ -1477,17 +1468,15 @@ const table = useReactTable({
   </thead>
 <tbody>
   {table.getRowModel().rows?.length ? (
-  table.getRowModel().rows.map((row, index) => {
+  table.getRowModel().rows.map((row) => {
   const isSelected = selectedRow?.id === row.original.id
   return (
-  <tr
+<tr
   key={row.id}
-  className={`cursor-pointer transition-colors ${
+  className={`h-8 cursor-pointer transition-colors ${
   isSelected
   ? "bg-primary/10 hover:bg-primary/15"
-  : index % 2 === 1
-  ? "bg-muted/40 hover:bg-muted/60"
-  : "hover:bg-muted/30"
+  : "bg-background hover:bg-muted/50"
   }`}
   onClick={() => handleRowClick(row.original)}
   >

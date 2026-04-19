@@ -12,19 +12,13 @@ export async function POST(req: Request) {
     })
 
     const text = await res.text()
-
-    console.log('RAW RESPONSE TEXT:', text.substring(0, 500))
-
     let data = []
 
     try {
       data = JSON.parse(text)
-    } catch (e) {
-      console.error('JSON parse error:', e)
+    } catch {
       return NextResponse.json([])
     }
-
-    console.log('PARSED DATA TYPE:', typeof data, Array.isArray(data), 'length:', Array.isArray(data) ? data.length : 'N/A')
 
     if (Array.isArray(data)) {
       return NextResponse.json(data)
@@ -35,8 +29,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json([])
-  } catch (error) {
-    console.error('API ERROR:', error)
+  } catch {
     return NextResponse.json([])
   }
 }
