@@ -273,7 +273,7 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
   )
 }
 
-function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
+function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
   // Generate last 12 months dynamically (from -11 months to current)
   const months = useMemo(() => {
     const result: { key: string; label: string }[] = []
@@ -290,25 +290,7 @@ function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
     return result
   }, [])
 
-  // Warehouse short labels mapping
-  const warehouseShortLabel = (name: string): string => {
-    if (name.includes("Комс")) return "K"
-    if (name.includes("Салют")) return "S"
-    if (name.includes("Талнах")) return "T"
-    if (name.includes("Гараж")) return "G"
-    return name.charAt(0).toUpperCase()
-  }
-
-  // Find the first analog that has actual sales (qty > 0)
-  const analogWithSales = useMemo(() => {
-    return analogs.find(a =>
-      a.sales_monthly?.some(row =>
-        row.data.some(cell => cell.qty > 0)
-      )
-    )
-  }, [analogs])
-
-  const salesData = analogWithSales?.sales_monthly ?? []
+  const salesData = selectedAnalog?.sales_monthly ?? []
 
   return (
     <div className="pl-6">
@@ -322,7 +304,6 @@ function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
         <table className="w-full text-[10px]">
           <thead>
             <tr className="border-b border-border/50">
-              <th className="w-5 px-1 py-1 text-center font-normal text-muted-foreground"></th>
               {months.map((m) => (
                 <th
                   key={m.key}
@@ -336,7 +317,7 @@ function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
           <tbody>
             {salesData.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-2 py-2 text-center text-muted-foreground">
+                <td colSpan={12} className="px-2 py-2 text-center text-muted-foreground">
                   No data
                 </td>
               </tr>
@@ -348,13 +329,11 @@ function SalesBlock({ analogs }: { analogs: AnalogItem[] }) {
                 )
                 
                 return (
-                  <tr key={row.warehouse} className="hover:bg-muted/50 transition-colors">
-                    <td 
-                      className="w-5 px-1 py-1 text-center font-medium text-muted-foreground"
-                      title={row.warehouse}
-                    >
-                      {warehouseShortLabel(row.warehouse)}
-                    </td>
+                  <tr 
+                    key={row.warehouse} 
+                    className="hover:bg-muted/50 transition-colors"
+                    title={row.warehouse}
+                  >
                     {months.map((m) => {
                       const value = dataMap[m.key] ?? 0
                       return (
@@ -872,7 +851,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         case "physical":
           return <PhysicalBlock row={row} />
 case "sales":
-          return <SalesBlock analogs={analogsData} />
+          return <SalesBlock selectedAnalog={selectedAnalog} />
         case "analogs":
           return (
             <AnalogsBlock
