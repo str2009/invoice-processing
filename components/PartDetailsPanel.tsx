@@ -438,11 +438,22 @@ function AnalogsBlock({
                     const d = new Date(dateStr)
                     return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
                   }
-                  const days = getDaysSince(analog.last_sale_date)
-                  const inactivityBg = days === null || days >= 730
-                    ? "rgba(255, 80, 80, 0.16)"    // dead: soft red
-                    : days >= 365
-                      ? "rgba(255, 120, 150, 0.12)" // slow: soft pink
+                  
+                  // Use lastSaleDate, or fallback to latest purchase date
+                  let days: number | null = null
+                  if (analog.last_sale_date) {
+                    days = getDaysSince(analog.last_sale_date)
+                  } else if (analog.purchase_history && analog.purchase_history.length > 0) {
+                    // Get most recent purchase date
+                    const latestPurchase = analog.purchase_history[0]?.date
+                    days = getDaysSince(latestPurchase)
+                  }
+                  // If neither exists, days stays null -> no highlight
+                  
+                  const inactivityBg = days !== null && days >= 730
+                    ? "rgba(255, 80, 80, 0.16)"    // dead: 2+ years, soft red
+                    : days !== null && days >= 365
+                      ? "rgba(255, 120, 150, 0.12)" // slow: 1+ year, soft pink
                       : undefined
                   
                   return (
