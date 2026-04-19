@@ -5,10 +5,17 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   X,
   Package,
   TrendingUp,
-  Warehouse,
+  Warehouse as WarehouseIcon,
   Weight,
   BarChart3,
   GitCompareArrows,
@@ -46,10 +53,22 @@ interface PurchaseHistoryItem {
   date: string
 }
 
+interface SalesMonthlyDataPoint {
+  month: string // "YYYY-MM"
+  qty: number
+}
+
+interface SalesMonthlyWarehouse {
+  warehouse: string
+  data: SalesMonthlyDataPoint[]
+}
+
 interface AnalogItem {
   part_brand_key: string
   code?: string
   brand: string
+  sold_12m?: number
+  sales_monthly?: SalesMonthlyWarehouse[]
   price: number
   purchase_price?: number
   stock: number
@@ -208,7 +227,7 @@ function InventoryBlock({ row }: { row: InvoiceRow }) {
   return (
     <div className="pl-6">
       <div className="mb-2 flex items-center gap-2">
-        <Warehouse className="h-4 w-4 text-muted-foreground" />
+        <WarehouseIcon className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Inventory
         </span>
@@ -254,7 +273,25 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
   )
 }
 
-function SalesBlock({ row }: { row: InvoiceRow }) {
+function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
+  // Generate last 12 months dynamically (from -11 months to current)
+  const months = useMemo(() => {
+    const result: { key: string; label: string }[] = []
+    const now = new Date()
+    const monthNames = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
+    
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      result.push({
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        label: monthNames[d.getMonth()],
+      })
+    }
+    return result
+  }, [])
+
+  const salesData = selectedAnalog?.sales_monthly ?? []
+
   return (
     <div className="pl-6">
       <div className="mb-2 flex items-center gap-2">
@@ -263,15 +300,65 @@ function SalesBlock({ row }: { row: InvoiceRow }) {
           Sales
         </span>
       </div>
-      <div className="rounded-lg border border-border bg-muted/30 px-3 py-1">
-        <InfoRow label="12-month sales" value={row.sales12m} />
-        <div className="border-t border-border/50" />
-        <InfoRow label="Monthly avg" value={Math.round(row.sales12m / 12)} />
+      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+        <table className="w-full text-[10px]">
+          <thead>
+            <tr className="border-b border-border/50">
+              {months.map((m) => (
+                <th
+                  key={m.key}
+                  className="px-1 py-1 text-center font-normal text-muted-foreground"
+                >
+                  {m.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {salesData.length === 0 ? (
+              <tr>
+                <td colSpan={12} className="px-2 py-2 text-center text-muted-foreground">
+                  No data
+                </td>
+              </tr>
+            ) : (
+              salesData.map((row) => {
+                // Convert row.data array to map for O(1) lookup
+                const dataMap = Object.fromEntries(
+                  row.data.map((x) => [x.month, x.qty])
+                )
+                
+                return (
+                  <tr 
+                    key={row.warehouse} 
+                    className="hover:bg-muted/50 transition-colors"
+                    title={row.warehouse}
+                  >
+                    {months.map((m) => {
+                      const value = dataMap[m.key] ?? 0
+                      return (
+                        <td
+                          key={m.key}
+                          className={`px-1 py-1.5 text-center font-mono tabular-nums ${
+                            value > 0 ? "text-foreground" : "text-muted-foreground/50"
+                          }`}
+                        >
+                          {value > 0 ? value : "–"}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   )
 }
 
+// AnalogsBlock component
 function AnalogsBlock({
   analogs,
   isLoading,
@@ -293,14 +380,14 @@ function AnalogsBlock({
 
   return (
     <div className="pl-6">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center">
         <div className="flex items-center gap-2">
           <GitCompareArrows className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Analogs
           </span>
         </div>
-        <label className="flex cursor-pointer items-center gap-1.5">
+        <label className="mx-auto flex cursor-pointer items-center gap-1.5">
           <span className="text-[10px] text-muted-foreground">Include zero stock</span>
           <button
             type="button"
@@ -333,9 +420,9 @@ function AnalogsBlock({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/50 text-muted-foreground">
-                  <th className="px-2 py-1.5 text-left font-medium">Code</th>
-                  <th className="px-2 py-1.5 text-left font-medium">Brand</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
+<th className="px-2 py-1.5 text-left font-medium">Code</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
@@ -344,6 +431,31 @@ function AnalogsBlock({
                 {analogs.map((analog, idx) => {
                   const isCurrentPart = analog.part_brand_key === currentPartKey
                   const isSelected = selectedAnalog?.part_brand_key === analog.part_brand_key
+                  
+                  // Calculate inactivity level for row highlighting
+                  const getDaysSince = (dateStr: string | undefined): number | null => {
+                    if (!dateStr) return null
+                    const d = new Date(dateStr)
+                    return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
+                  }
+                  
+                  // Use lastSaleDate, or fallback to latest purchase date
+                  let days: number | null = null
+                  if (analog.last_sale_date) {
+                    days = getDaysSince(analog.last_sale_date)
+                  } else if (analog.purchase_history && analog.purchase_history.length > 0) {
+                    // Get most recent purchase date
+                    const latestPurchase = analog.purchase_history[0]?.date
+                    days = getDaysSince(latestPurchase)
+                  }
+                  // If neither exists, days stays null -> no highlight
+                  
+                  const inactivityBg = days !== null && days >= 730
+                    ? "rgba(255, 80, 80, 0.16)"    // dead: 2+ years, soft red
+                    : days !== null && days >= 365
+                      ? "rgba(255, 120, 150, 0.12)" // slow: 1+ year, soft pink
+                      : undefined
+                  
                   return (
                     <tr
                       key={analog.part_brand_key}
@@ -351,12 +463,21 @@ function AnalogsBlock({
                       className={`cursor-pointer transition-colors ${idx < analogs.length - 1 ? "border-b border-border/30" : ""} ${
                         isSelected ? "bg-muted" : isCurrentPart ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50"
                       }`}
+                      style={inactivityBg && !isSelected ? { backgroundColor: inactivityBg } : undefined}
                     >
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
                       </td>
-                      <td className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-muted-foreground"}`}>
-                        {analog.brand}
+                      <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${
+                        analog.sold_12m === undefined 
+                          ? "text-muted-foreground" 
+                          : analog.sold_12m === 0 
+                            ? "text-muted-foreground/60" 
+                            : analog.sold_12m >= 10 
+                              ? "text-emerald-600 dark:text-emerald-400" 
+                              : "text-foreground/80"
+                      }`}>
+                        {analog.sold_12m === undefined ? "—" : analog.sold_12m}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right font-mono ${
@@ -483,17 +604,34 @@ function AnalogDetailsBlock({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   ).slice(0, 10)
 
-  // Check if date is older than 90 days
-  const isOlderThan90Days = (dateStr: string) => {
+  // Calculate days since last sale
+  const getDaysSinceLastSale = (dateStr: string | undefined): number | null => {
+    if (!dateStr) return null
     const date = new Date(dateStr)
     const now = new Date()
-    const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    return diffDays > 90
+    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const lastSaleIsOld = selectedAnalog.last_sale_date 
-    ? isOlderThan90Days(selectedAnalog.last_sale_date) 
-    : false
+  // Format days as "118 d" or "2y 118d"
+  const formatDaysSince = (days: number | null): string => {
+    if (days === null) return "no sales"
+    if (days < 365) return `${days} d`
+    const years = Math.floor(days / 365)
+    const restDays = days % 365
+    return `${years}y ${restDays}d`
+  }
+
+  const daysSinceLastSale = getDaysSinceLastSale(selectedAnalog.last_sale_date)
+  
+  // Determine inactivity level for highlighting
+  const getInactivityLevel = (days: number | null): "normal" | "slow" | "dead" => {
+    if (days === null) return "dead" // no sales = treat as dead stock
+    if (days >= 730) return "dead"   // 2+ years
+    if (days >= 365) return "slow"   // 1+ year
+    return "normal"
+  }
+  
+  const inactivityLevel = getInactivityLevel(daysSinceLastSale)
 
   return (
     <div className="pl-6">
@@ -534,23 +672,33 @@ function AnalogDetailsBlock({
           </span>
           <div className="mt-2 flex-1">
             {selectedAnalog.last_sale_date ? (
-              <div className={`flex flex-col ${lastSaleIsOld ? "text-muted-foreground" : ""}`}>
-                <div className="flex items-center gap-1.5">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3">
                   <span className="font-mono text-base tabular-nums">
                     {selectedAnalog.last_sale_price 
                       ? selectedAnalog.last_sale_price.toLocaleString("ru-RU") 
                       : "—"}
                   </span>
-                  {lastSaleIsOld && (
-                    <span className="text-amber-500 text-xs" title="Sale older than 90 days">!</span>
-                  )}
+                  <span 
+                    className={`text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded ${
+                      inactivityLevel === "dead" 
+                        ? "bg-red-500/15 text-red-400" 
+                        : inactivityLevel === "slow" 
+                          ? "bg-amber-500/15 text-amber-400" 
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {formatDaysSince(daysSinceLastSale)}
+                  </span>
                 </div>
                 <span className="font-mono text-xs text-muted-foreground mt-0.5 tabular-nums">
                   {formatDateShort(selectedAnalog.last_sale_date)}
                 </span>
               </div>
             ) : (
-              <span className="text-sm text-muted-foreground">—</span>
+              <div className="flex flex-col">
+                <span className="text-sm text-red-400">no sales</span>
+              </div>
             )}
           </div>
         </div>
@@ -591,11 +739,12 @@ function AnalogDetailsBlock({
 
 export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDetailsPanelProps) {
   const [blocksOrder, setBlocksOrder] = useState<BlockId[]>(DEFAULT_ORDER)
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all")
   const [analogsRaw, setAnalogsRaw] = useState<AnalogItem[]>([])
   const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
-  const [selectedAnalog, setSelectedAnalog] = useState<AnalogItem | null>(null)
+  const [selectedPartKey, setSelectedPartKey] = useState<string | null>(null)
 
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
@@ -707,6 +856,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       part_brand_key: currentPartKey,
       code: currentPartFromApi?.code || row.partCode,
       brand: row.manufacturer,
+      sold_12m: currentPartFromApi?.sold_12m,
+      sales_monthly: currentPartFromApi?.sales_monthly,
       price: currentPartFromApi?.price ?? 0,
       purchase_price: currentPartFromApi?.purchase_price,
       stock: currentPartFromApi?.stock ?? row.stock,
@@ -733,16 +884,29 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   // History data (no filtering needed)
   const historyData = historyRaw
 
-  // Auto-select first analog when data loads or part changes
+  // Reset selection when product changes (analogsRaw reference changes)
   useEffect(() => {
-    if (analogsData.length > 0) {
-      // Always select first analog when analogsData changes
-      setSelectedAnalog(analogsData[0])
-    } else {
-      // Clear selection when no analogs
-      setSelectedAnalog(null)
+    setSelectedPartKey(null)
+  }, [analogsRaw])
+  
+  // Derive selectedAnalog from selectedPartKey and analogsData
+  const selectedAnalog = useMemo(() => {
+    if (analogsData.length === 0) return null
+    
+    // If selectedPartKey is set and exists in current data, use it
+    if (selectedPartKey) {
+      const found = analogsData.find(a => a.part_brand_key === selectedPartKey)
+      if (found) return found
     }
-  }, [analogsData])
+    
+    // Fallback to first analog
+    return analogsData[0]
+  }, [analogsData, selectedPartKey])
+  
+  // Callback to select analog by key
+  const handleSelectAnalog = useCallback((analog: AnalogItem) => {
+    setSelectedPartKey(analog.part_brand_key)
+  }, [])
 
   // Render a block by ID
   const renderBlock = useCallback(
@@ -754,8 +918,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
           return <InventoryBlock row={row} />
         case "physical":
           return <PhysicalBlock row={row} />
-        case "sales":
-          return <SalesBlock row={row} />
+case "sales":
+          return <SalesBlock selectedAnalog={selectedAnalog} />
         case "analogs":
           return (
             <AnalogsBlock
@@ -765,7 +929,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
               onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
               currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
               selectedAnalog={selectedAnalog}
-              onSelectAnalog={setSelectedAnalog}
+              onSelectAnalog={handleSelectAnalog}
             />
           )
         case "analogDetails":
@@ -776,7 +940,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog]
   )
 
   return (
@@ -786,17 +950,45 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       aria-label="Part details"
     >
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={onClose}
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close panel</span>
-        </Button>
+      <div className="flex shrink-0 items-center border-b border-border px-4 py-2">
+        {/* Left: Title */}
+        <div className="w-24">
+          <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
+        </div>
+        
+        {/* Center: Warehouse Selector */}
+        <div className="flex flex-1 justify-center">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Warehouse
+            </span>
+            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+              <SelectTrigger className="h-7 w-[120px] border-border/50 bg-transparent text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="koms18">Комс 18</SelectItem>
+                <SelectItem value="talnakh">Талнах</SelectItem>
+                <SelectItem value="salut">Салют</SelectItem>
+                <SelectItem value="garage">Гараж</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        {/* Right: Close Button */}
+        <div className="w-24 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close panel</span>
+          </Button>
+        </div>
       </div>
 
       {/* Scrollable content with draggable blocks */}
