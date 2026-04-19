@@ -691,7 +691,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [historyRaw, setHistoryRaw] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
-  const [selectedAnalog, setSelectedAnalog] = useState<AnalogItem | null>(null)
+  const [selectedPartKey, setSelectedPartKey] = useState<string | null>(null)
 
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
@@ -829,16 +829,29 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   // History data (no filtering needed)
   const historyData = historyRaw
 
-  // Auto-select first analog when data loads or part changes
+  // Reset selection when product changes (analogsRaw reference changes)
   useEffect(() => {
-    if (analogsData.length > 0) {
-      // Always select first analog when analogsData changes
-      setSelectedAnalog(analogsData[0])
-    } else {
-      // Clear selection when no analogs
-      setSelectedAnalog(null)
+    setSelectedPartKey(null)
+  }, [analogsRaw])
+  
+  // Derive selectedAnalog from selectedPartKey and analogsData
+  const selectedAnalog = useMemo(() => {
+    if (analogsData.length === 0) return null
+    
+    // If selectedPartKey is set and exists in current data, use it
+    if (selectedPartKey) {
+      const found = analogsData.find(a => a.part_brand_key === selectedPartKey)
+      if (found) return found
     }
-  }, [analogsData])
+    
+    // Fallback to first analog
+    return analogsData[0]
+  }, [analogsData, selectedPartKey])
+  
+  // Callback to select analog by key
+  const handleSelectAnalog = useCallback((analog: AnalogItem) => {
+    setSelectedPartKey(analog.part_brand_key)
+  }, [])
 
   // Render a block by ID
   const renderBlock = useCallback(
@@ -861,7 +874,7 @@ case "sales":
               onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
               currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
               selectedAnalog={selectedAnalog}
-              onSelectAnalog={setSelectedAnalog}
+              onSelectAnalog={handleSelectAnalog}
             />
           )
         case "analogDetails":
@@ -872,7 +885,7 @@ case "sales":
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog]
   )
 
   return (
