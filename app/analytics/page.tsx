@@ -605,7 +605,7 @@ useEffect(() => {
   const loadWarehouseData = useCallback(async () => {
     setIsDataLoading(true)
     try {
-      const response = await fetch("https://max24vin.ru/webhook/analytics-599effdf", {
+      const response = await fetch("/api/analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -620,8 +620,9 @@ useEffect(() => {
         return
       }
       
+      // API returns a plain array, NOT { rows: [...] }
       const data = await response.json()
-      const rows = data.rows ?? []
+      const rows = Array.isArray(data) ? data : []
       
       const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
         id: String(r.id ?? idx + 1),
