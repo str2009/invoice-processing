@@ -274,6 +274,7 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
 }
 
 function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
+  console.log("[v0] SalesBlock render, selectedAnalog:", selectedAnalog?.part_brand_key, "has sales_monthly:", !!selectedAnalog?.sales_monthly)
   // Generate last 12 months dynamically (from -11 months to current)
   const months = useMemo(() => {
     const result: { key: string; label: string }[] = []
@@ -852,8 +853,12 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   
   // Callback to select analog by key
   const handleSelectAnalog = useCallback((analog: AnalogItem) => {
+    console.log("[v0] handleSelectAnalog called:", analog.part_brand_key)
     setSelectedPartKey(analog.part_brand_key)
   }, [])
+  
+  // Debug log when selectedAnalog changes
+  console.log("[v0] selectedAnalog:", selectedAnalog?.part_brand_key, "selectedPartKey:", selectedPartKey)
 
   // Render a block by ID
   const renderBlock = useCallback(
