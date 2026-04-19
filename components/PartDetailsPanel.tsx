@@ -380,14 +380,14 @@ function AnalogsBlock({
 
   return (
     <div className="pl-6">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center">
         <div className="flex items-center gap-2">
           <GitCompareArrows className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Analogs
           </span>
         </div>
-        <label className="flex cursor-pointer items-center gap-1.5">
+        <label className="mx-auto flex cursor-pointer items-center gap-1.5">
           <span className="text-[10px] text-muted-foreground">Include zero stock</span>
           <button
             type="button"
@@ -673,19 +673,21 @@ function AnalogDetailsBlock({
           <div className="mt-2 flex-1">
             {selectedAnalog.last_sale_date ? (
               <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-3">
                   <span className="font-mono text-base tabular-nums">
                     {selectedAnalog.last_sale_price 
                       ? selectedAnalog.last_sale_price.toLocaleString("ru-RU") 
                       : "—"}
                   </span>
-                  <span className={`text-xs font-mono tabular-nums ${
-                    inactivityLevel === "dead" 
-                      ? "text-red-400" 
-                      : inactivityLevel === "slow" 
-                        ? "text-amber-400" 
-                        : "text-muted-foreground"
-                  }`}>
+                  <span 
+                    className={`text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded ${
+                      inactivityLevel === "dead" 
+                        ? "bg-red-500/15 text-red-400" 
+                        : inactivityLevel === "slow" 
+                          ? "bg-amber-500/15 text-amber-400" 
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
                     {formatDaysSince(daysSinceLastSale)}
                   </span>
                 </div>
