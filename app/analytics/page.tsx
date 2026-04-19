@@ -654,6 +654,8 @@ useEffect(() => {
   }, [filterInStock])
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
+  
+  console.log("[v0] rawInvoiceRows:", rawInvoiceRows.length, "analyticsData:", analyticsData.length)
 
   const suppliers = useMemo(() => [...new Set(analyticsData.map((r) => r.brand))].sort(), [analyticsData])
   const pricingGroups = useMemo(() => [...new Set(analyticsData.map((r) => r.pricingGroup))].sort(), [analyticsData])
@@ -661,13 +663,19 @@ useEffect(() => {
   // Filtered data
   const filteredData = useMemo(() => {
     let d = analyticsData
+    console.log("[v0] Before filters:", d.length, "filterInStock:", filterInStock)
     if (supplierFilter !== "all") d = d.filter((r) => r.brand === supplierFilter)
     if (pricingGroupFilter !== "all") d = d.filter((r) => r.pricingGroup === pricingGroupFilter)
-    if (filterInStock) d = d.filter((r) => r.stock > 0)
+    if (filterInStock) {
+      const before = d.length
+      d = d.filter((r) => r.stock > 0)
+      console.log("[v0] After filterInStock:", d.length, "(removed", before - d.length, "rows)")
+    }
     if (filterSlowMoving) d = d.filter((r) => r.sales12m < 100)
     if (filterNegativeMargin) d = d.filter((r) => r.marginPct < 0)
     if (filterCompetitor) d = d.filter((r) => r.competitorPrice > 0 && r.competitorPrice < r.current)
     if (filterBulk) d = d.filter((r) => r.bulk >= 50)
+    console.log("[v0] After all filters:", d.length)
     return d
   }, [analyticsData, supplierFilter, pricingGroupFilter, filterInStock, filterSlowMoving, filterNegativeMargin, filterCompetitor, filterBulk])
 
