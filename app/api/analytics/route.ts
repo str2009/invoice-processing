@@ -21,6 +21,10 @@ export async function POST(req: Request) {
     if (Array.isArray(data)) {
       rows = data
     } else if (data && typeof data === "object") {
+      // If there's a message field, log it - this usually means the workflow isn't active
+      if (data.message) {
+        console.log("[v0] Webhook returned message:", data.message)
+      }
       // Check common wrapper keys
       rows = data.rows ?? data.data ?? data.items ?? data.result ?? []
       console.log("[v0] Extracted rows from object, count:", rows.length)
