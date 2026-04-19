@@ -935,6 +935,13 @@ const table = useReactTable({
   const filteredRows = table.getFilteredRowModel().rows
   const rowCount = filteredRows.length
 
+  // Calculate total table width for proper column resizing
+  const totalWidth = useMemo(() => {
+    return table
+      .getVisibleLeafColumns()
+      .reduce((sum, col) => sum + col.getSize(), 0)
+  }, [table.getVisibleLeafColumns()])
+
   // Aggregated metrics
   const metrics = useMemo(() => {
     const rows = filteredRows.map((r) => r.original)
@@ -1455,7 +1462,7 @@ const table = useReactTable({
           onDragEnd={handleDragEnd}
         >
 <div className="min-w-0 flex-1 overflow-x-auto overflow-y-auto">
-  <table className="border-collapse" style={{ width: "max-content", minWidth: "100%", tableLayout: "fixed" }}>
+  <table className="border-collapse" style={{ width: totalWidth, minWidth: "100%", tableLayout: "fixed" }}>
   <thead className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
   {table.getHeaderGroups().map((headerGroup) => (
   <tr key={headerGroup.id}>
