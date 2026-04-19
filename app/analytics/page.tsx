@@ -266,7 +266,8 @@ function SortHeader({
       onClick={() => column.toggleSorting(sorted === "asc")}
     >
       {label}
-      <ArrowUpDown className={`ml-0.5 h-3 w-3 ${sorted ? "text-foreground" : ""}`} />
+      {sorted === "asc" && <ArrowUp className="ml-0.5 h-3 w-3 text-primary" />}
+      {sorted === "desc" && <ArrowDown className="ml-0.5 h-3 w-3 text-primary" />}
     </Button>
   )
 }
