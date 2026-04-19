@@ -72,6 +72,7 @@ import {
   GripHorizontal,
   Columns3,
   CalendarDays,
+  Loader2,
 } from "lucide-react"
 import type { InvoiceRow, InvoiceListItem } from "@/lib/mock-data"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
@@ -595,66 +596,58 @@ useEffect(() => {
   const [filterCompetitor, setFilterCompetitor] = useState(false)
   const [filterBulk, setFilterBulk] = useState(false)
 
-  // Data — fetched from backend, no mock fallback
+  // Data — manual load only, no auto-fetch
   const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>([])
-  const [isDataLoading, setIsDataLoading] = useState(true)
+  const [isDataLoading, setIsDataLoading] = useState(false)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
 
-  // Fetch ALL invoice rows on mount (aggregate across all invoices)
-  useEffect(() => {
-    const loadAllData = async () => {
-      setIsDataLoading(true)
-      try {
-        // 1. Get list of invoices
-        const listRes = await fetch("/api/invoice/list")
-        if (!listRes.ok) { setIsDataLoading(false); return }
-        const invoices: InvoiceListItem[] = await listRes.json()
-        if (!invoices.length) { setIsDataLoading(false); return }
-
-        // 2. Fetch rows for each invoice in parallel
-        const allRows: InvoiceRow[] = []
-        const fetches = invoices.map(async (inv) => {
-          try {
-            const res = await fetch(`/api/invoice/${inv.invoice_id}`)
-            if (!res.ok) return []
-            const data = await res.json()
-
-            console.log("invoice rows from API:", data)
-            console.log("FIRST ROW:", data?.rows?.[0])
-            
-            const rows = data.rows ?? []
-            
-            return rows.map((r: Record<string, unknown>, idx: number) => ({
-              id: String(r.id ?? idx + 1),
-              partCode: (r.part_code as string) ?? (r.partCode as string) ?? "",
-              manufacturer: (r.manufacturer as string) ?? "",
-              partName: (r.part_name as string) ?? (r.partName as string) ?? "",
-              qty: Number(r.qty ?? 0),
-              cost: Number(r.cost ?? 0),
-              now: Number(r.now ?? r.price_now ?? 0),
-              ship: Number(r.ship ?? r.price_ship ?? 0),
-              deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
-              stock: Number(r.stock ?? 0),
-              weight: Number(r.weight ?? 0),
-              isBulky: Boolean(r.isBulky),
-              productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
-              sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
-            })) as InvoiceRow[]
-          } catch {
-            return [] as InvoiceRow[]
-          }
-        })
-        const results = await Promise.all(fetches)
-        results.forEach((rows) => allRows.push(...rows))
-        setRawInvoiceRows(allRows)
-        console.log("ROWS", allRows)
-      } catch {
-        setRawInvoiceRows([])
-      } finally {
+  // Manual data load function - called by button click only
+  const loadWarehouseData = useCallback(async () => {
+    setIsDataLoading(true)
+    try {
+      const response = await fetch("https://max24vin.ru/webhook/analytics-599effdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inStock: filterInStock,
+          limit: 200,
+          offset: 0,
+        }),
+      })
+      
+      if (!response.ok) {
         setIsDataLoading(false)
+        return
       }
+      
+      const data = await response.json()
+      const rows = data.rows ?? []
+      
+      const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
+        id: String(r.id ?? idx + 1),
+        partCode: (r.part_code as string) ?? (r.partCode as string) ?? "",
+        manufacturer: (r.brand as string) ?? (r.manufacturer as string) ?? "",
+        partName: (r.part_name as string) ?? (r.partName as string) ?? "",
+        qty: Number(r.qty ?? 0),
+        cost: Number(r.purchase_price ?? r.cost ?? 0),
+        now: Number(r.price ?? r.now ?? r.price_now ?? 0),
+        ship: Number(r.ship ?? r.price_ship ?? 0),
+        deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
+        stock: Number(r.stock_qty ?? r.stock ?? 0),
+        weight: Number(r.weight ?? 0),
+        isBulky: Boolean(r.isBulky),
+        productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
+        sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
+      })) as InvoiceRow[]
+      
+      setRawInvoiceRows(mappedRows)
+      setIsDataLoaded(true)
+    } catch {
+      setRawInvoiceRows([])
+    } finally {
+      setIsDataLoading(false)
     }
-    loadAllData()
-  }, [])
+  }, [filterInStock])
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
 
@@ -913,6 +906,15 @@ useEffect(() => {
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
           <h1 className="text-sm font-semibold text-foreground">Analytics</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 px-3 text-xs"
+            onClick={loadWarehouseData}
+            disabled={isDataLoading}
+          >
+            {isDataLoading ? "Загрузка..." : isDataLoaded ? "Обновить" : "Показать склад"}
+          </Button>
           <span className="font-mono text-[11px] text-muted-foreground">{isDataLoading ? "loading..." : `${rowCount} rows`}</span>
         </div>
 
@@ -1142,23 +1144,25 @@ useEffect(() => {
                   })
                 ) : (
   <TableRow>
-  <TableCell colSpan={columns.length} className="h-32 text-center">
-    {isDataLoading ? (
-      <div className="flex flex-col items-center gap-1">
-        <span className="text-sm text-muted-foreground">Loading analytics data...</span>
-      </div>
-    ) : analyticsData.length === 0 ? (
-      <div className="flex flex-col items-center gap-1">
-        <span className="text-sm text-muted-foreground">No analytics data available</span>
-        <span className="text-xs text-muted-foreground/60">
-          Upload invoices on the Invoice page to populate analytics
-        </span>
-      </div>
-    ) : (
-      <span className="text-sm text-muted-foreground">No results match current filters.</span>
-    )}
-  </TableCell>
-  </TableRow>
+                    <TableCell colSpan={columns.length} className="h-32 text-center">
+                      {isDataLoading ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Загрузка...</span>
+                        </div>
+                      ) : !isDataLoaded ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Нажмите &quot;Показать склад&quot;</span>
+                        </div>
+                      ) : analyticsData.length === 0 ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Нет данных</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Нет результатов по текущим фильтрам</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </table>
