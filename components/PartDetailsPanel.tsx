@@ -274,7 +274,6 @@ function PhysicalBlock({ row }: { row: InvoiceRow }) {
 }
 
 function SalesBlock({ selectedAnalog }: { selectedAnalog: AnalogItem | null }) {
-  console.log("[v0] SalesBlock render, selectedAnalog:", selectedAnalog?.part_brand_key, "has sales_monthly:", !!selectedAnalog?.sales_monthly)
   // Generate last 12 months dynamically (from -11 months to current)
   const months = useMemo(() => {
     const result: { key: string; label: string }[] = []
@@ -579,23 +578,47 @@ function AnalogDetailsBlock({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   ).slice(0, 10)
 
-  // Check if date is older than 90 days
-  const isOlderThan90Days = (dateStr: string) => {
+  // Calculate days since last sale
+  const getDaysSinceLastSale = (dateStr: string | undefined): number | null => {
+    if (!dateStr) return null
     const date = new Date(dateStr)
     const now = new Date()
-    const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    return diffDays > 90
+    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const lastSaleIsOld = selectedAnalog.last_sale_date 
-    ? isOlderThan90Days(selectedAnalog.last_sale_date) 
-    : false
+  // Format days as "118 d" or "2y 118d"
+  const formatDaysSince = (days: number | null): string => {
+    if (days === null) return "no sales"
+    if (days < 365) return `${days} d`
+    const years = Math.floor(days / 365)
+    const restDays = days % 365
+    return `${years}y ${restDays}d`
+  }
+
+  const daysSinceLastSale = getDaysSinceLastSale(selectedAnalog.last_sale_date)
+  
+  // Determine inactivity level for highlighting
+  const getInactivityLevel = (days: number | null): "normal" | "slow" | "dead" => {
+    if (days === null) return "dead" // no sales = treat as dead stock
+    if (days >= 730) return "dead"   // 2+ years
+    if (days >= 365) return "slow"   // 1+ year
+    return "normal"
+  }
+  
+  const inactivityLevel = getInactivityLevel(daysSinceLastSale)
+
+  // Background style based on inactivity level
+  const inactivityBgStyle = inactivityLevel === "dead"
+    ? { backgroundColor: "rgba(255, 80, 80, 0.18)" }
+    : inactivityLevel === "slow"
+      ? { backgroundColor: "rgba(255, 120, 150, 0.15)" }
+      : {}
 
   return (
     <div className="pl-6">
       <div 
         className="rounded-lg border border-border bg-muted/30 grid"
-        style={{ gridTemplateColumns: "2fr 1fr 1fr" }}
+        style={{ gridTemplateColumns: "2fr 1fr 1fr", ...inactivityBgStyle }}
       >
         {/* Purchase History (Left) */}
         <div className="flex flex-col px-4 py-3">
@@ -630,23 +653,31 @@ function AnalogDetailsBlock({
           </span>
           <div className="mt-2 flex-1">
             {selectedAnalog.last_sale_date ? (
-              <div className={`flex flex-col ${lastSaleIsOld ? "text-muted-foreground" : ""}`}>
+              <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-base tabular-nums">
                     {selectedAnalog.last_sale_price 
                       ? selectedAnalog.last_sale_price.toLocaleString("ru-RU") 
                       : "—"}
                   </span>
-                  {lastSaleIsOld && (
-                    <span className="text-amber-500 text-xs" title="Sale older than 90 days">!</span>
-                  )}
+                  <span className={`text-xs font-mono tabular-nums ${
+                    inactivityLevel === "dead" 
+                      ? "text-red-400" 
+                      : inactivityLevel === "slow" 
+                        ? "text-amber-400" 
+                        : "text-muted-foreground"
+                  }`}>
+                    {formatDaysSince(daysSinceLastSale)}
+                  </span>
                 </div>
                 <span className="font-mono text-xs text-muted-foreground mt-0.5 tabular-nums">
                   {formatDateShort(selectedAnalog.last_sale_date)}
                 </span>
               </div>
             ) : (
-              <span className="text-sm text-muted-foreground">—</span>
+              <div className="flex flex-col">
+                <span className="text-sm text-red-400">no sales</span>
+              </div>
             )}
           </div>
         </div>
@@ -853,12 +884,8 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   
   // Callback to select analog by key
   const handleSelectAnalog = useCallback((analog: AnalogItem) => {
-    console.log("[v0] handleSelectAnalog called:", analog.part_brand_key)
     setSelectedPartKey(analog.part_brand_key)
   }, [])
-  
-  // Debug log when selectedAnalog changes
-  console.log("[v0] selectedAnalog:", selectedAnalog?.part_brand_key, "selectedPartKey:", selectedPartKey)
 
   // Render a block by ID
   const renderBlock = useCallback(
