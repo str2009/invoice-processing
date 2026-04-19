@@ -620,10 +620,10 @@ useEffect(() => {
         return
       }
       
-      // API returns a plain array, NOT { rows: [...] }
+      // Backend returns a plain JSON array
       const data = await response.json()
-      console.log("[v0] Analytics API response:", data)
-      console.log("[v0] Is array?", Array.isArray(data), "Length:", Array.isArray(data) ? data.length : "N/A")
+      console.log("[FRONT DATA]", data)
+      
       const rows = Array.isArray(data) ? data : []
       
       const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
@@ -643,11 +643,10 @@ useEffect(() => {
         sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
       })) as InvoiceRow[]
       
-      console.log("[v0] Mapped rows count:", mappedRows.length, "First row:", mappedRows[0])
       setRawInvoiceRows(mappedRows)
       setIsDataLoaded(true)
     } catch (err) {
-      console.error("[v0] Analytics load error:", err)
+      console.error("[FRONT DATA] error:", err)
       setRawInvoiceRows([])
     } finally {
       setIsDataLoading(false)
