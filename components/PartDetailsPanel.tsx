@@ -388,6 +388,7 @@ function AnalogsBlock({
   currentPartKey,
   selectedAnalog,
   onSelectAnalog,
+  commentsMap,
 }: {
   analogs: AnalogItem[]
   isLoading: boolean
@@ -396,6 +397,7 @@ function AnalogsBlock({
   currentPartKey: string
   selectedAnalog: AnalogItem | null
   onSelectAnalog: (analog: AnalogItem) => void
+  commentsMap: Record<string, boolean>
 }) {
   const bestPrice = analogs.length > 0 ? Math.min(...analogs.map((a) => a.price)) : 0
 
@@ -441,7 +443,8 @@ function AnalogsBlock({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/50 text-muted-foreground">
-<th className="px-2 py-1.5 text-left font-medium">Code</th>
+                  <th className="w-4 px-1 py-1.5"></th>
+                  <th className="px-2 py-1.5 text-left font-medium">Code</th>
                       <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
                       <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
@@ -486,6 +489,11 @@ function AnalogsBlock({
                       }`}
                       style={inactivityBg && !isSelected ? { backgroundColor: inactivityBg } : undefined}
                     >
+                      <td className="w-4 px-1 py-1.5 text-center">
+                        {commentsMap[analog.part_brand_key] && (
+                          <span className="text-red-500 font-bold text-[10px]">!</span>
+                        )}
+                      </td>
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
                       </td>
@@ -843,6 +851,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [commentText, setCommentText] = useState("")
   const [isSavingComment, setIsSavingComment] = useState(false)
   const [commentSaved, setCommentSaved] = useState(false)
+  const [analogsCommentsMap, setAnalogsCommentsMap] = useState<Record<string, boolean>>({})
 
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
@@ -879,6 +888,33 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
     fetchPartDetails()
   }, [partBrandKey])
+
+  // Fetch comments status for all analogs
+  useEffect(() => {
+    if (!analogsData || analogsData.length === 0) {
+      setAnalogsCommentsMap({})
+      return
+    }
+
+    const fetchAnalogsComments = async () => {
+      const keys = analogsData.map((a) => a.part_brand_key)
+      try {
+        const response = await fetch("/api/comments/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys }),
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setAnalogsCommentsMap(data)
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    fetchAnalogsComments()
+  }, [analogsData])
 
   // Load order from localStorage
   useEffect(() => {
@@ -1063,6 +1099,13 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         const data = await response.json()
         setCommentData(data)
         setCommentSaved(true)
+        // Update the analogs comments map
+        if (commentKey) {
+          setAnalogsCommentsMap((prev) => ({
+            ...prev,
+            [commentKey]: !!commentText,
+          }))
+        }
         setTimeout(() => {
           setIsCommentModalOpen(false)
           setCommentSaved(false)
@@ -1096,18 +1139,19 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
           return <PhysicalBlock row={row} />
 case "sales":
           return <SalesBlock selectedAnalog={selectedAnalog} />
-        case "analogs":
-          return (
-            <AnalogsBlock
-              analogs={analogsData}
-              isLoading={isLoading}
-              includeZeroStock={includeZeroStock}
-              onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
-              currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
-              selectedAnalog={selectedAnalog}
-              onSelectAnalog={handleSelectAnalog}
-            />
-          )
+case "analogs":
+  return (
+  <AnalogsBlock
+  analogs={analogsData}
+  isLoading={isLoading}
+  includeZeroStock={includeZeroStock}
+  onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
+  currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
+  selectedAnalog={selectedAnalog}
+  onSelectAnalog={handleSelectAnalog}
+  commentsMap={analogsCommentsMap}
+  />
+  )
         case "analogDetails":
           return <AnalogDetailsBlock selectedAnalog={selectedAnalog} />
         case "history":
@@ -1116,7 +1160,7 @@ case "sales":
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal, selectedAnalog]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal, analogsCommentsMap]
   )
 
   return (
