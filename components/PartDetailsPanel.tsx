@@ -889,36 +889,6 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     fetchPartDetails()
   }, [partBrandKey])
 
-  // Fetch comments status for all analogs
-  useEffect(() => {
-    console.log("[v0] analogsData changed:", analogsData?.length)
-    if (!analogsData || analogsData.length === 0) {
-      setAnalogsCommentsMap({})
-      return
-    }
-
-    const fetchAnalogsComments = async () => {
-      const keys = analogsData.map((a) => a.part_brand_key)
-      console.log("[v0] fetching bulk comments for keys:", keys)
-      try {
-        const response = await fetch("/api/comments/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ keys }),
-        })
-        if (response.ok) {
-          const data = await response.json()
-          console.log("[v0] bulk comments response:", data)
-          setAnalogsCommentsMap(data)
-        }
-      } catch (err) {
-        console.log("[v0] bulk comments error:", err)
-      }
-    }
-
-    fetchAnalogsComments()
-  }, [analogsData])
-
   // Load order from localStorage
   useEffect(() => {
     try {
@@ -1023,6 +993,33 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
   // History data (no filtering needed)
   const historyData = historyRaw
+
+  // Fetch comments status for all analogs
+  useEffect(() => {
+    if (!analogsData || analogsData.length === 0) {
+      setAnalogsCommentsMap({})
+      return
+    }
+
+    const fetchAnalogsComments = async () => {
+      const keys = analogsData.map((a) => a.part_brand_key)
+      try {
+        const response = await fetch("/api/comments/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys }),
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setAnalogsCommentsMap(data)
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    fetchAnalogsComments()
+  }, [analogsData])
 
   // Reset selection when product changes (analogsRaw reference changes)
   useEffect(() => {
