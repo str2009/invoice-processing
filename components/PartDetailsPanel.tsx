@@ -1114,37 +1114,47 @@ case "sales":
       {/* Header */}
       <div className="flex shrink-0 items-center border-b border-border px-4 py-2">
         {/* Left: Title */}
-        <div className="w-24">
+        <div className="flex-1">
           <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
         </div>
         
-        {/* Center: Warehouse Selector */}
-        <div className="flex flex-1 justify-center">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Warehouse
-            </span>
-            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-              <SelectTrigger className="h-7 w-[120px] border-border/50 bg-transparent text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="koms18">Комс 18</SelectItem>
-                <SelectItem value="talnakh">Талнах</SelectItem>
-                <SelectItem value="salut">Салют</SelectItem>
-                <SelectItem value="garage">Гараж</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        {/* Center: Comment Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          onClick={handleOpenCommentModal}
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+          Comment
+          {commentData?.comment && (
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          )}
+        </Button>
+
+        {/* Right: Warehouse Selector */}
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Warehouse
+          </span>
+          <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+            <SelectTrigger className="h-7 w-[80px] border-border/50 bg-transparent text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="koms18">Комс 18</SelectItem>
+              <SelectItem value="talnakh">Талнах</SelectItem>
+              <SelectItem value="salut">Салют</SelectItem>
+              <SelectItem value="garage">Гараж</SelectItem>
+            </SelectContent>
+          </Select>
         
-        {/* Right: Close Button */}
-        <div className="w-24 flex justify-end">
+        {/* Close Button */}
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0"
+            className="h-7 w-7 p-0 ml-2"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
