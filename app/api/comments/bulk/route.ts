@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase-server"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function POST(request: Request) {
   try {
@@ -9,9 +9,9 @@ export async function POST(request: Request) {
       return NextResponse.json({})
     }
 
-    const supabase = createClient()
+    const supabase = getSupabaseServer()
     const { data, error } = await supabase
-      .from("comments")
+      .from("part_comments")
       .select("part_brand_key")
       .in("part_brand_key", keys)
       .not("comment", "is", null)
