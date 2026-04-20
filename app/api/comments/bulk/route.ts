@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSupabaseServer } from "@/lib/supabase-server"
 
+// Bulk check for comments on multiple part_brand_keys
 export async function POST(request: Request) {
   try {
     const { keys } = await request.json()
