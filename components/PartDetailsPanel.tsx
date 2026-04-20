@@ -21,7 +21,17 @@ import {
   GitCompareArrows,
   History,
   GripVertical,
+  MessageSquare,
+  Check,
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import type { InvoiceRow } from "@/lib/mock-data"
 import {
   DndContext,
@@ -85,19 +95,30 @@ interface HistoryItem {
   price: number
 }
 
+interface CommentRecord {
+  id: string
+  part_brand_key: string
+  comment: string
+  manager: string
+  source: string
+  created_at: string
+  updated_at: string
+}
+
 interface DetailsResponse {
   analogs: AnalogItem[]
   history: HistoryItem[]
   analytics?: Record<string, unknown>
 }
 
-type BlockId = "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
+type BlockId = "comment" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
 
 const STORAGE_KEY = "part-details-layout"
 
 const DEFAULT_ORDER: BlockId[] = [
   "analogs",
   "analogDetails",
+  "comment",
   "pricing",
   "inventory",
   "physical",
@@ -506,6 +527,64 @@ function AnalogsBlock({
   )
 }
 
+function CommentBlock({
+  comment,
+  isLoading,
+  onEdit,
+}: {
+  comment: CommentRecord | null
+  isLoading: boolean
+  onEdit: () => void
+}) {
+  return (
+    <div className="pl-6">
+      <div className="mb-2 flex items-center gap-2">
+        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Comment
+        </span>
+      </div>
+      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        ) : comment?.comment ? (
+          <div className="space-y-1.5">
+            <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-4">
+              {comment.comment}
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground/60">
+                {comment.manager} • {new Date(comment.updated_at).toLocaleDateString()}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1.5 text-[10px]"
+                onClick={onEdit}
+              >
+                Edit
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-full text-xs text-muted-foreground"
+            onClick={onEdit}
+          >
+            <MessageSquare className="mr-1 h-3 w-3" />
+            Add comment
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function HistoryBlock({
   history,
   isLoading,
@@ -746,6 +825,14 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
   const [selectedPartKey, setSelectedPartKey] = useState<string | null>(null)
 
+  // Comment state
+  const [commentData, setCommentData] = useState<CommentRecord | null>(null)
+  const [isCommentLoading, setIsCommentLoading] = useState(false)
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false)
+  const [commentText, setCommentText] = useState("")
+  const [isSavingComment, setIsSavingComment] = useState(false)
+  const [commentSaved, setCommentSaved] = useState(false)
+
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
     (row?.partCode && row?.manufacturer ? `${row.partCode}_${row.manufacturer}` : null)
@@ -781,6 +868,73 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
     fetchPartDetails()
   }, [partBrandKey])
+
+  // Fetch comment
+  useEffect(() => {
+    if (!partBrandKey) {
+      setCommentData(null)
+      return
+    }
+
+    const fetchComment = async () => {
+      setIsCommentLoading(true)
+      try {
+        const response = await fetch(`/api/comments?part_brand_key=${encodeURIComponent(partBrandKey)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setCommentData(data)
+        } else {
+          setCommentData(null)
+        }
+      } catch {
+        setCommentData(null)
+      } finally {
+        setIsCommentLoading(false)
+      }
+    }
+
+    fetchComment()
+  }, [partBrandKey])
+
+  // Open comment modal
+  const handleOpenCommentModal = useCallback(() => {
+    setCommentText(commentData?.comment || "")
+    setIsCommentModalOpen(true)
+    setCommentSaved(false)
+  }, [commentData])
+
+  // Save comment
+  const handleSaveComment = useCallback(async () => {
+    if (!partBrandKey) return
+
+    setIsSavingComment(true)
+    try {
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          part_brand_key: partBrandKey,
+          comment: commentText,
+          manager: "manager",
+          source: "invoice",
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentData(data)
+        setCommentSaved(true)
+        setTimeout(() => {
+          setIsCommentModalOpen(false)
+          setCommentSaved(false)
+        }, 800)
+      }
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsSavingComment(false)
+    }
+  }, [partBrandKey, commentText])
 
   // Load order from localStorage
   useEffect(() => {
@@ -908,12 +1062,20 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     setSelectedPartKey(analog.part_brand_key)
   }, [])
 
-  // Render a block by ID
+// Render a block by ID
   const renderBlock = useCallback(
-    (blockId: BlockId) => {
-      switch (blockId) {
-        case "pricing":
-          return <PricingBlock row={row} />
+  (blockId: BlockId) => {
+  switch (blockId) {
+  case "comment":
+    return (
+      <CommentBlock
+        comment={commentData}
+        isLoading={isCommentLoading}
+        onEdit={handleOpenCommentModal}
+      />
+    )
+  case "pricing":
+  return <PricingBlock row={row} />
         case "inventory":
           return <InventoryBlock row={row} />
         case "physical":
@@ -940,7 +1102,7 @@ case "sales":
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal]
   )
 
   return (
@@ -1016,6 +1178,57 @@ case "sales":
           </DndContext>
         </div>
       </ScrollArea>
+
+      {/* Comment Modal */}
+      <Dialog open={isCommentModalOpen} onOpenChange={setIsCommentModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Add your note..."
+              className="min-h-[100px] text-sm resize-none"
+              disabled={isSavingComment}
+            />
+            {commentData?.updated_at && (
+              <p className="text-[10px] text-muted-foreground">
+                Last updated by {commentData.manager} on{" "}
+                {new Date(commentData.updated_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCommentModalOpen(false)}
+              disabled={isSavingComment}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveComment}
+              disabled={isSavingComment}
+              className="min-w-[70px]"
+            >
+              {commentSaved ? (
+                <>
+                  <Check className="mr-1 h-3 w-3" />
+                  Saved
+                </>
+              ) : isSavingComment ? (
+                "Saving..."
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   )
 }
