@@ -531,10 +531,12 @@ function CommentBlock({
   comment,
   isLoading,
   onEdit,
+  selectedAnalog,
 }: {
   comment: CommentRecord | null
   isLoading: boolean
   onEdit: () => void
+  selectedAnalog: AnalogItem | null
 }) {
   return (
     <div className="pl-6">
@@ -543,9 +545,18 @@ function CommentBlock({
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Comment
         </span>
+        {selectedAnalog && (
+          <span className="text-[10px] text-muted-foreground/60 truncate max-w-[150px]">
+            ({selectedAnalog.part_brand_key})
+          </span>
+        )}
       </div>
       <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-        {isLoading ? (
+        {!selectedAnalog ? (
+          <p className="text-xs text-muted-foreground/60 text-center py-1">
+            Select an analog to view/add comments
+          </p>
+        ) : isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
@@ -869,9 +880,10 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     fetchPartDetails()
   }, [partBrandKey])
 
-  // Fetch comment
+  // Fetch comment based on selected analog
   useEffect(() => {
-    if (!partBrandKey) {
+    const commentKey = selectedAnalog?.part_brand_key
+    if (!commentKey) {
       setCommentData(null)
       return
     }
@@ -879,7 +891,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     const fetchComment = async () => {
       setIsCommentLoading(true)
       try {
-        const response = await fetch(`/api/comments?part_brand_key=${encodeURIComponent(partBrandKey)}`)
+        const response = await fetch(`/api/comments?part_brand_key=${encodeURIComponent(commentKey)}`)
         if (response.ok) {
           const data = await response.json()
           setCommentData(data)
@@ -894,7 +906,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     }
 
     fetchComment()
-  }, [partBrandKey])
+  }, [selectedAnalog?.part_brand_key])
 
   // Open comment modal
   const handleOpenCommentModal = useCallback(() => {
@@ -903,9 +915,10 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     setCommentSaved(false)
   }, [commentData])
 
-  // Save comment
+  // Save comment for selected analog
   const handleSaveComment = useCallback(async () => {
-    if (!partBrandKey) return
+    const commentKey = selectedAnalog?.part_brand_key
+    if (!commentKey) return
 
     setIsSavingComment(true)
     try {
@@ -913,7 +926,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          part_brand_key: partBrandKey,
+          part_brand_key: commentKey,
           comment: commentText,
           manager: "manager",
           source: "invoice",
@@ -934,7 +947,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     } finally {
       setIsSavingComment(false)
     }
-  }, [partBrandKey, commentText])
+  }, [selectedAnalog?.part_brand_key, commentText])
 
   // Load order from localStorage
   useEffect(() => {
@@ -1072,6 +1085,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         comment={commentData}
         isLoading={isCommentLoading}
         onEdit={handleOpenCommentModal}
+        selectedAnalog={selectedAnalog}
       />
     )
   case "pricing":
@@ -1102,7 +1116,7 @@ case "sales":
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal, selectedAnalog]
   )
 
   return (
@@ -1122,8 +1136,9 @@ case "sales":
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          className="h-7 gap-1.5 px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground disabled:opacity-50"
           onClick={handleOpenCommentModal}
+          disabled={!selectedAnalog}
         >
           <MessageSquare className="h-3.5 w-3.5" />
           Comment
