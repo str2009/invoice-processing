@@ -880,75 +880,6 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     fetchPartDetails()
   }, [partBrandKey])
 
-  // Fetch comment based on selected analog
-  useEffect(() => {
-    const commentKey = selectedAnalog?.part_brand_key
-    if (!commentKey) {
-      setCommentData(null)
-      return
-    }
-
-    const fetchComment = async () => {
-      setIsCommentLoading(true)
-      try {
-        const response = await fetch(`/api/comments?part_brand_key=${encodeURIComponent(commentKey)}`)
-        if (response.ok) {
-          const data = await response.json()
-          setCommentData(data)
-        } else {
-          setCommentData(null)
-        }
-      } catch {
-        setCommentData(null)
-      } finally {
-        setIsCommentLoading(false)
-      }
-    }
-
-    fetchComment()
-  }, [selectedAnalog?.part_brand_key])
-
-  // Open comment modal
-  const handleOpenCommentModal = useCallback(() => {
-    setCommentText(commentData?.comment || "")
-    setIsCommentModalOpen(true)
-    setCommentSaved(false)
-  }, [commentData])
-
-  // Save comment for selected analog
-  const handleSaveComment = useCallback(async () => {
-    const commentKey = selectedAnalog?.part_brand_key
-    if (!commentKey) return
-
-    setIsSavingComment(true)
-    try {
-      const response = await fetch("/api/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          part_brand_key: commentKey,
-          comment: commentText,
-          manager: "manager",
-          source: "invoice",
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setCommentData(data)
-        setCommentSaved(true)
-        setTimeout(() => {
-          setIsCommentModalOpen(false)
-          setCommentSaved(false)
-        }, 800)
-      }
-    } catch {
-      // Handle error silently
-    } finally {
-      setIsSavingComment(false)
-    }
-  }, [selectedAnalog?.part_brand_key, commentText])
-
   // Load order from localStorage
   useEffect(() => {
     try {
@@ -1074,6 +1005,75 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const handleSelectAnalog = useCallback((analog: AnalogItem) => {
     setSelectedPartKey(analog.part_brand_key)
   }, [])
+
+  // Fetch comment based on selected analog
+  useEffect(() => {
+    const commentKey = selectedAnalog?.part_brand_key
+    if (!commentKey) {
+      setCommentData(null)
+      return
+    }
+
+    const fetchComment = async () => {
+      setIsCommentLoading(true)
+      try {
+        const response = await fetch(`/api/comments?part_brand_key=${encodeURIComponent(commentKey)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setCommentData(data)
+        } else {
+          setCommentData(null)
+        }
+      } catch {
+        setCommentData(null)
+      } finally {
+        setIsCommentLoading(false)
+      }
+    }
+
+    fetchComment()
+  }, [selectedAnalog?.part_brand_key])
+
+  // Open comment modal
+  const handleOpenCommentModal = useCallback(() => {
+    setCommentText(commentData?.comment || "")
+    setIsCommentModalOpen(true)
+    setCommentSaved(false)
+  }, [commentData])
+
+  // Save comment for selected analog
+  const handleSaveComment = useCallback(async () => {
+    const commentKey = selectedAnalog?.part_brand_key
+    if (!commentKey) return
+
+    setIsSavingComment(true)
+    try {
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          part_brand_key: commentKey,
+          comment: commentText,
+          manager: "manager",
+          source: "invoice",
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentData(data)
+        setCommentSaved(true)
+        setTimeout(() => {
+          setIsCommentModalOpen(false)
+          setCommentSaved(false)
+        }, 800)
+      }
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsSavingComment(false)
+    }
+  }, [selectedAnalog?.part_brand_key, commentText])
 
 // Render a block by ID
   const renderBlock = useCallback(
