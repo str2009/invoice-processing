@@ -73,7 +73,6 @@ import {
   Monitor,
   Maximize2,
   Minimize2,
-  MessageSquare,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import {
@@ -84,12 +83,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+
 import type { InvoiceRow, InvoiceListItem } from "@/lib/mock-data"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 
@@ -430,25 +424,14 @@ const columnLabels: Record<string, string> = {
   riskScore: "Risk Score",
 }
 
-// --- Column definitions (24 columns) ---
-function getColumns(setMootChanges: any, commentsMap: Record<string, boolean>): ColumnDef<AnalyticsRow>[] {
+// --- Column definitions (23 columns) ---
+function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
   return [
   {
     id: "partCode",
     accessorKey: "partCode",
     header: ({ column }) => <SortHeader column={column} label="Part Code" />,
-    cell: ({ row }) => {
-      const partBrandKey = `${row.original.partCode}_${row.original.brand}`
-      const hasComment = commentsMap[partBrandKey]
-      return (
-        <span className="flex items-center gap-1 font-mono text-[11px] text-foreground">
-          {row.getValue("partCode")}
-          {hasComment && (
-            <MessageSquare className="h-3 w-3 text-primary/70" />
-          )}
-        </span>
-      )
-    },
+    cell: ({ row }) => <span className="font-mono text-[11px] text-foreground">{row.getValue("partCode")}</span>,
   },
   {
     id: "brand",
@@ -696,7 +679,7 @@ export default function AnalyticsPage() {
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
   const [isHydrated, setIsHydrated] = useState(false)
 
-  const columns = useMemo(() => getColumns(setMootChanges, commentsMap), [setMootChanges, commentsMap])
+  const columns = useMemo(() => getColumns(setMootChanges), [setMootChanges])
 
   const allColumnIds = useMemo(
     () => columns.map((c) => c.id!),
@@ -711,12 +694,6 @@ export default function AnalyticsPage() {
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [commentsMap, setCommentsMap] = useState<Record<string, boolean>>({})
-
-  // Handle comment changes from PartDetailsPanel
-  const handleCommentChange = useCallback((partBrandKey: string, hasComment: boolean) => {
-    setCommentsMap((prev) => ({ ...prev, [partBrandKey]: hasComment }))
-  }, [])
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
   const dragStartH = useRef<number>(60)
@@ -1565,7 +1542,6 @@ const table = useReactTable({
 <PartDetailsPanel
   row={selectedRow}
   onClose={() => setSelectedRow(null)}
-  onCommentChange={handleCommentChange}
   />
             </div>
           )}
