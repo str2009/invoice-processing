@@ -891,6 +891,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
   // Fetch comments status for all analogs
   useEffect(() => {
+    console.log("[v0] analogsData changed:", analogsData?.length)
     if (!analogsData || analogsData.length === 0) {
       setAnalogsCommentsMap({})
       return
@@ -898,6 +899,7 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
     const fetchAnalogsComments = async () => {
       const keys = analogsData.map((a) => a.part_brand_key)
+      console.log("[v0] fetching bulk comments for keys:", keys)
       try {
         const response = await fetch("/api/comments/bulk", {
           method: "POST",
@@ -906,10 +908,11 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         })
         if (response.ok) {
           const data = await response.json()
+          console.log("[v0] bulk comments response:", data)
           setAnalogsCommentsMap(data)
         }
-      } catch {
-        // Ignore errors
+      } catch (err) {
+        console.log("[v0] bulk comments error:", err)
       }
     }
 
@@ -922,8 +925,11 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length === DEFAULT_ORDER.length) {
-          setBlocksOrder(parsed as BlockId[])
+        if (Array.isArray(parsed)) {
+          // Merge saved order with new blocks that might have been added
+          const validSaved = parsed.filter((id: string) => DEFAULT_ORDER.includes(id as BlockId))
+          const missing = DEFAULT_ORDER.filter((id) => !validSaved.includes(id))
+          setBlocksOrder([...validSaved, ...missing] as BlockId[])
         }
       }
     } catch {
