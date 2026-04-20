@@ -936,11 +936,9 @@ const table = useReactTable({
   const rowCount = filteredRows.length
 
   // Calculate total table width for proper column resizing
-  const totalWidth = useMemo(() => {
-    return table
-      .getVisibleLeafColumns()
-      .reduce((sum, col) => sum + col.getSize(), 0)
-  }, [table.getVisibleLeafColumns()])
+  const totalWidth = table
+    .getVisibleLeafColumns()
+    .reduce((sum, col) => sum + col.getSize(), 0)
 
   // Aggregated metrics
   const metrics = useMemo(() => {
