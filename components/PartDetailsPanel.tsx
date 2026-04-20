@@ -21,7 +21,17 @@ import {
   GitCompareArrows,
   History,
   GripVertical,
+  MessageSquare,
+  Check,
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import type { InvoiceRow } from "@/lib/mock-data"
 import {
   DndContext,
@@ -85,19 +95,30 @@ interface HistoryItem {
   price: number
 }
 
+interface CommentRecord {
+  id: string
+  part_brand_key: string
+  comment: string
+  manager: string
+  source: string
+  created_at: string
+  updated_at: string
+}
+
 interface DetailsResponse {
   analogs: AnalogItem[]
   history: HistoryItem[]
   analytics?: Record<string, unknown>
 }
 
-type BlockId = "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
+type BlockId = "comment" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
 
 const STORAGE_KEY = "part-details-layout"
 
 const DEFAULT_ORDER: BlockId[] = [
   "analogs",
   "analogDetails",
+  "comment",
   "pricing",
   "inventory",
   "physical",
@@ -367,6 +388,7 @@ function AnalogsBlock({
   currentPartKey,
   selectedAnalog,
   onSelectAnalog,
+  commentsMap,
 }: {
   analogs: AnalogItem[]
   isLoading: boolean
@@ -375,6 +397,7 @@ function AnalogsBlock({
   currentPartKey: string
   selectedAnalog: AnalogItem | null
   onSelectAnalog: (analog: AnalogItem) => void
+  commentsMap: Record<string, boolean>
 }) {
   const bestPrice = analogs.length > 0 ? Math.min(...analogs.map((a) => a.price)) : 0
 
@@ -420,7 +443,8 @@ function AnalogsBlock({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/50 text-muted-foreground">
-<th className="px-2 py-1.5 text-left font-medium">Code</th>
+                  <th className="w-4 px-1 py-1.5"></th>
+                  <th className="px-2 py-1.5 text-left font-medium">Code</th>
                       <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
                       <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
@@ -465,6 +489,11 @@ function AnalogsBlock({
                       }`}
                       style={inactivityBg && !isSelected ? { backgroundColor: inactivityBg } : undefined}
                     >
+                      <td className="w-4 px-1 py-1.5 text-center">
+                        {commentsMap[analog.part_brand_key] && (
+                          <span className="text-red-500 font-bold text-[10px]">!</span>
+                        )}
+                      </td>
                       <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
                       </td>
@@ -500,6 +529,75 @@ function AnalogsBlock({
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CommentBlock({
+  comment,
+  isLoading,
+  onEdit,
+  selectedAnalog,
+}: {
+  comment: CommentRecord | null
+  isLoading: boolean
+  onEdit: () => void
+  selectedAnalog: AnalogItem | null
+}) {
+  return (
+    <div className="pl-6">
+      <div className="mb-2 flex items-center gap-2">
+        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Comment
+        </span>
+        {selectedAnalog && (
+          <span className="text-[10px] text-muted-foreground/60 truncate max-w-[150px]">
+            ({selectedAnalog.part_brand_key})
+          </span>
+        )}
+      </div>
+      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+        {!selectedAnalog ? (
+          <p className="text-xs text-muted-foreground/60 text-center py-1">
+            Select an analog to view/add comments
+          </p>
+        ) : isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        ) : comment?.comment ? (
+          <div className="space-y-1.5">
+            <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-4">
+              {comment.comment}
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-muted-foreground/60">
+                {comment.manager} • {new Date(comment.updated_at).toLocaleDateString()}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1.5 text-[10px]"
+                onClick={onEdit}
+              >
+                Edit
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-full text-xs text-muted-foreground"
+            onClick={onEdit}
+          >
+            <MessageSquare className="mr-1 h-3 w-3" />
+            Add comment
+          </Button>
         )}
       </div>
     </div>
@@ -746,6 +844,15 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [includeZeroStock, setIncludeZeroStock] = useState(false)
   const [selectedPartKey, setSelectedPartKey] = useState<string | null>(null)
 
+  // Comment state
+  const [commentData, setCommentData] = useState<CommentRecord | null>(null)
+  const [isCommentLoading, setIsCommentLoading] = useState(false)
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false)
+  const [commentText, setCommentText] = useState("")
+  const [isSavingComment, setIsSavingComment] = useState(false)
+  const [commentSaved, setCommentSaved] = useState(false)
+  const [analogsCommentsMap, setAnalogsCommentsMap] = useState<Record<string, boolean>>({})
+
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
     (row?.partCode && row?.manufacturer ? `${row.partCode}_${row.manufacturer}` : null)
@@ -788,8 +895,11 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length === DEFAULT_ORDER.length) {
-          setBlocksOrder(parsed as BlockId[])
+        if (Array.isArray(parsed)) {
+          // Merge saved order with new blocks that might have been added
+          const validSaved = parsed.filter((id: string) => DEFAULT_ORDER.includes(id as BlockId))
+          const missing = DEFAULT_ORDER.filter((id) => !validSaved.includes(id))
+          setBlocksOrder([...validSaved, ...missing] as BlockId[])
         }
       }
     } catch {
@@ -884,6 +994,33 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   // History data (no filtering needed)
   const historyData = historyRaw
 
+  // Fetch comments status for all analogs
+  useEffect(() => {
+    if (!analogsData || analogsData.length === 0) {
+      setAnalogsCommentsMap({})
+      return
+    }
+
+    const fetchAnalogsComments = async () => {
+      const keys = analogsData.map((a) => a.part_brand_key)
+      try {
+        const response = await fetch("/api/comments/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys }),
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setAnalogsCommentsMap(data)
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    fetchAnalogsComments()
+  }, [analogsData])
+
   // Reset selection when product changes (analogsRaw reference changes)
   useEffect(() => {
     setSelectedPartKey(null)
@@ -908,30 +1045,116 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
     setSelectedPartKey(analog.part_brand_key)
   }, [])
 
-  // Render a block by ID
+  // Fetch comment based on selected analog
+  useEffect(() => {
+    const commentKey = selectedAnalog?.part_brand_key
+    if (!commentKey) {
+      setCommentData(null)
+      return
+    }
+
+    const fetchComment = async () => {
+      setIsCommentLoading(true)
+      try {
+        const response = await fetch(`/api/comments?part_brand_key=${encodeURIComponent(commentKey)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setCommentData(data)
+        } else {
+          setCommentData(null)
+        }
+      } catch {
+        setCommentData(null)
+      } finally {
+        setIsCommentLoading(false)
+      }
+    }
+
+    fetchComment()
+  }, [selectedAnalog?.part_brand_key])
+
+  // Open comment modal
+  const handleOpenCommentModal = useCallback(() => {
+    setCommentText(commentData?.comment || "")
+    setIsCommentModalOpen(true)
+    setCommentSaved(false)
+  }, [commentData])
+
+  // Save comment for selected analog
+  const handleSaveComment = useCallback(async () => {
+    const commentKey = selectedAnalog?.part_brand_key
+    if (!commentKey) return
+
+    setIsSavingComment(true)
+    try {
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          part_brand_key: commentKey,
+          comment: commentText,
+          manager: "manager",
+          source: "invoice",
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommentData(data)
+        setCommentSaved(true)
+        // Update the analogs comments map
+        if (commentKey) {
+          setAnalogsCommentsMap((prev) => ({
+            ...prev,
+            [commentKey]: !!commentText,
+          }))
+        }
+        setTimeout(() => {
+          setIsCommentModalOpen(false)
+          setCommentSaved(false)
+        }, 800)
+      }
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsSavingComment(false)
+    }
+  }, [selectedAnalog?.part_brand_key, commentText])
+
+// Render a block by ID
   const renderBlock = useCallback(
-    (blockId: BlockId) => {
-      switch (blockId) {
-        case "pricing":
-          return <PricingBlock row={row} />
+  (blockId: BlockId) => {
+  switch (blockId) {
+  case "comment":
+    return (
+      <CommentBlock
+        comment={commentData}
+        isLoading={isCommentLoading}
+        onEdit={handleOpenCommentModal}
+        selectedAnalog={selectedAnalog}
+      />
+    )
+  case "pricing":
+  return <PricingBlock row={row} />
         case "inventory":
           return <InventoryBlock row={row} />
         case "physical":
           return <PhysicalBlock row={row} />
 case "sales":
           return <SalesBlock selectedAnalog={selectedAnalog} />
-        case "analogs":
-          return (
-            <AnalogsBlock
-              analogs={analogsData}
-              isLoading={isLoading}
-              includeZeroStock={includeZeroStock}
-              onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
-              currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
-              selectedAnalog={selectedAnalog}
-              onSelectAnalog={handleSelectAnalog}
-            />
-          )
+case "analogs":
+  return (
+  <AnalogsBlock
+  analogs={analogsData}
+  isLoading={isLoading}
+  includeZeroStock={includeZeroStock}
+  onToggleZeroStock={() => setIncludeZeroStock((prev) => !prev)}
+  currentPartKey={row?.part_brand_key || `${row.partCode}_${row.manufacturer}`}
+  selectedAnalog={selectedAnalog}
+  onSelectAnalog={handleSelectAnalog}
+  commentsMap={analogsCommentsMap}
+  />
+  )
         case "analogDetails":
           return <AnalogDetailsBlock selectedAnalog={selectedAnalog} />
         case "history":
@@ -940,7 +1163,7 @@ case "sales":
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal, analogsCommentsMap]
   )
 
   return (
@@ -952,37 +1175,48 @@ case "sales":
       {/* Header */}
       <div className="flex shrink-0 items-center border-b border-border px-4 py-2">
         {/* Left: Title */}
-        <div className="w-24">
+        <div className="flex-1">
           <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
         </div>
         
-        {/* Center: Warehouse Selector */}
-        <div className="flex flex-1 justify-center">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Warehouse
-            </span>
-            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-              <SelectTrigger className="h-7 w-[120px] border-border/50 bg-transparent text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="koms18">Комс 18</SelectItem>
-                <SelectItem value="talnakh">Талнах</SelectItem>
-                <SelectItem value="salut">Салют</SelectItem>
-                <SelectItem value="garage">Гараж</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        {/* Center: Comment Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground disabled:opacity-50"
+          onClick={handleOpenCommentModal}
+          disabled={!selectedAnalog}
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+          Comment
+          {commentData?.comment && (
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          )}
+        </Button>
+
+        {/* Right: Warehouse Selector */}
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Warehouse
+          </span>
+          <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+            <SelectTrigger className="h-7 w-[80px] border-border/50 bg-transparent text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="koms18">Комс 18</SelectItem>
+              <SelectItem value="talnakh">Талнах</SelectItem>
+              <SelectItem value="salut">Салют</SelectItem>
+              <SelectItem value="garage">Гараж</SelectItem>
+            </SelectContent>
+          </Select>
         
-        {/* Right: Close Button */}
-        <div className="w-24 flex justify-end">
+        {/* Close Button */}
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0"
+            className="h-7 w-7 p-0 ml-2"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -1016,6 +1250,57 @@ case "sales":
           </DndContext>
         </div>
       </ScrollArea>
+
+      {/* Comment Modal */}
+      <Dialog open={isCommentModalOpen} onOpenChange={setIsCommentModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Add your note..."
+              className="min-h-[100px] text-sm resize-none"
+              disabled={isSavingComment}
+            />
+            {commentData?.updated_at && (
+              <p className="text-[10px] text-muted-foreground">
+                Last updated by {commentData.manager} on{" "}
+                {new Date(commentData.updated_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCommentModalOpen(false)}
+              disabled={isSavingComment}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveComment}
+              disabled={isSavingComment}
+              className="min-w-[70px]"
+            >
+              {commentSaved ? (
+                <>
+                  <Check className="mr-1 h-3 w-3" />
+                  Saved
+                </>
+              ) : isSavingComment ? (
+                "Saving..."
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   )
 }
