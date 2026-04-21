@@ -243,11 +243,26 @@ const columns: ColumnDef<InvoiceRow>[] = [
     id: "partName",
     accessorKey: "partName",
     header: "Part Name",
-    cell: ({ row }) => (
-      <span className="block truncate" title={row.getValue("partName")}>
-        {row.getValue("partName")}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const isFixed = row.original.part_code_fixed === true
+      return (
+        <div className="flex items-center gap-1.5">
+          {isFixed && (
+            <span className="text-xs text-amber-400">●</span>
+          )}
+          <span
+            className={`block truncate ${
+              isFixed
+                ? "bg-amber-400/10 px-1 rounded text-amber-300"
+                : ""
+            }`}
+            title={row.getValue("partName")}
+          >
+            {row.getValue("partName")}
+          </span>
+        </div>
+      )
+    },
   },
   {
     id: "qty",
