@@ -197,6 +197,11 @@ useEffect(() => {
   // Data source: strictly from loaded invoice rows (no mock fallback)
   const baseData = rows
   const data = scenarioData ?? baseData
+
+  // Count items with zero weight for warning indicator
+  const zeroWeightCount = useMemo(() => {
+    return data.filter((row) => row.weight === 0 || row.weight === null || row.weight === undefined).length
+  }, [data])
   const invoiceId = selectedInvoice
   
   // Table readiness: show data when invoice is selected OR when we have enriched multi-invoice data
@@ -972,10 +977,11 @@ console.log("scenario active:", isScenarioActive)
         onEnrichSelected={handleEnrichSelected}
   onDeleteInvoice={handleDeleteInvoice}
   onDeleteSelected={handleDeleteSelected}
-  selectedInvoices={selectedInvoices}
-onToggleInvoice={toggleInvoice}
-        onClearSelection={() => setSelectedInvoices([])}
-      />
+selectedInvoices={selectedInvoices}
+  onToggleInvoice={toggleInvoice}
+  onClearSelection={() => setSelectedInvoices([])}
+  zeroWeightCount={zeroWeightCount}
+  />
 
       {/* Main Content - shifts right when panel is open */}
       <main

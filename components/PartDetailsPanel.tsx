@@ -23,6 +23,8 @@ import {
   GripVertical,
   MessageSquare,
   Check,
+  Globe,
+  Loader2,
 } from "lucide-react"
 import {
   Dialog,
@@ -105,19 +107,27 @@ interface CommentRecord {
   updated_at: string
 }
 
+interface WebPricingData {
+  price: number
+  stock: number
+  delivery_days: number
+  supplier: string
+}
+
 interface DetailsResponse {
   analogs: AnalogItem[]
   history: HistoryItem[]
   analytics?: Record<string, unknown>
 }
 
-type BlockId = "comment" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
+type BlockId = "comment" | "web" | "pricing" | "inventory" | "physical" | "sales" | "analogs" | "analogDetails" | "history"
 
 const STORAGE_KEY = "part-details-layout"
 
 const DEFAULT_ORDER: BlockId[] = [
   "analogs",
   "analogDetails",
+  "web",
   "comment",
   "pricing",
   "inventory",
@@ -604,6 +614,82 @@ function CommentBlock({
   )
 }
 
+function WebBlock({
+  webData,
+  isLoading,
+  error,
+  selectedAnalog,
+  webEnabled,
+}: {
+  webData: WebPricingData | null
+  isLoading: boolean
+  error: string | null
+  selectedAnalog: AnalogItem | null
+  webEnabled: boolean
+}) {
+  if (!webEnabled) return null
+
+  return (
+    <div className="pl-6">
+      <div className="mb-2 flex items-center gap-2">
+        <Globe className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Web
+        </span>
+      </div>
+      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+        {!selectedAnalog ? (
+          <p className="text-xs text-muted-foreground/60 text-center py-1">
+            Select a part
+          </p>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center py-3">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <p className="text-xs text-destructive text-center py-1">
+            Failed to load data
+          </p>
+        ) : webData ? (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">Supplier</span>
+              <span className="font-mono text-xs font-medium text-foreground">
+                {webData.supplier}
+              </span>
+            </div>
+            <div className="border-t border-border/50" />
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">Price</span>
+              <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                {webData.price.toLocaleString()} ₽
+              </span>
+            </div>
+            <div className="border-t border-border/50" />
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">Stock</span>
+              <span className="font-mono text-xs font-medium text-foreground">
+                {webData.stock}
+              </span>
+            </div>
+            <div className="border-t border-border/50" />
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">Delivery</span>
+              <span className="font-mono text-xs font-medium text-foreground">
+                {webData.delivery_days} days
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground/60 text-center py-1">
+            No data available
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function HistoryBlock({
   history,
   isLoading,
@@ -853,6 +939,12 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
   const [commentSaved, setCommentSaved] = useState(false)
   const [analogsCommentsMap, setAnalogsCommentsMap] = useState<Record<string, boolean>>({})
 
+  // Web pricing state
+  const [webEnabled, setWebEnabled] = useState(false)
+  const [webData, setWebData] = useState<WebPricingData | null>(null)
+  const [webLoading, setWebLoading] = useState(false)
+  const [webError, setWebError] = useState<string | null>(null)
+
   // Get part_brand_key from row, or construct from partCode_manufacturer
   const partBrandKey = row?.part_brand_key || 
     (row?.partCode && row?.manufacturer ? `${row.partCode}_${row.manufacturer}` : null)
@@ -1075,11 +1167,61 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
 
   // Open comment modal
   const handleOpenCommentModal = useCallback(() => {
-    setCommentText(commentData?.comment || "")
+setCommentText(commentData?.comment || "")
     setIsCommentModalOpen(true)
     setCommentSaved(false)
   }, [commentData])
 
+  // Fetch web pricing when webEnabled and selectedAnalog changes
+  useEffect(() => {
+    // Clear data when web is disabled
+    if (!webEnabled) {
+      setWebData(null)
+      setWebError(null)
+      return
+    }
+
+    // No analog selected
+    if (!selectedAnalog) {
+      setWebData(null)
+      setWebError(null)
+      return
+    }
+
+    // Debounce timer
+    const debounceTimer = setTimeout(async () => {
+      setWebLoading(true)
+      setWebError(null)
+
+      try {
+        // Extract part_code and brand from part_brand_key
+        const parts = selectedAnalog.part_brand_key.split("_")
+        const part_code = parts[0]
+        const brand = parts.slice(1).join("_") || selectedAnalog.brand
+
+        const response = await fetch("/api/web-pricing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ part_code, brand }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch")
+        }
+
+        const data = await response.json()
+        setWebData(data)
+      } catch {
+        setWebError("Failed to load data")
+        setWebData(null)
+      } finally {
+        setWebLoading(false)
+      }
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(debounceTimer)
+  }, [webEnabled, selectedAnalog?.part_brand_key])
+  
   // Save comment for selected analog
   const handleSaveComment = useCallback(async () => {
     const commentKey = selectedAnalog?.part_brand_key
@@ -1134,6 +1276,16 @@ export function PartDetailsPanel({ row, onClose, panelEnabled = true }: PartDeta
         selectedAnalog={selectedAnalog}
       />
     )
+  case "web":
+    return (
+      <WebBlock
+        webData={webData}
+        isLoading={webLoading}
+        error={webError}
+        selectedAnalog={selectedAnalog}
+        webEnabled={webEnabled}
+      />
+    )
   case "pricing":
   return <PricingBlock row={row} />
         case "inventory":
@@ -1163,7 +1315,7 @@ case "analogs":
           return null
       }
     },
-    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal, analogsCommentsMap]
+    [row, analogsData, historyData, isLoading, includeZeroStock, selectedAnalog, handleSelectAnalog, commentData, isCommentLoading, handleOpenCommentModal, analogsCommentsMap, webData, webLoading, webError, webEnabled]
   )
 
   return (
@@ -1178,8 +1330,30 @@ case "analogs":
         <div className="flex-1">
           <h2 className="text-sm font-semibold text-foreground">Part Details</h2>
         </div>
+
+        {/* Web Toggle */}
+        <label className="flex cursor-pointer items-center gap-1.5 mr-2">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Web
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={webEnabled}
+            onClick={() => setWebEnabled((prev) => !prev)}
+            className={`relative h-4 w-7 rounded-full transition-colors ${
+              webEnabled ? "bg-primary" : "bg-muted-foreground/30"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${
+                webEnabled ? "translate-x-3.5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </label>
         
-        {/* Center: Comment Button */}
+        {/* Comment Button */}
         <Button
           variant="ghost"
           size="sm"
