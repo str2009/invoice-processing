@@ -33,6 +33,7 @@ import {
   SquareStack,
   Calculator,
   TrendingUp,
+  AlertTriangle,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -90,6 +91,8 @@ selectedInvoices?: string[]
   onToggleInvoice?: (id: string) => void
   /** Callback to clear all selected invoices */
   onClearSelection?: () => void
+  /** Number of rows with zero weight */
+  zeroWeightCount?: number
 }
 
 export function ControlPanel({
@@ -125,6 +128,7 @@ onResetEnrich,
 selectedInvoices: externalSelectedInvoices,
   onToggleInvoice,
   onClearSelection,
+  zeroWeightCount = 0,
   }: ControlPanelProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -462,6 +466,16 @@ const hasSelection = selectedIds.size > 0
   Delete
 </Button>
               </div>
+              
+              {/* Zero Weight Warning */}
+              {zeroWeightCount > 0 && (
+                <div className="mt-3 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                    {zeroWeightCount} items without weight!
+                  </span>
+                </div>
+              )}
             </section>
 
             {/* Invoice upload mode: Progress + Log + Summary */}
