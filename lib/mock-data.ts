@@ -25,6 +25,8 @@ export interface InvoiceRow {
   isManual?: boolean
   reason?: string | null
   part_brand_key?: string | null
+  part_code_fixed?: boolean
+  isBulky?: boolean
 }
 
 export const REASON_OPTIONS = [

@@ -202,6 +202,23 @@ useEffect(() => {
   const zeroWeightCount = useMemo(() => {
     return data.filter((row) => row.weight === 0 || row.weight === null || row.weight === undefined).length
   }, [data])
+
+  // Count items with corrected part codes
+  const fixedCodeCount = useMemo(() => {
+    return data.filter((row) => row.part_code_fixed === true).length
+  }, [data])
+
+  // Track previous fixedCodeCount to avoid duplicate logs
+  const prevFixedCountRef = useRef<number>(0)
+  
+  // Log warning when data loads with fixed part codes
+  useEffect(() => {
+    if (fixedCodeCount > 0 && fixedCodeCount !== prevFixedCountRef.current) {
+      const ts = new Date().toLocaleTimeString()
+      setLogs((prev) => [...prev, `[${ts}] [WARNING] ${fixedCodeCount} positions: part_code corrected`])
+    }
+    prevFixedCountRef.current = fixedCodeCount
+  }, [fixedCodeCount])
   const invoiceId = selectedInvoice
   
   // Table readiness: show data when invoice is selected OR when we have enriched multi-invoice data
@@ -227,6 +244,7 @@ useEffect(() => {
     sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
     reason: (r.reason as string) ?? null,
     part_brand_key: (r.part_brand_key as string) ?? null,
+    part_code_fixed: Boolean(r.part_code_fixed),
   }), [])
 
   // Load invoice rows by ID
@@ -1008,9 +1026,17 @@ selectedInvoices={selectedInvoices}
             </h1>
             <Badge className={`shrink-0 whitespace-nowrap text-xs ${className}`}>{label}</Badge>
             <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
-            <span className="shrink-0 whitespace-nowrap font-mono text-xs text-muted-foreground">
-              {rowCount} rows
-            </span>
+<span className="shrink-0 whitespace-nowrap font-mono text-xs text-muted-foreground">
+{rowCount} rows
+  </span>
+  {fixedCodeCount > 0 && (
+    <>
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+      <span className="shrink-0 whitespace-nowrap font-mono text-xs text-amber-500">
+        Fixed: {fixedCodeCount}
+      </span>
+    </>
+  )}
           </div>
 
           {/* Middle section: Invoice ID | Supplier | Total — grid layout */}
