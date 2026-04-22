@@ -418,7 +418,7 @@ function AnalogsCard({
                             : "text-foreground"
                         }`}
                       >
-                        {analog.price.toFixed(2)}
+                        {analog.price?.toFixed(2) ?? "—"}
                       </td>
                       <td className="px-2 py-1 text-center font-mono tabular-nums text-muted-foreground">
                         {analog.stock}
@@ -556,7 +556,7 @@ function HistoryCard({
                       {item.qty}
                     </td>
                     <td className="px-2 py-1 text-center font-mono tabular-nums text-foreground">
-                      {item.price.toFixed(2)}
+                      {item.price?.toFixed(2) ?? "—"}
                     </td>
                   </tr>
                 ))}
