@@ -114,6 +114,7 @@ interface AnalyticsRow {
   lastSaleDate: string
   abcClass: string
   riskScore: number
+  part_brand_key: string
 }
 
 // --- Transform InvoiceRow[] -> AnalyticsRow[] (pure, no mock data) ---
@@ -161,9 +162,10 @@ function toAnalyticsRows(rows: InvoiceRow[]): AnalyticsRow[] {
       competitorPrice,
       competitorStock,
       lastSaleDate: "",
-      abcClass: abcClasses[idx % abcClasses.length],
-      riskScore: Math.min(riskScore, 100),
-    }
+abcClass: abcClasses[idx % abcClasses.length],
+    riskScore: Math.min(riskScore, 100),
+    part_brand_key: row.part_brand_key ?? `${row.partCode}_${row.manufacturer}`,
+  }
   })
 }
 
@@ -223,6 +225,7 @@ const defaultColumnSizing: ColumnSizingState = {
   lastSaleDate: 90,
   abcClass: 60,
   riskScore: 70,
+  part_brand_key: 180,
 }
 
 // --- Resize Handle Component ---
@@ -613,20 +616,30 @@ function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
       )
     },
   },
-  {
-    id: "riskScore",
-    accessorKey: "riskScore",
-    header: ({ column }) => <SortHeader column={column} label="Risk" />,
-    cell: ({ row }) => {
-      const v = row.getValue("riskScore") as number
-      return (
-        <span className={`font-mono text-[11px] tabular-nums font-semibold ${v >= 60 ? "text-red-500" : v >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-          {v}
-        </span>
-      )
-    },
+{
+  id: "riskScore",
+  accessorKey: "riskScore",
+  header: ({ column }) => <SortHeader column={column} label="Risk" />,
+  cell: ({ row }) => {
+  const v = row.getValue("riskScore") as number
+  return (
+  <span className={`font-mono text-[11px] tabular-nums font-semibold ${v >= 60 ? "text-red-500" : v >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+  {v}
+  </span>
+  )
   },
-]}
+  },
+  {
+  id: "part_brand_key",
+  accessorKey: "part_brand_key",
+  header: ({ column }) => <SortHeader column={column} label="Key" />,
+  cell: ({ row }) => (
+  <span className="font-mono text-[10px] text-muted-foreground truncate block max-w-[180px]" title={row.original.part_brand_key}>
+    {row.original.part_brand_key}
+  </span>
+  ),
+  },
+  ]}
 
 
 
