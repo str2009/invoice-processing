@@ -739,53 +739,92 @@ useEffect(() => {
       `[${ts()}] Exporting ${rows.length} rows to Excel...`,
     ])
 
-    // Weight normalization: detect date-like values and invalid data
-    const normalizeWeight = (value: unknown): number | null => {
-      if (value === null || value === undefined) return null
-      const str = String(value).trim()
-      // If looks like a date (e.g., 04.07.2026) → ignore
-      if (/\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/.test(str)) return null
-      const num = Number(str.replace(",", "."))
-      if (isNaN(num) || num < 0 || num > 1000) return null
-      return num
-    }
-
-    // Format weight with comma separator for display
-    const formatWeight = (value: number | null): string => {
-      if (value === null || value === undefined) return ""
-      return value.toFixed(3).replace(".", ",")
-    }
-
     // Dynamically import xlsx library
     const XLSX = await import("xlsx")
 
-    // Prepare data for export
+    // Column definitions matching UI table exactly
+    const columnConfig = [
+      { id: "partCode", header: "Part Code", width: 14 },
+      { id: "manufacturer", header: "Manufacturer", width: 18 },
+      { id: "partName", header: "Part Name", width: 45 },
+      { id: "qty", header: "Qty", width: 8 },
+      { id: "cost", header: "Cost", width: 10 },
+      { id: "costOld", header: "Cost Old", width: 10 },
+      { id: "now", header: "Now", width: 10 },
+      { id: "ship", header: "Ship", width: 10 },
+      { id: "isBulky", header: "Bulky", width: 8 },
+      { id: "deltaPercent", header: "Δ%", width: 8 },
+      { id: "deltaNorm", header: "ΔNorm", width: 10 },
+      { id: "stock", header: "Stock", width: 8 },
+      { id: "weight", header: "Weight", width: 10 },
+      { id: "moot", header: "PriceNorm", width: 10 },
+      { id: "productGroup", header: "Group", width: 12 },
+      { id: "sales12m", header: "12m", width: 8 },
+      { id: "part_brand_key", header: "Key", width: 25 },
+      { id: "reason", header: "Reason", width: 15 },
+    ]
+
+    // Prepare data for export - matching UI table structure exactly
     const exportData = rows.map((r) => {
-      const normalizedWeight = normalizeWeight(r.weight)
-      return {
-        "Part Code": r.partCode,
-        "Manufacturer": r.manufacturer,
-        "Part Name": r.partName ?? "",
-        "Qty": Number(r.qty || 0),
-        "Cost": Number(r.cost || 0),
-        "Now": Number(r.now || 0),
-        "Ship": Number(r.ship || 0),
-        "Weight": formatWeight(normalizedWeight),
-        "Total Purchase": Number(r.cost || 0) * Number(r.qty || 0),
-      }
+      const obj: Record<string, unknown> = {}
+      columnConfig.forEach((col) => {
+        const value = r[col.id as keyof typeof r]
+        switch (col.id) {
+          case "partCode":
+          case "manufacturer":
+          case "partName":
+          case "productGroup":
+          case "part_brand_key":
+          case "reason":
+            obj[col.header] = value ?? ""
+            break
+          case "qty":
+          case "cost":
+          case "costOld":
+          case "now":
+          case "ship":
+          case "deltaPercent":
+          case "deltaNorm":
+          case "stock":
+          case "moot":
+          case "sales12m":
+            obj[col.header] = value != null ? Number(value) : null
+            break
+          case "weight":
+            // Keep weight as number for Excel
+            obj[col.header] = value != null ? Number(value) : null
+            break
+          case "isBulky":
+            obj[col.header] = value ? "Yes" : ""
+            break
+          default:
+            obj[col.header] = value ?? ""
+        }
+      })
+      return obj
     })
 
-    // Create worksheet
+    // Create worksheet from data
     const worksheet = XLSX.utils.json_to_sheet(exportData)
 
-    // Force Weight column (H) to be string type to prevent Excel date conversion
+    // Set column widths
+    worksheet["!cols"] = columnConfig.map((col) => ({ wch: col.width }))
+
+    // Force numeric types for specific columns to prevent Excel auto-formatting issues
     const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1")
+    const numericColumns = [3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 15] // 0-indexed: Qty, Cost, CostOld, Now, Ship, Δ%, ΔNorm, Stock, Weight, PriceNorm, 12m
+    
     for (let row = range.s.r + 1; row <= range.e.r; row++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: row, c: 7 }) // Column H (Weight)
-      if (worksheet[cellAddress]) {
-        worksheet[cellAddress].t = "s" // Force string type
-      }
+      numericColumns.forEach((colIdx) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: colIdx })
+        if (worksheet[cellAddress] && worksheet[cellAddress].v != null) {
+          worksheet[cellAddress].t = "n" // Force number type
+        }
+      })
     }
+
+    // Add autofilter for the header row
+    worksheet["!autofilter"] = { ref: worksheet["!ref"] || "A1" }
 
     // Create workbook and append worksheet
     const workbook = XLSX.utils.book_new()
