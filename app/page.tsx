@@ -764,10 +764,10 @@ useEffect(() => {
       { id: "reason", header: "Reason", width: 15 },
     ]
 
-    // Prepare data for export - matching UI table structure exactly
-    const exportData = rows.map((r) => {
-      const obj: Record<string, unknown> = {}
-      columnConfig.forEach((col) => {
+    // Build array of arrays (AOA) for proper Excel export
+    const headers = columnConfig.map((col) => col.header)
+    const dataRows = rows.map((r) => {
+      return columnConfig.map((col) => {
         const value = r[col.id as keyof typeof r]
         switch (col.id) {
           case "partCode":
@@ -776,8 +776,7 @@ useEffect(() => {
           case "productGroup":
           case "part_brand_key":
           case "reason":
-            obj[col.header] = value ?? ""
-            break
+            return value ?? ""
           case "qty":
           case "cost":
           case "costOld":
@@ -788,43 +787,22 @@ useEffect(() => {
           case "stock":
           case "moot":
           case "sales12m":
-            obj[col.header] = value != null ? Number(value) : null
-            break
           case "weight":
-            // Keep weight as number for Excel
-            obj[col.header] = value != null ? Number(value) : null
-            break
+            return value != null ? Number(value) : null
           case "isBulky":
-            obj[col.header] = value ? "Yes" : ""
-            break
+            return value ? "Yes" : ""
           default:
-            obj[col.header] = value ?? ""
+            return value ?? ""
         }
       })
-      return obj
     })
 
-    // Create worksheet from data
-    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    // Create worksheet using aoa_to_sheet for reliable column separation
+    const aoa = [headers, ...dataRows]
+    const worksheet = XLSX.utils.aoa_to_sheet(aoa)
 
     // Set column widths
     worksheet["!cols"] = columnConfig.map((col) => ({ wch: col.width }))
-
-    // Force numeric types for specific columns to prevent Excel auto-formatting issues
-    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1")
-    const numericColumns = [3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 15] // 0-indexed: Qty, Cost, CostOld, Now, Ship, Δ%, ΔNorm, Stock, Weight, PriceNorm, 12m
-    
-    for (let row = range.s.r + 1; row <= range.e.r; row++) {
-      numericColumns.forEach((colIdx) => {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: colIdx })
-        if (worksheet[cellAddress] && worksheet[cellAddress].v != null) {
-          worksheet[cellAddress].t = "n" // Force number type
-        }
-      })
-    }
-
-    // Add autofilter for the header row
-    worksheet["!autofilter"] = { ref: worksheet["!ref"] || "A1" }
 
     // Create workbook and append worksheet
     const workbook = XLSX.utils.book_new()
