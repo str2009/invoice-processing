@@ -813,8 +813,26 @@ useEffect(() => {
       .toISOString()
       .slice(0, 10)}.xlsx`
 
-    // Write and download file
-    XLSX.writeFile(workbook, filename)
+    // Write workbook to binary array buffer
+    const excelBuffer = XLSX.write(workbook, { 
+      bookType: "xlsx", 
+      type: "array" 
+    })
+
+    // Create Blob with correct MIME type for Excel
+    const blob = new Blob([excelBuffer], { 
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+    })
+
+    // Download using Object URL
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   
     setLogs((prev) => [
       ...prev,
