@@ -1945,7 +1945,7 @@ export function SimulationPanel({
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aviamir">Aviamir</SelectItem>
+                      <SelectItem value="aviamir">АвиаМир</SelectItem>
                       <SelectItem value="greenline">Green Line</SelectItem>
                       <SelectItem value="transriver">Trans River</SelectItem>
                       <SelectItem value="northcargo">North Cargo</SelectItem>
