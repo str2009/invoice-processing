@@ -1215,13 +1215,13 @@ export function SimulationPanel({
         return false
       })
       .map((key) => `${key} is required`)
-    
+
     // Check if density < 100 requires comment
     const densityVal = parseFloat(shippingForm.density) || 0
     if (densityVal > 0 && densityVal < 100 && !shippingForm.comment?.trim()) {
       errors.push("Укажите в комментарии причину такой маленькой плотности груза")
     }
-    
+
     return errors
   }, [shippingForm])
 
@@ -1945,7 +1945,7 @@ export function SimulationPanel({
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aviamir">Aviamir</SelectItem>
+                      <SelectItem value="aviamir">АвиаМир</SelectItem>
                       <SelectItem value="greenline">Green Line</SelectItem>
                       <SelectItem value="transriver">Trans River</SelectItem>
                       <SelectItem value="northcargo">North Cargo</SelectItem>
@@ -2000,10 +2000,10 @@ export function SimulationPanel({
                       <SelectValue placeholder="Select manager" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ivan">Ivan Petrov</SelectItem>
-                      <SelectItem value="maria">Maria Sokolova</SelectItem>
-                      <SelectItem value="alexey">Alexey Ivanov</SelectItem>
-                      <SelectItem value="elena">Elena Kozlova</SelectItem>
+                      <SelectItem value="ivan">Данил</SelectItem>
+                      <SelectItem value="maria">Евгения</SelectItem>
+                      <SelectItem value="alexey">Татьяна</SelectItem>
+                      <SelectItem value="elena">Вася Чемоданов</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
@@ -2057,28 +2057,27 @@ export function SimulationPanel({
                 />
               </Field>
 
-  {/* Row 5: Comment (full width, resizable) */}
-  {isLowDensity && !shippingForm.comment?.trim() && (
-  <div className="rounded-md bg-amber-500/10 border border-amber-500/40 px-3 py-2 text-xs text-amber-400">
-  Укажите в комментарии причину такой маленькой плотности груза
-  </div>
-  )}
-  <Field label="Comment" compact>
-  <textarea
-  value={shippingForm.comment}
-  onChange={(e) =>
-  setShippingForm((p) => ({
-  ...p,
-  comment: e.target.value,
-  }))
-  }
-  className={`w-full min-h-[60px] rounded-md border bg-background px-2 py-1.5 text-xs resize-y ${
-  isLowDensity && !shippingForm.comment?.trim()
-    ? "border-amber-500/60 ring-1 ring-amber-500/40"
-    : "border-border"
-  }`}
-  />
-  </Field>
+              {/* Row 5: Comment (full width, resizable) */}
+              {isLowDensity && !shippingForm.comment?.trim() && (
+                <div className="rounded-md bg-amber-500/10 border border-amber-500/40 px-3 py-2 text-xs text-amber-400">
+                  Укажите в комментарии причину такой маленькой плотности груза
+                </div>
+              )}
+              <Field label="Comment" compact>
+                <textarea
+                  value={shippingForm.comment}
+                  onChange={(e) =>
+                    setShippingForm((p) => ({
+                      ...p,
+                      comment: e.target.value,
+                    }))
+                  }
+                  className={`w-full min-h-[60px] rounded-md border bg-background px-2 py-1.5 text-xs resize-y ${isLowDensity && !shippingForm.comment?.trim()
+                    ? "border-amber-500/60 ring-1 ring-amber-500/40"
+                    : "border-border"
+                    }`}
+                />
+              </Field>
 
             </div>
 
@@ -2629,16 +2628,16 @@ export function SimulationPanel({
                                   )}
                                 </Button>
 
-{/* Clear PriceNorm Button */}
-  <Button
-  variant="outline"
-  size="sm"
-  className="text-xs"
-  onClick={onClearMoot}
-  disabled={!onClearMoot}
-  >
-  Очистить PriceNorm
-  </Button>
+                                {/* Clear PriceNorm Button */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs"
+                                  onClick={onClearMoot}
+                                  disabled={!onClearMoot}
+                                >
+                                  Очистить PriceNorm
+                                </Button>
 
                                 {/* Export to Excel Button */}
                                 <Button

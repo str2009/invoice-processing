@@ -726,7 +726,7 @@ useEffect(() => {
   }, [mapRow, rows])
  
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (rows.length === 0) return
   
     const ts = () => {
@@ -738,51 +738,88 @@ useEffect(() => {
       ...prev,
       `[${ts()}] Exporting ${rows.length} rows to Excel...`,
     ])
-  
-    const headers = [
-      "Part Code",
-      "Manufacturer",
-      "Part Name",
-      "Qty",
-      "Cost",
-      "Now",
-      "Ship",
-      "Weight",
-      "Total Purchase",
+
+    // Dynamically import xlsx library
+    const XLSX = await import("xlsx")
+
+    // Column definitions matching UI table exactly
+    const columnConfig = [
+      { id: "partCode", header: "Part Code", width: 14 },
+      { id: "manufacturer", header: "Manufacturer", width: 18 },
+      { id: "partName", header: "Part Name", width: 45 },
+      { id: "qty", header: "Qty", width: 8 },
+      { id: "cost", header: "Cost", width: 10 },
+      { id: "costOld", header: "Cost Old", width: 10 },
+      { id: "now", header: "Now", width: 10 },
+      { id: "ship", header: "Ship", width: 10 },
+      { id: "isBulky", header: "Bulky", width: 8 },
+      { id: "deltaPercent", header: "Δ%", width: 8 },
+      { id: "deltaNorm", header: "ΔNorm", width: 10 },
+      { id: "stock", header: "Stock", width: 8 },
+      { id: "weight", header: "Weight", width: 10 },
+      { id: "moot", header: "PriceNorm", width: 10 },
+      { id: "productGroup", header: "Group", width: 12 },
+      { id: "sales12m", header: "12m", width: 8 },
+      { id: "part_brand_key", header: "Key", width: 25 },
+      { id: "reason", header: "Reason", width: 15 },
     ]
-  
-    const csvRows = [
-      headers.join(";"),
-      ...rows.map((r) =>
-        [
-          r.partCode,
-          r.manufacturer,
-          (r.partName ?? "").replace(/;/g, ","),
-          Number(r.qty || 0),
-          Number(r.cost || 0),
-          Number(r.now || 0),
-          Number(r.ship || 0),
-          r.weight,
-          Number(r.cost || 0) * Number(r.qty || 0),
-        ].join(";")
-      ),
-    ]
-  
-    // 🔥 BOM для Excel (очень важно)
-    const blob = new Blob(
-      ["\uFEFF" + csvRows.join("\n")],
-      { type: "text/csv;charset=utf-8;" }
-    )
-  
+
+    // Build structured objects (NOT strings) for proper Excel export
+    const exportRows = rows.map((r) => ({
+      "Part Code": r.partCode ?? "",
+      "Manufacturer": r.manufacturer ?? "",
+      "Part Name": r.partName ?? "",
+      "Qty": r.qty != null ? Number(r.qty) : 0,
+      "Cost": r.cost != null ? Number(r.cost) : 0,
+      "Cost Old": r.costOld != null ? Number(r.costOld) : null,
+      "Now": r.now != null ? Number(r.now) : 0,
+      "Ship": r.ship != null ? Number(r.ship) : 0,
+      "Bulky": r.isBulky ? "Yes" : "",
+      "Δ%": r.deltaPercent != null ? Number(r.deltaPercent) : 0,
+      "ΔNorm": r.deltaNorm != null ? Number(r.deltaNorm) : null,
+      "Stock": r.stock != null ? Number(r.stock) : 0,
+      "Weight": r.weight != null ? Number(r.weight) : null,
+      "PriceNorm": r.moot != null ? Number(r.moot) : null,
+      "Group": r.productGroup ?? "",
+      "12m": r.sales12m != null ? Number(r.sales12m) : 0,
+      "Key": r.part_brand_key ?? "",
+      "Reason": r.reason ?? "",
+    }))
+
+    // Verify structure before export (first row must be OBJECT, not STRING)
+    console.log("[v0] Export row sample:", exportRows[0])
+
+    // Create worksheet from structured objects using json_to_sheet
+    const worksheet = XLSX.utils.json_to_sheet(exportRows)
+
+    // Set column widths
+    worksheet["!cols"] = columnConfig.map((col) => ({ wch: col.width }))
+
+    // Create workbook and append worksheet
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice")
+
+    // Generate filename
+    const filename = `invoice-${selectedInvoice ?? "export"}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.xlsx`
+
+    // Write workbook to binary array buffer
+    const excelBuffer = XLSX.write(workbook, { 
+      bookType: "xlsx", 
+      type: "array" 
+    })
+
+    // Create Blob with correct MIME type for Excel
+    const blob = new Blob([excelBuffer], { 
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+    })
+
+    // Download using Object URL
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-  
-    // 👇 сохраняем как .xlsx (Excel откроет нормально)
-    a.download = `invoice-${selectedInvoice ?? "export"}-${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`
-  
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -790,7 +827,7 @@ useEffect(() => {
   
     setLogs((prev) => [
       ...prev,
-      `[${ts()}] Export complete — ${rows.length} rows saved.`,
+      `[${ts()}] Export complete — ${rows.length} rows saved as XLSX.`,
     ])
   }, [rows, selectedInvoice])
 
