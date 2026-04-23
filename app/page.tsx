@@ -726,7 +726,7 @@ useEffect(() => {
   }, [mapRow, rows])
  
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (rows.length === 0) return
   
     const ts = () => {
@@ -738,59 +738,70 @@ useEffect(() => {
       ...prev,
       `[${ts()}] Exporting ${rows.length} rows to Excel...`,
     ])
-  
-    const headers = [
-      "Part Code",
-      "Manufacturer",
-      "Part Name",
-      "Qty",
-      "Cost",
-      "Now",
-      "Ship",
-      "Weight",
-      "Total Purchase",
-    ]
-  
-    const csvRows = [
-      headers.join(";"),
-      ...rows.map((r) =>
-        [
-          r.partCode,
-          r.manufacturer,
-          (r.partName ?? "").replace(/;/g, ","),
-          Number(r.qty || 0),
-          Number(r.cost || 0),
-          Number(r.now || 0),
-          Number(r.ship || 0),
-          r.weight,
-          Number(r.cost || 0) * Number(r.qty || 0),
-        ].join(";")
-      ),
-    ]
-  
-    // 🔥 BOM для Excel (очень важно)
-    const blob = new Blob(
-      ["\uFEFF" + csvRows.join("\n")],
-      { type: "text/csv;charset=utf-8;" }
-    )
-  
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-  
-    // 👇 сохраняем как .xlsx (Excel откроет нормально)
-    a.download = `invoice-${selectedInvoice ?? "export"}-${new Date()
+
+    // Weight normalization: detect date-like values and invalid data
+    const normalizeWeight = (value: unknown): number | null => {
+      if (value === null || value === undefined) return null
+      const str = String(value).trim()
+      // If looks like a date (e.g., 04.07.2026) → ignore
+      if (/\d{1,2}[.,]\d{1,2}[.,]\d{2,4}/.test(str)) return null
+      const num = Number(str.replace(",", "."))
+      if (isNaN(num) || num < 0 || num > 1000) return null
+      return num
+    }
+
+    // Format weight with comma separator for display
+    const formatWeight = (value: number | null): string => {
+      if (value === null || value === undefined) return ""
+      return value.toFixed(3).replace(".", ",")
+    }
+
+    // Dynamically import xlsx library
+    const XLSX = await import("xlsx")
+
+    // Prepare data for export
+    const exportData = rows.map((r) => {
+      const normalizedWeight = normalizeWeight(r.weight)
+      return {
+        "Part Code": r.partCode,
+        "Manufacturer": r.manufacturer,
+        "Part Name": r.partName ?? "",
+        "Qty": Number(r.qty || 0),
+        "Cost": Number(r.cost || 0),
+        "Now": Number(r.now || 0),
+        "Ship": Number(r.ship || 0),
+        "Weight": formatWeight(normalizedWeight),
+        "Total Purchase": Number(r.cost || 0) * Number(r.qty || 0),
+      }
+    })
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+
+    // Force Weight column (H) to be string type to prevent Excel date conversion
+    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1")
+    for (let row = range.s.r + 1; row <= range.e.r; row++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: 7 }) // Column H (Weight)
+      if (worksheet[cellAddress]) {
+        worksheet[cellAddress].t = "s" // Force string type
+      }
+    }
+
+    // Create workbook and append worksheet
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice")
+
+    // Generate filename
+    const filename = `invoice-${selectedInvoice ?? "export"}-${new Date()
       .toISOString()
-      .slice(0, 10)}.csv`
-  
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+      .slice(0, 10)}.xlsx`
+
+    // Write and download file
+    XLSX.writeFile(workbook, filename)
   
     setLogs((prev) => [
       ...prev,
-      `[${ts()}] Export complete — ${rows.length} rows saved.`,
+      `[${ts()}] Export complete — ${rows.length} rows saved as XLSX.`,
     ])
   }, [rows, selectedInvoice])
 
