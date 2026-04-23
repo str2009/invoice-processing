@@ -978,12 +978,18 @@ export function PartDetailsPanel({ row, onClose, onCommentChange }: PartDetailsP
 
   // Fetch part details - depends ONLY on partBrandKey
   useEffect(() => {
-    if (!row) return
+    console.log("[v0] PartDetailsPanel useEffect triggered, row:", row)
+    if (!row) {
+      console.log("[v0] No row, skipping fetch")
+      return
+    }
 
     const fetchPartDetails = async () => {
+      console.log("[v0] Fetching details for:", row.partCode, row.brand)
       setIsLoading(true)
 
       try {
+        console.log("[v0] Sending POST to:", WEBHOOK_URL)
         const res = await fetch(WEBHOOK_URL, {
           method: "POST",
           headers: {
@@ -995,7 +1001,9 @@ export function PartDetailsPanel({ row, onClose, onCommentChange }: PartDetailsP
           }),
         })
 
+        console.log("[v0] Response status:", res.status)
         const data = await res.json()
+        console.log("[v0] Response data:", data)
 
         setAnalogsRaw(data.analogs || [])
         setHistoryRaw(data.history || [])

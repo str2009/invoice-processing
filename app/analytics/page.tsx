@@ -1044,6 +1044,7 @@ const table = useReactTable({
   }, [invoiceList, ts])
 
   const handleRowClick = useCallback((row: AnalyticsRow) => {
+    console.log("[v0] ROW CLICKED:", row.partCode, row.brand, row)
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
 
