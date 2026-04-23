@@ -601,7 +601,7 @@ export function PartDetailsPanel({ row, onClose, onCommentChange }: PartDetailsP
     useSensor(KeyboardSensor)
   )
 
-  // Fetch async data when row changes
+  // Fetch async data when row changes - directly from webhook
   useEffect(() => {
     if (!row) {
       setAsyncData(null)
@@ -613,20 +613,21 @@ export function PartDetailsPanel({ row, onClose, onCommentChange }: PartDetailsP
       setAsyncData(null)
 
       try {
-        // Construct part_brand_key from row data
-        const partBrandKey = `${row.partCode}_${row.brand}`
-
-        const response = await fetch("/api/part-details", {
+        // Fetch directly from webhook
+        const response = await fetch("https://max24vin.ru/webhook/analytics-details-5ee2beb3bf59", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ part_brand_key: partBrandKey }),
+          body: JSON.stringify({
+            part_code: row.partCode,
+            brand: row.brand,
+          }),
         })
 
         if (response.ok) {
           const data: PartDetailsResponse = await response.json()
           setAsyncData(data)
         } else {
-          // Endpoint might not exist yet, use empty data
+          // On error, set empty data
           setAsyncData({
             analytics: { price_best: 0, offers: 0, sold_12m: 0, days_no_sales: 0 },
             analogs: [],
