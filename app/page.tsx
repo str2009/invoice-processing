@@ -764,42 +764,33 @@ useEffect(() => {
       { id: "reason", header: "Reason", width: 15 },
     ]
 
-    // Build array of arrays (AOA) for proper Excel export
-    const headers = columnConfig.map((col) => col.header)
-    const dataRows = rows.map((r) => {
-      return columnConfig.map((col) => {
-        const value = r[col.id as keyof typeof r]
-        switch (col.id) {
-          case "partCode":
-          case "manufacturer":
-          case "partName":
-          case "productGroup":
-          case "part_brand_key":
-          case "reason":
-            return value ?? ""
-          case "qty":
-          case "cost":
-          case "costOld":
-          case "now":
-          case "ship":
-          case "deltaPercent":
-          case "deltaNorm":
-          case "stock":
-          case "moot":
-          case "sales12m":
-          case "weight":
-            return value != null ? Number(value) : null
-          case "isBulky":
-            return value ? "Yes" : ""
-          default:
-            return value ?? ""
-        }
-      })
-    })
+    // Build structured objects (NOT strings) for proper Excel export
+    const exportRows = rows.map((r) => ({
+      "Part Code": r.partCode ?? "",
+      "Manufacturer": r.manufacturer ?? "",
+      "Part Name": r.partName ?? "",
+      "Qty": r.qty != null ? Number(r.qty) : 0,
+      "Cost": r.cost != null ? Number(r.cost) : 0,
+      "Cost Old": r.costOld != null ? Number(r.costOld) : null,
+      "Now": r.now != null ? Number(r.now) : 0,
+      "Ship": r.ship != null ? Number(r.ship) : 0,
+      "Bulky": r.isBulky ? "Yes" : "",
+      "Δ%": r.deltaPercent != null ? Number(r.deltaPercent) : 0,
+      "ΔNorm": r.deltaNorm != null ? Number(r.deltaNorm) : null,
+      "Stock": r.stock != null ? Number(r.stock) : 0,
+      "Weight": r.weight != null ? Number(r.weight) : null,
+      "PriceNorm": r.moot != null ? Number(r.moot) : null,
+      "Group": r.productGroup ?? "",
+      "12m": r.sales12m != null ? Number(r.sales12m) : 0,
+      "Key": r.part_brand_key ?? "",
+      "Reason": r.reason ?? "",
+    }))
 
-    // Create worksheet using aoa_to_sheet for reliable column separation
-    const aoa = [headers, ...dataRows]
-    const worksheet = XLSX.utils.aoa_to_sheet(aoa)
+    // Verify structure before export (first row must be OBJECT, not STRING)
+    console.log("[v0] Export row sample:", exportRows[0])
+
+    // Create worksheet from structured objects using json_to_sheet
+    const worksheet = XLSX.utils.json_to_sheet(exportRows)
 
     // Set column widths
     worksheet["!cols"] = columnConfig.map((col) => ({ wch: col.width }))
