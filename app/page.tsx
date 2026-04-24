@@ -68,11 +68,23 @@ useEffect(() => {
     setUiScale(savedScale)
   }
   
-  // Fetch current user
+  // Fetch current user and role
   const supabase = createClient()
-  supabase.auth.getUser().then(({ data: { user } }) => {
+  async function loadUserAndRole() {
+    const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
-  })
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      
+      setRole(profile?.role ?? null)
+    }
+  }
+  loadUserAndRole()
 }, [])
 
   // Persist workspace settings
@@ -110,6 +122,7 @@ useEffect(() => {
 
   // Supabase user state
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [role, setRole] = useState<string | null>(null)
 
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
@@ -1293,10 +1306,15 @@ selectedInvoices={selectedInvoices}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[160px]">
-                    <DropdownMenuLabel className="text-xs font-normal truncate">
-                      {user.email}
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+<DropdownMenuLabel className="text-xs font-normal truncate">
+  {user.email}
+  </DropdownMenuLabel>
+  {role && (
+    <DropdownMenuLabel className="text-xs font-medium text-primary">
+      Role: {role}
+    </DropdownMenuLabel>
+  )}
+  <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleLogout}
                       className="gap-2 text-xs text-destructive focus:text-destructive"

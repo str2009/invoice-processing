@@ -656,6 +656,7 @@ export default function AnalyticsPage() {
   const { theme, setTheme } = useTheme()
 const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   
   // Workspace display settings
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
@@ -673,12 +674,23 @@ const [mounted, setMounted] = useState(false)
   setUiScale(savedScale)
   }
   
-  // Fetch current user
+  // Fetch current user and role
   const supabase = createClient()
-  supabase.auth.getUser().then(({ data: { user } }) => {
+  async function loadUserAndRole() {
+    const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
-  })
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      
+      setRole(profile?.role ?? null)
     }
+  }
+  loadUserAndRole()
   }, [])
 
   // Persist workspace settings
@@ -1454,10 +1466,15 @@ const table = useReactTable({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[160px]">
-          <DropdownMenuLabel className="text-xs font-normal truncate">
-            {user.email}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
+<DropdownMenuLabel className="text-xs font-normal truncate">
+> {user.email}
+  </DropdownMenuLabel>
+  {role && (
+    <DropdownMenuLabel className="text-xs font-medium text-primary">
+      Role: {role}
+    </DropdownMenuLabel>
+  )}
+  <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleLogout}
             className="gap-2 text-xs text-destructive focus:text-destructive"
