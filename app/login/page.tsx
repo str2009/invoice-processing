@@ -33,9 +33,12 @@ export default function LoginPage() {
       return
     }
 
-    // Redirect to home page after successful login
-    router.push("/")
+    // Use router.refresh() first to update server state, then push
     router.refresh()
+    // Small delay to ensure cookies are synced before navigation
+    setTimeout(() => {
+      router.push("/")
+    }, 100)
   }
 
   return (
