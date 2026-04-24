@@ -73,7 +73,11 @@ import {
   Monitor,
   Maximize2,
   Minimize2,
+  LogOut,
+  User,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import { useTheme } from "next-themes"
 import {
   DropdownMenu,
@@ -114,6 +118,7 @@ interface AnalyticsRow {
   lastSaleDate: string
   abcClass: string
   riskScore: number
+  part_brand_key: string
 }
 
 // --- Transform InvoiceRow[] -> AnalyticsRow[] (pure, no mock data) ---
@@ -161,9 +166,10 @@ function toAnalyticsRows(rows: InvoiceRow[]): AnalyticsRow[] {
       competitorPrice,
       competitorStock,
       lastSaleDate: "",
-      abcClass: abcClasses[idx % abcClasses.length],
-      riskScore: Math.min(riskScore, 100),
-    }
+abcClass: abcClasses[idx % abcClasses.length],
+    riskScore: Math.min(riskScore, 100),
+    part_brand_key: row.part_brand_key ?? `${row.partCode}_${row.manufacturer}`,
+  }
   })
 }
 
@@ -223,6 +229,7 @@ const defaultColumnSizing: ColumnSizingState = {
   lastSaleDate: 90,
   abcClass: 60,
   riskScore: 70,
+  part_brand_key: 180,
 }
 
 // --- Resize Handle Component ---
@@ -613,20 +620,30 @@ function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
       )
     },
   },
-  {
-    id: "riskScore",
-    accessorKey: "riskScore",
-    header: ({ column }) => <SortHeader column={column} label="Risk" />,
-    cell: ({ row }) => {
-      const v = row.getValue("riskScore") as number
-      return (
-        <span className={`font-mono text-[11px] tabular-nums font-semibold ${v >= 60 ? "text-red-500" : v >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-          {v}
-        </span>
-      )
-    },
+{
+  id: "riskScore",
+  accessorKey: "riskScore",
+  header: ({ column }) => <SortHeader column={column} label="Risk" />,
+  cell: ({ row }) => {
+  const v = row.getValue("riskScore") as number
+  return (
+  <span className={`font-mono text-[11px] tabular-nums font-semibold ${v >= 60 ? "text-red-500" : v >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+  {v}
+  </span>
+  )
   },
-]}
+  },
+  {
+  id: "part_brand_key",
+  accessorKey: "part_brand_key",
+  header: ({ column }) => <SortHeader column={column} label="Key" />,
+  cell: ({ row }) => (
+  <span className="font-mono text-[10px] text-muted-foreground truncate block max-w-[180px]" title={row.original.part_brand_key}>
+    {row.original.part_brand_key}
+  </span>
+  ),
+  },
+  ]}
 
 
 
@@ -637,23 +654,43 @@ const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", 
 export default function AnalyticsPage() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+const [mounted, setMounted] = useState(false)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   
   // Workspace display settings
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
   const [uiScale, setUiScale] = useState<"90" | "100" | "110">("100")
-
+  
   useEffect(() => {
-    setMounted(true)
-    // Load workspace settings from localStorage
-    const savedDensity = localStorage.getItem("workspace_density")
-    const savedScale = localStorage.getItem("workspace_ui_scale")
-    if (savedDensity === "comfortable" || savedDensity === "compact") {
-      setDensity(savedDensity)
+  setMounted(true)
+  // Load workspace settings from localStorage
+  const savedDensity = localStorage.getItem("workspace_density")
+  const savedScale = localStorage.getItem("workspace_ui_scale")
+  if (savedDensity === "comfortable" || savedDensity === "compact") {
+  setDensity(savedDensity)
+  }
+  if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
+  setUiScale(savedScale)
+  }
+  
+  // Fetch current user and role
+  const supabase = createClient()
+  async function loadUserAndRole() {
+    const { data: { user } } = await supabase.auth.getUser()
+    setUser(user)
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      
+      setRole(profile?.role ?? null)
     }
-    if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
-      setUiScale(savedScale)
-    }
+  }
+  loadUserAndRole()
   }, [])
 
   // Persist workspace settings
@@ -662,11 +699,18 @@ export default function AnalyticsPage() {
     localStorage.setItem("workspace_density", value)
   }, [])
 
-  const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
-    setUiScale(value)
-    localStorage.setItem("workspace_ui_scale", value)
+const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
+  setUiScale(value)
+  localStorage.setItem("workspace_ui_scale", value)
   }, [])
 
+  const handleLogout = useCallback(async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
+  }, [router])
+  
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "analyticsRightPanelWidth",
     defaultWidth: 450,
@@ -1044,6 +1088,7 @@ const table = useReactTable({
   }, [invoiceList, ts])
 
   const handleRowClick = useCallback((row: AnalyticsRow) => {
+    console.log("[v0] ROW CLICKED:", row.partCode, row.brand, row)
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
 
@@ -1402,10 +1447,47 @@ const table = useReactTable({
       <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
       110%
     </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+</DropdownMenuContent>
+  </DropdownMenu>
+
+  {/* User menu */}
+  {user && (
+    <>
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <User className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline max-w-[120px] truncate">{user.email}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[160px]">
+<DropdownMenuLabel className="text-xs font-normal truncate">
+              {user.email}
+            </DropdownMenuLabel>
+            {role && (
+              <DropdownMenuLabel className="text-xs font-medium text-primary">
+                Role: {role}
+              </DropdownMenuLabel>
+            )}
+            <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleLogout}
+            className="gap-2 text-xs text-destructive focus:text-destructive"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Logout
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  )}
   </div>
-  </header>
+</header>
 
       {/* Filter flags + column manager row */}
       <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1">

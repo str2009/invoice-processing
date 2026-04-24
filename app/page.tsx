@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockLogs } from "@/lib/mock-data"
 import { Input } from "@/components/ui/input"
-import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2 } from "lucide-react"
+import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2, LogOut, User } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +67,24 @@ useEffect(() => {
   if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
     setUiScale(savedScale)
   }
+  
+  // Fetch current user and role
+  const supabase = createClient()
+  async function loadUserAndRole() {
+    const { data: { user } } = await supabase.auth.getUser()
+    setUser(user)
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      
+      setRole(profile?.role ?? null)
+    }
+  }
+  loadUserAndRole()
 }, [])
 
   // Persist workspace settings
@@ -77,6 +97,13 @@ useEffect(() => {
     setUiScale(value)
     localStorage.setItem("workspace_ui_scale", value)
   }, [])
+
+  const handleLogout = useCallback(async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
+  }, [router])
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "invoiceRightPanelWidth",
     defaultWidth: 420,
@@ -92,6 +119,10 @@ useEffect(() => {
   const [globalFilter, setGlobalFilter] = useState("")
   const [rowCount, setRowCount] = useState(0)
   const [selectedRow, setSelectedRow] = useState<InvoiceRow | null>(null)
+
+  // Supabase user state
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [role, setRole] = useState<string | null>(null)
 
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
@@ -1258,6 +1289,43 @@ selectedInvoices={selectedInvoices}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* User menu */}
+            {user && (
+              <>
+                <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <User className="h-3.5 w-3.5" />
+                      <span className="hidden xl:inline max-w-[120px] truncate">{user.email}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[160px]">
+<DropdownMenuLabel className="text-xs font-normal truncate">
+  {user.email}
+  </DropdownMenuLabel>
+  {role && (
+    <DropdownMenuLabel className="text-xs font-medium text-primary">
+      Role: {role}
+    </DropdownMenuLabel>
+  )}
+  <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="gap-2 text-xs text-destructive focus:text-destructive"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
           </div>
         </header>
 
