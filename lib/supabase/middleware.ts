@@ -31,7 +31,16 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser()
+
+  console.log("[v0] Middleware:", {
+    path: request.nextUrl.pathname,
+    hasUser: !!user,
+    userEmail: user?.email,
+    error: error?.message,
+    cookies: request.cookies.getAll().map(c => c.name),
+  })
 
   // Allow /login and /api routes without auth
   const isLoginPage = request.nextUrl.pathname === '/login'

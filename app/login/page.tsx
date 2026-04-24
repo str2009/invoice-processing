@@ -22,9 +22,16 @@ export default function LoginPage() {
 
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+    })
+
+    console.log("[v0] Login result:", {
+      hasSession: !!data?.session,
+      hasUser: !!data?.user,
+      userEmail: data?.user?.email,
+      error: error?.message,
     })
 
     if (error) {
@@ -32,6 +39,13 @@ export default function LoginPage() {
       setIsLoading(false)
       return
     }
+
+    // Check session is set
+    const { data: sessionData } = await supabase.auth.getSession()
+    console.log("[v0] Session after login:", {
+      hasSession: !!sessionData?.session,
+      accessToken: sessionData?.session?.access_token?.substring(0, 20) + "...",
+    })
 
     // Full page navigation to ensure server sees new session cookies
     window.location.href = "/"
