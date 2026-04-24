@@ -31,34 +31,20 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
-    error,
   } = await supabase.auth.getUser()
 
-  console.log("[v0] Middleware:", {
-    path: request.nextUrl.pathname,
-    hasUser: !!user,
-    userEmail: user?.email,
-    error: error?.message,
-    cookies: request.cookies.getAll().map(c => c.name),
-  })
+  const pathname = request.nextUrl.pathname
 
-  // Allow /login and /api routes without auth
-  const isLoginPage = request.nextUrl.pathname === '/login'
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api')
-  
-  if (!user && !isLoginPage && !isApiRoute) {
-    // Redirect to login if not authenticated
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // If no user and not on login page, redirect to login
+  if (!user && !pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // If user is logged in and tries to access /login, redirect to home
-  if (user && isLoginPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
+  // If user exists and on login page, redirect to home
+  if (user && pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
+  // Allow access to all other routes for authenticated users
   return supabaseResponse
 }
