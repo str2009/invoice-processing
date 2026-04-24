@@ -33,12 +33,8 @@ export default function LoginPage() {
       return
     }
 
-    // Use router.refresh() first to update server state, then push
-    router.refresh()
-    // Small delay to ensure cookies are synced before navigation
-    setTimeout(() => {
-      router.push("/")
-    }, 100)
+    // Full page navigation to ensure server sees new session cookies
+    window.location.href = "/"
   }
 
   return (
