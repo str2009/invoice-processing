@@ -33,6 +33,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  console.log("[v0] Middleware check:", {
+    path: request.nextUrl.pathname,
+    hasUser: !!user,
+    userEmail: user?.email,
+  })
+
   // Allow /login and /api routes without auth
   const isLoginPage = request.nextUrl.pathname === '/login'
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
