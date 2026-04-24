@@ -25,9 +25,12 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser()
 
   const path = req.nextUrl.pathname
+  
+  console.log("[v0] Middleware:", { path, hasUser: !!user, userEmail: user?.email })
 
   // Redirect unauthenticated users to login (except if already on login)
   if (!user && !path.startsWith("/login")) {
+    console.log("[v0] Redirecting to /login - no user")
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
@@ -40,5 +43,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
 }
