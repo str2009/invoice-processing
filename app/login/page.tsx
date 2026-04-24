@@ -22,15 +22,9 @@ export default function LoginPage() {
 
     const supabase = createClient()
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
-    })
-
-    console.log("[v0] Login result:", { 
-      hasSession: !!data?.session, 
-      hasUser: !!data?.user,
-      error: error?.message 
     })
 
     if (error) {
@@ -39,8 +33,9 @@ export default function LoginPage() {
       return
     }
 
-    // Force a hard navigation to ensure middleware sees the new cookies
-    window.location.href = "/"
+    // Redirect to home page after successful login
+    router.push("/")
+    router.refresh()
   }
 
   return (
