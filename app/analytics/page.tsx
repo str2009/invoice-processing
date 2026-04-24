@@ -1467,14 +1467,14 @@ const table = useReactTable({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[160px]">
 <DropdownMenuLabel className="text-xs font-normal truncate">
-> {user.email}
-  </DropdownMenuLabel>
-  {role && (
-    <DropdownMenuLabel className="text-xs font-medium text-primary">
-      Role: {role}
-    </DropdownMenuLabel>
-  )}
-  <DropdownMenuSeparator />
+              {user.email}
+            </DropdownMenuLabel>
+            {role && (
+              <DropdownMenuLabel className="text-xs font-medium text-primary">
+                Role: {role}
+              </DropdownMenuLabel>
+            )}
+            <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleLogout}
             className="gap-2 text-xs text-destructive focus:text-destructive"
