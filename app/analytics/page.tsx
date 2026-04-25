@@ -970,13 +970,17 @@ const handleResetAll = useCallback(() => {
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
   const [invoicesLoaded, setInvoicesLoaded] = useState(false)
   
-  // Fetch invoices from webhook
+  // Fetch invoices via POST to /api/analytics with mode: INVOICE_LIST
   const fetchInvoices = useCallback(async () => {
     if (invoicesLoaded || isLoadingInvoices) return
     
     setIsLoadingInvoices(true)
     try {
-      const res = await fetch('/api/analytics-invoice-list')
+      const res = await fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'INVOICE_LIST' })
+      })
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`)
       }
@@ -993,7 +997,6 @@ const handleResetAll = useCallback(() => {
           }))
         : []
       
-      console.log("[v0] Invoices mapped:", mapped)
       setInvoices(mapped)
       setInvoicesLoaded(true)
     } catch (error) {
