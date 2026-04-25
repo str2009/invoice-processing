@@ -248,12 +248,12 @@ const columns: ColumnDef<InvoiceRow>[] = [
       return (
         <div className="flex items-center gap-1.5">
           {isFixed && (
-            <span className="text-xs text-amber-400">●</span>
+            <span className="text-xs text-emerald-500">●</span>
           )}
           <span
             className={`block truncate ${
               isFixed
-                ? "bg-amber-400/10 px-1 rounded text-amber-300"
+                ? "bg-emerald-500/10 px-1 rounded text-emerald-400"
                 : ""
             }`}
             title={row.getValue("partName")}
