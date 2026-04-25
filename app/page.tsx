@@ -1191,6 +1191,8 @@ selectedInvoices={selectedInvoices}
   <Sun className="h-3.5 w-3.5" />
   ) : theme === "soft" ? (
   <Sun className="h-3.5 w-3.5 text-amber-400" />
+  ) : theme === "mellow" ? (
+  <Sun className="h-3.5 w-3.5 text-stone-500" />
   ) : theme === "graphite" ? (
   <Monitor className="h-3.5 w-3.5" />
   ) : theme === "warm-dark" ? (
@@ -1218,6 +1220,13 @@ selectedInvoices={selectedInvoices}
   >
   <Sun className="h-3.5 w-3.5 text-amber-400" />
   Soft
+  </DropdownMenuItem>
+  <DropdownMenuItem
+  onClick={() => setTheme("mellow")}
+  className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}
+  >
+  <Sun className="h-3.5 w-3.5 text-stone-500" />
+  Mellow
   </DropdownMenuItem>
   <DropdownMenuItem
   onClick={() => setTheme("dark")}

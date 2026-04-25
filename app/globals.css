@@ -146,6 +146,43 @@
     --sidebar-border: 216 9% 22%;
     --sidebar-ring: 43 50% 57%;
   }
+  /* Mellow - теплые серые тона (oklch hue 90), увеличенный шрифт 17px, приглушённый синий primary */
+  .mellow {
+    --background: 48 12% 96%;
+    --foreground: 48 8% 15%;
+    --card: 48 10% 98%;
+    --card-foreground: 48 8% 15%;
+    --popover: 48 10% 98%;
+    --popover-foreground: 48 8% 15%;
+    --primary: 215 35% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 8% 91%;
+    --secondary-foreground: 48 8% 20%;
+    --muted: 48 10% 92%;
+    --muted-foreground: 48 6% 42%;
+    --accent: 48 12% 89%;
+    --accent-foreground: 48 8% 15%;
+    --destructive: 0 50% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 48 10% 85%;
+    --input: 48 10% 85%;
+    --ring: 215 35% 45%;
+    --chart-1: 215 35% 45%;
+    --chart-2: 165 40% 45%;
+    --chart-3: 38 65% 52%;
+    --chart-4: 0 50% 48%;
+    --chart-5: 260 35% 55%;
+    --sidebar-background: 48 12% 95%;
+    --sidebar-foreground: 48 8% 20%;
+    --sidebar-primary: 215 35% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 48 12% 89%;
+    --sidebar-accent-foreground: 48 8% 15%;
+    --sidebar-border: 48 10% 85%;
+    --sidebar-ring: 215 35% 45%;
+    font-size: 17px;
+  }
+  
   /* Soft - мягкая светлая тема, минималистичная, дорогой вид */
   .soft {
     --background: 40 20% 97%;
