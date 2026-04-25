@@ -475,6 +475,24 @@ function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
     cell: ({ row }) => <span className="font-mono text-[11px] text-foreground">{row.getValue("partCode")}</span>,
   },
   {
+    id: "part_name",
+    accessorKey: "part_name",
+    header: ({ column }) => <SortHeader column={column} label="Part Name" />,
+    cell: ({ row }) => <span className="text-[11px]">{row.getValue("part_name")}</span>,
+  },
+  {
+    id: "gtd_number",
+    accessorKey: "gtd_number",
+    header: ({ column }) => <SortHeader column={column} label="GTD" />,
+    cell: ({ row }) => <span className="font-mono text-[11px] text-muted-foreground">{row.getValue("gtd_number")}</span>,
+  },
+  {
+    id: "part_code_fixed",
+    accessorKey: "part_code_fixed",
+    header: ({ column }) => <SortHeader column={column} label="Fixed" />,
+    cell: ({ row }) => <span className="font-mono text-[11px]">{row.getValue("part_code_fixed")}</span>,
+  },
+  {
     id: "brand",
     accessorKey: "brand",
     header: ({ column }) => <SortHeader column={column} label="Brand" />,
@@ -613,7 +631,10 @@ function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
     id: "bulk",
     accessorKey: "bulk",
     header: ({ column }) => <SortHeader column={column} label="Bulk" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{row.getValue("bulk")}</span>,
+    cell: ({ row }) => {
+      const val = row.getValue("bulk")
+      return val ? <span className="text-[11px]">🚛</span> : null
+    },
   },
   {
     id: "competitorPrice",
