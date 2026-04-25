@@ -1090,6 +1090,57 @@ const handleResetAll = useCallback(() => {
     }
   }, [filterInStock])
 
+  // Load invoice data - sends only invoice_id, backend handles SQL
+  const loadInvoiceData = useCallback(async (invoiceId: string) => {
+    if (!invoiceId) return
+    
+    setIsDataLoading(true)
+    try {
+      const response = await fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "INVOICE",
+          invoice_id: invoiceId,
+        }),
+      })
+      
+      if (!response.ok) {
+        setIsDataLoading(false)
+        return
+      }
+      
+      const data = await response.json()
+      console.log("[v0] Invoice data response:", data)
+      const rows = Array.isArray(data) ? data : []
+      
+      const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
+        id: String(r.id ?? idx + 1),
+        partCode: (r.part_code as string) ?? (r.partCode as string) ?? "",
+        manufacturer: (r.brand as string) ?? (r.manufacturer as string) ?? "",
+        partName: (r.part_name as string) ?? (r.partName as string) ?? "",
+        qty: Number(r.qty ?? 0),
+        cost: Number(r.purchase_price ?? r.cost ?? 0),
+        now: Number(r.price ?? r.now ?? r.price_now ?? 0),
+        ship: Number(r.ship ?? r.price_ship ?? 0),
+        deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
+        stock: Number(r.stock_qty ?? r.stock ?? 0),
+        weight: Number(r.weight ?? 0),
+        isBulky: Boolean(r.isBulky),
+        productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
+        sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
+      })) as InvoiceRow[]
+      
+      setRawInvoiceRows(mappedRows)
+      setIsDataLoaded(true)
+    } catch (e) {
+      console.error("[v0] Failed to load invoice data:", e)
+      setRawInvoiceRows([])
+    } finally {
+      setIsDataLoading(false)
+    }
+  }, [])
+
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
   
 
@@ -1517,9 +1568,17 @@ const table = useReactTable({
                 variant="outline"
                 size="sm"
                 className="h-7 gap-1.5 px-3 text-xs"
-                disabled={!selectedInvoiceForAnalysis}
+                disabled={!selectedInvoiceForAnalysis || isDataLoading}
+                onClick={() => selectedInvoiceForAnalysis && loadInvoiceData(selectedInvoiceForAnalysis.number)}
               >
-                Загрузить
+                {isDataLoading ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  'Загрузить'
+                )}
               </Button>
             </div>
           )}
