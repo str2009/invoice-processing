@@ -963,32 +963,47 @@ const handleResetAll = useCallback(() => {
     date: string
   }
   
-  // Mock invoice data (will be replaced with API call)
-  const mockInvoices: InvoiceItem[] = useMemo(() => [
-    { id: '1', number: '45_11_01_2026_AMX_STR', supplier: 'Автопрагматик', date: '11.01.2026' },
-    { id: '2', number: '46_12_01_2026_BMW_STR', supplier: 'BMW Parts', date: '12.01.2026' },
-    { id: '3', number: '47_15_01_2026_MER_STR', supplier: 'Mercedes Store', date: '15.01.2026' },
-    { id: '4', number: '48_18_01_2026_AUD_STR', supplier: 'Audi Center', date: '18.01.2026' },
-    { id: '5', number: '49_20_01_2026_VLK_STR', supplier: 'Volkswagen Parts', date: '20.01.2026' },
-    { id: '6', number: '50_22_01_2026_TOY_STR', supplier: 'Toyota Motors', date: '22.01.2026' },
-    { id: '7', number: '51_25_01_2026_HYU_STR', supplier: 'Hyundai Parts', date: '25.01.2026' },
-    { id: '8', number: '52_28_01_2026_KIA_STR', supplier: 'KIA Motors', date: '28.01.2026' },
-  ], [])
-  
+  const [invoices, setInvoices] = useState<InvoiceItem[]>([])
   const [selectedInvoiceForAnalysis, setSelectedInvoiceForAnalysis] = useState<InvoiceItem | null>(null)
   const [invoiceSelectorOpen, setInvoiceSelectorOpen] = useState(false)
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('')
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false)
+  
+  // Fetch invoices from webhook
+  const fetchInvoices = useCallback(async () => {
+    if (invoicesLoaded || isLoadingInvoices) return
+    
+    setIsLoadingInvoices(true)
+    try {
+      const res = await fetch('https://max24vin.ru/webhook/analytics-invoice-list-03ae810caa3f')
+      const data = await res.json()
+      setInvoices(Array.isArray(data) ? data : [])
+      setInvoicesLoaded(true)
+    } catch (error) {
+      console.error('Failed to fetch invoices:', error)
+      setInvoices([])
+    } finally {
+      setIsLoadingInvoices(false)
+    }
+  }, [invoicesLoaded, isLoadingInvoices])
+  
+  // Load invoices when switching to invoice mode
+  useEffect(() => {
+    if (mode === 'invoice' && !invoicesLoaded && !isLoadingInvoices) {
+      fetchInvoices()
+    }
+  }, [mode, invoicesLoaded, isLoadingInvoices, fetchInvoices])
   
   // Filter invoices based on search query
   const filteredInvoices = useMemo(() => {
-    if (!invoiceSearchQuery.trim()) return mockInvoices
+    if (!invoiceSearchQuery.trim()) return invoices
     const query = invoiceSearchQuery.toLowerCase()
-    return mockInvoices.filter(
+    return invoices.filter(
       inv => inv.number.toLowerCase().includes(query) || 
              inv.supplier.toLowerCase().includes(query)
     )
-  }, [mockInvoices, invoiceSearchQuery])
+  }, [invoices, invoiceSearchQuery])
   
   // Data — manual load only, no auto-fetch
   const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>([])
@@ -1003,6 +1018,11 @@ const handleResetAll = useCallback(() => {
       setIsDataLoaded(false)
       setSelectedInvoiceForAnalysis(null)
       setInvoiceSearchQuery('')
+      // Reset invoices loaded state so they get refetched when switching back to invoice mode
+      if (newMode !== 'invoice') {
+        setInvoicesLoaded(false)
+        setInvoices([])
+      }
     }
   }, [mode])
 
