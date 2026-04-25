@@ -1539,9 +1539,12 @@ const table = useReactTable({
                             key={invoice.id}
                             value={invoice.id}
                             onSelect={() => {
+                              console.log("[v0] Selected invoice:", invoice.number)
                               setSelectedInvoiceForAnalysis(invoice)
                               setInvoiceSelectorOpen(false)
                               setInvoiceSearchQuery('')
+                              // Auto-load invoice data on selection
+                              loadInvoiceData(invoice.number)
                             }}
                             className="flex items-start gap-2 py-2"
                           >
