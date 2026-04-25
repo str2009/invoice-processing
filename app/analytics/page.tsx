@@ -90,6 +90,7 @@ import {
 
 import type { InvoiceRow, InvoiceListItem } from "@/lib/mock-data"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
+import { ColumnHeaderContextMenu, useColumnContextMenu } from "@/components/ui/column-header-context-menu"
 
 // --- Extended analytics row ---
 interface AnalyticsRow {
@@ -181,23 +182,42 @@ const numericCols = new Set([
 ])
 
 // --- localStorage helpers for column persistence ---
-const STORAGE_KEY_ORDER = "analytics-column-order"
-const STORAGE_KEY_SIZING = "analytics-column-sizing"
-const STORAGE_KEY_VISIBILITY = "analytics-column-visibility"
+const STORAGE_KEY = "analytics-table-columns-v1"
 
-function loadFromStorage<T>(key: string): T | null {
+interface SavedColumnState {
+  columnOrder?: string[]
+  columnVisibility?: Record<string, boolean>
+  columnSizing?: Record<string, number>
+  version: number
+}
+
+function loadColumnState(validIds: string[]): SavedColumnState | null {
   try {
-    const stored = localStorage.getItem(key)
+    const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return null
-    return JSON.parse(stored)
+    const parsed = JSON.parse(stored) as SavedColumnState
+    if (parsed.columnOrder) {
+      const filtered = parsed.columnOrder.filter((id) => validIds.includes(id))
+      const missing = validIds.filter((id) => !filtered.includes(id))
+      parsed.columnOrder = [...filtered, ...missing]
+    }
+    return parsed
   } catch {
     return null
   }
 }
 
-function saveToStorage<T>(key: string, value: T) {
+function saveColumnState(state: SavedColumnState) {
   try {
-    localStorage.setItem(key, JSON.stringify(value))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function clearColumnState() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
   } catch {
     // ignore storage errors
   }
@@ -306,9 +326,11 @@ function MootEditor({ row, setMootChanges }: any) {
 function DraggableHeaderCell({ 
   header,
   onAutoFit,
+  onContextMenu,
 }: { 
   header: Header<AnalyticsRow, unknown>
   onAutoFit: (columnId: string) => void
+  onContextMenu: (e: React.MouseEvent, columnId: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: header.column.id })
   const style: CSSProperties = {
@@ -328,6 +350,7 @@ function DraggableHeaderCell({
       data-column-id={header.column.id}
       className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${isDragging ? "z-20" : ""}`}
       colSpan={header.colSpan}
+      onContextMenu={(e) => onContextMenu(e, header.column.id)}
     >
       <div
         className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""}`}
@@ -731,6 +754,11 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
   )
 
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    const vis: VisibilityState = {}
+    defaultHidden.forEach((id) => { vis[id] = false })
+    return vis
+  })
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined)
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
@@ -760,36 +788,67 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
     dragStartY.current = null
   }, [])
 
+// Context menu hook
+const { contextMenu, handleContextMenu, closeContextMenu } = useColumnContextMenu()
+
+// Default visibility state (all columns visible)
+const defaultVisibility = useMemo(() => {
+  return allColumnIds.reduce((acc, id) => {
+    acc[id] = true
+    return acc
+  }, {} as VisibilityState)
+}, [allColumnIds])
+
 // Load saved settings from localStorage on mount
 useEffect(() => {
-  const savedOrder = loadFromStorage<string[]>(STORAGE_KEY_ORDER)
-  if (savedOrder) {
-    const filtered = savedOrder.filter((id) => allColumnIds.includes(id))
-    const missing = allColumnIds.filter((id) => !filtered.includes(id))
-    setColumnOrder([...filtered, ...missing])
+  const saved = loadColumnState(allColumnIds)
+  if (saved) {
+    if (saved.columnOrder) setColumnOrder(saved.columnOrder)
+    else setColumnOrder(allColumnIds)
+    if (saved.columnSizing) setColumnSizing({ ...defaultColumnSizing, ...saved.columnSizing })
+    if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility)
   } else {
     setColumnOrder(allColumnIds)
   }
 
-  const savedSizing = loadFromStorage<ColumnSizingState>(STORAGE_KEY_SIZING)
-  if (savedSizing) setColumnSizing({ ...defaultColumnSizing, ...savedSizing })
-
-  const savedVisibility = loadFromStorage<VisibilityState>(STORAGE_KEY_VISIBILITY)
-  if (savedVisibility) setColumnVisibility(savedVisibility)
-
   setIsHydrated(true)
 }, [allColumnIds])
+
+// Refs to hold current state for callbacks
+const columnOrderRef = useRef(columnOrder)
+const columnVisibilityRef = useRef(columnVisibility)
+const columnSizingRef = useRef(columnSizing)
+
+useEffect(() => {
+  columnOrderRef.current = columnOrder
+  columnVisibilityRef.current = columnVisibility
+  columnSizingRef.current = columnSizing
+}, [columnOrder, columnVisibility, columnSizing])
+
+// Save all column state to localStorage
+const persistColumnState = useCallback((
+  order: ColumnOrderState,
+  visibility: VisibilityState,
+  sizing: ColumnSizingState
+) => {
+  saveColumnState({
+    columnOrder: order,
+    columnVisibility: visibility,
+    columnSizing: sizing,
+    version: 1,
+  })
+}, [])
 
 // Persist column order changes
 const handleColumnOrderChange = useCallback(
   (updater: ColumnOrderState | ((prev: ColumnOrderState) => ColumnOrderState)) => {
     setColumnOrder((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater
-      saveToStorage(STORAGE_KEY_ORDER, next)
+      persistColumnState(next, columnVisibilityRef.current, columnSizingRef.current)
       return next
     })
   },
-  []
+  [persistColumnState]
 )
 
 // Persist column sizing changes
@@ -797,11 +856,11 @@ const handleColumnSizingChange = useCallback(
   (updater: ColumnSizingState | ((prev: ColumnSizingState) => ColumnSizingState)) => {
     setColumnSizing((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater
-      saveToStorage(STORAGE_KEY_SIZING, next)
+      persistColumnState(columnOrderRef.current, columnVisibilityRef.current, next)
       return next
     })
   },
-  []
+  [persistColumnState]
 )
 
 // Persist column visibility changes
@@ -809,18 +868,63 @@ const handleColumnVisibilityChange = useCallback(
   (updater: VisibilityState | ((prev: VisibilityState) => VisibilityState)) => {
     setColumnVisibility((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater
-      saveToStorage(STORAGE_KEY_VISIBILITY, next)
+      persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
       return next
     })
   },
-  []
+  [persistColumnState]
 )
 
-const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    const vis: VisibilityState = {}
-    defaultHidden.forEach((id) => { vis[id] = false })
-    return vis
+// Context menu handlers
+const handleHideColumn = useCallback((columnId: string) => {
+  setColumnVisibility((prev) => {
+    const next = { ...prev, [columnId]: false }
+    persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
+    return next
   })
+}, [persistColumnState])
+
+const handleHideOthers = useCallback((columnId: string) => {
+  setColumnVisibility(() => {
+    const next = allColumnIds.reduce((acc, id) => {
+      acc[id] = id === columnId
+      return acc
+    }, {} as VisibilityState)
+    persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
+    return next
+  })
+}, [allColumnIds, persistColumnState])
+
+const handleShowAll = useCallback(() => {
+  setColumnVisibility(() => {
+    persistColumnState(columnOrderRef.current, defaultVisibility, columnSizingRef.current)
+    return defaultVisibility
+  })
+}, [defaultVisibility, persistColumnState])
+
+const handleResetOrder = useCallback(() => {
+  setColumnOrder(() => {
+    persistColumnState(allColumnIds, columnVisibilityRef.current, columnSizingRef.current)
+    return allColumnIds
+  })
+}, [allColumnIds, persistColumnState])
+
+const handleResetWidth = useCallback(() => {
+  setColumnSizing(() => {
+    persistColumnState(columnOrderRef.current, columnVisibilityRef.current, defaultColumnSizing)
+    return defaultColumnSizing
+  })
+}, [persistColumnState])
+
+const handleResetAll = useCallback(() => {
+  setColumnOrder(allColumnIds)
+  setColumnVisibility(defaultVisibility)
+  setColumnSizing(defaultColumnSizing)
+  clearColumnState()
+}, [allColumnIds, defaultVisibility]
+)
+
+
 
   const fmtDate = useCallback((d: Date) =>
     d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }), [])
@@ -1652,7 +1756,7 @@ const table = useReactTable({
   <tr key={headerGroup.id}>
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {headerGroup.headers.map((header) => (
-  <DraggableHeaderCell key={header.id} header={header} onAutoFit={handleAutoFit} />
+  <DraggableHeaderCell key={header.id} header={header} onAutoFit={handleAutoFit} onContextMenu={handleContextMenu} />
   ))}
   </SortableContext>
   </tr>
@@ -1782,6 +1886,19 @@ const table = useReactTable({
         </div>
       </div>
       </div>
+      
+      {/* Column header context menu */}
+      <ColumnHeaderContextMenu
+        position={contextMenu.position}
+        columnId={contextMenu.columnId}
+        onClose={closeContextMenu}
+        onHideColumn={handleHideColumn}
+        onHideOthers={handleHideOthers}
+        onShowAll={handleShowAll}
+        onResetOrder={handleResetOrder}
+        onResetWidth={handleResetWidth}
+        onResetAll={handleResetAll}
+      />
     </div>
   )
 }

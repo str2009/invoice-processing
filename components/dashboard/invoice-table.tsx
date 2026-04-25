@@ -44,37 +44,50 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ArrowUp, ArrowDown, Columns3 } from "lucide-react"
 import { REASON_OPTIONS, type InvoiceRow } from "@/lib/mock-data"
+import { ColumnHeaderContextMenu, useColumnContextMenu } from "@/components/ui/column-header-context-menu"
 
 // --- localStorage helpers ---
-const STORAGE_KEY_ORDER = "spreadsheet-column-order"
-const STORAGE_KEY_SIZING = "spreadsheet-column-sizing"
-const STORAGE_KEY_VISIBILITY = "spreadsheet-column-visibility"
+const STORAGE_KEY = "invoice-table-columns-v1"
 const STORAGE_KEY_DETAILS_PANEL = "details_panel_enabled"
 
-function loadFromStorage<T>(key: string): T | null {
+interface SavedColumnState {
+  columnOrder?: string[]
+  columnVisibility?: Record<string, boolean>
+  columnSizing?: Record<string, number>
+  version: number
+}
+
+function loadColumnState(validIds: string[]): SavedColumnState | null {
   try {
-    const stored = localStorage.getItem(key)
+    const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return null
-    return JSON.parse(stored)
+    const parsed = JSON.parse(stored) as SavedColumnState
+    // Validate and filter column order
+    if (parsed.columnOrder) {
+      const filtered = parsed.columnOrder.filter((id) => validIds.includes(id))
+      const missing = validIds.filter((id) => !filtered.includes(id))
+      parsed.columnOrder = [...filtered, ...missing]
+    }
+    return parsed
   } catch {
     return null
   }
 }
 
-function saveToStorage<T>(key: string, value: T) {
+function saveColumnState(state: SavedColumnState) {
   try {
-    localStorage.setItem(key, JSON.stringify(value))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
     // ignore storage errors
   }
 }
 
-function loadColumnOrder(validIds: string[]): ColumnOrderState | null {
-  const stored = loadFromStorage<string[]>(STORAGE_KEY_ORDER)
-  if (!stored) return null
-  const filtered = stored.filter((id) => validIds.includes(id))
-  const missing = validIds.filter((id) => !filtered.includes(id))
-  return [...filtered, ...missing]
+function clearColumnState() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // ignore storage errors
+  }
 }
 
 // --- Default column widths ---
@@ -125,9 +138,11 @@ function ResizeHandle({
 function DraggableHeaderCell({
   header,
   onAutoFit,
+  onContextMenu,
 }: {
   header: Header<InvoiceRow, unknown>
   onAutoFit: (columnId: string) => void
+  onContextMenu: (e: React.MouseEvent, columnId: string) => void
 }) {
   const {
     attributes,
@@ -158,6 +173,7 @@ function DraggableHeaderCell({
       className={`relative h-9 select-none border-b-2 border-r-2 border-border bg-muted px-2 text-left text-xs font-semibold text-muted-foreground ${isDragging ? "z-20" : ""
         }`}
       colSpan={header.colSpan}
+      onContextMenu={(e) => onContextMenu(e, header.column.id)}
     >
       <div
         className={`flex h-full cursor-grab items-center gap-1 active:cursor-grabbing ${isNumeric ? "justify-center" : ""
@@ -609,20 +625,31 @@ export function InvoiceTable({
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(true)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
+  // Context menu hook
+  const { contextMenu, handleContextMenu, closeContextMenu } = useColumnContextMenu()
+
+  // Default visibility state (all columns visible)
+  const defaultVisibility = useMemo(() => {
+    return defaultColumnIds.reduce((acc, id) => {
+      acc[id] = true
+      return acc
+    }, {} as VisibilityState)
+  }, [])
+
   // Load saved settings from localStorage on mount
   useEffect(() => {
-    const savedOrder = loadColumnOrder(defaultColumnIds)
-    if (savedOrder) setColumnOrder(savedOrder)
-
-    const savedSizing = loadFromStorage<ColumnSizingState>(STORAGE_KEY_SIZING)
-    if (savedSizing) setColumnSizing({ ...defaultColumnSizing, ...savedSizing })
-
-    const savedVisibility = loadFromStorage<VisibilityState>(STORAGE_KEY_VISIBILITY)
-    if (savedVisibility) setColumnVisibility(savedVisibility)
+    const saved = loadColumnState(defaultColumnIds)
+    if (saved) {
+      if (saved.columnOrder) setColumnOrder(saved.columnOrder)
+      if (saved.columnSizing) setColumnSizing({ ...defaultColumnSizing, ...saved.columnSizing })
+      if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility)
+    }
 
     // Load details panel toggle state (default true)
-    const savedDetailsPanelEnabled = loadFromStorage<boolean>(STORAGE_KEY_DETAILS_PANEL)
-    if (savedDetailsPanelEnabled !== null) setDetailsPanelEnabled(savedDetailsPanelEnabled)
+    try {
+      const savedDetailsPanelEnabled = localStorage.getItem(STORAGE_KEY_DETAILS_PANEL)
+      if (savedDetailsPanelEnabled !== null) setDetailsPanelEnabled(JSON.parse(savedDetailsPanelEnabled))
+    } catch {}
 
     setIsHydrated(true)
   }, [])
@@ -630,7 +657,34 @@ export function InvoiceTable({
   // Toggle details panel and persist
   const handleDetailsPanelToggle = useCallback((enabled: boolean) => {
     setDetailsPanelEnabled(enabled)
-    saveToStorage(STORAGE_KEY_DETAILS_PANEL, enabled)
+    try {
+      localStorage.setItem(STORAGE_KEY_DETAILS_PANEL, JSON.stringify(enabled))
+    } catch {}
+  }, [])
+
+  // Refs to hold current state for callbacks
+  const columnOrderRef = useRef(columnOrder)
+  const columnVisibilityRef = useRef(columnVisibility)
+  const columnSizingRef = useRef(columnSizing)
+
+  useEffect(() => {
+    columnOrderRef.current = columnOrder
+    columnVisibilityRef.current = columnVisibility
+    columnSizingRef.current = columnSizing
+  }, [columnOrder, columnVisibility, columnSizing])
+
+  // Save all column state to localStorage
+  const persistColumnState = useCallback((
+    order: ColumnOrderState,
+    visibility: VisibilityState,
+    sizing: ColumnSizingState
+  ) => {
+    saveColumnState({
+      columnOrder: order,
+      columnVisibility: visibility,
+      columnSizing: sizing,
+      version: 1,
+    })
   }, [])
 
   // Persist column order changes
@@ -638,11 +692,11 @@ export function InvoiceTable({
     (updater: ColumnOrderState | ((prev: ColumnOrderState) => ColumnOrderState)) => {
       setColumnOrder((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater
-        saveToStorage(STORAGE_KEY_ORDER, next)
+        persistColumnState(next, columnVisibilityRef.current, columnSizingRef.current)
         return next
       })
     },
-    []
+    [persistColumnState]
   )
 
   // Persist column sizing changes
@@ -650,11 +704,11 @@ export function InvoiceTable({
     (updater: ColumnSizingState | ((prev: ColumnSizingState) => ColumnSizingState)) => {
       setColumnSizing((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater
-        saveToStorage(STORAGE_KEY_SIZING, next)
+        persistColumnState(columnOrderRef.current, columnVisibilityRef.current, next)
         return next
       })
     },
-    []
+    [persistColumnState]
   )
 
   // Persist column visibility changes
@@ -662,12 +716,60 @@ export function InvoiceTable({
     (updater: VisibilityState | ((prev: VisibilityState) => VisibilityState)) => {
       setColumnVisibility((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater
-        saveToStorage(STORAGE_KEY_VISIBILITY, next)
+        persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
         return next
       })
     },
-    []
+    [persistColumnState]
   )
+
+  // Context menu handlers
+  const handleHideColumn = useCallback((columnId: string) => {
+    setColumnVisibility((prev) => {
+      const next = { ...prev, [columnId]: false }
+      persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
+      return next
+    })
+  }, [persistColumnState])
+
+  const handleHideOthers = useCallback((columnId: string) => {
+    setColumnVisibility(() => {
+      const next = defaultColumnIds.reduce((acc, id) => {
+        acc[id] = id === columnId
+        return acc
+      }, {} as VisibilityState)
+      persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
+      return next
+    })
+  }, [persistColumnState])
+
+  const handleShowAll = useCallback(() => {
+    setColumnVisibility(() => {
+      persistColumnState(columnOrderRef.current, defaultVisibility, columnSizingRef.current)
+      return defaultVisibility
+    })
+  }, [defaultVisibility, persistColumnState])
+
+  const handleResetOrder = useCallback(() => {
+    setColumnOrder(() => {
+      persistColumnState(defaultColumnIds, columnVisibilityRef.current, columnSizingRef.current)
+      return defaultColumnIds
+    })
+  }, [persistColumnState])
+
+  const handleResetWidth = useCallback(() => {
+    setColumnSizing(() => {
+      persistColumnState(columnOrderRef.current, columnVisibilityRef.current, defaultColumnSizing)
+      return defaultColumnSizing
+    })
+  }, [persistColumnState])
+
+  const handleResetAll = useCallback(() => {
+    setColumnOrder(defaultColumnIds)
+    setColumnVisibility(defaultVisibility)
+    setColumnSizing(defaultColumnSizing)
+    clearColumnState()
+  }, [defaultVisibility])
 
   const table = useReactTable({
     data,
@@ -870,13 +972,14 @@ export function InvoiceTable({
                     items={columnIds}
                     strategy={horizontalListSortingStrategy}
                   >
-                    {headerGroup.headers.map((header) => (
-                      <DraggableHeaderCell
-                        key={header.id}
-                        header={header}
-                        onAutoFit={handleAutoFit}
-                      />
-                    ))}
+{headerGroup.headers.map((header) => (
+                                      <DraggableHeaderCell
+                                        key={header.id}
+                                        header={header}
+                                        onAutoFit={handleAutoFit}
+                                        onContextMenu={handleContextMenu}
+                                      />
+                                    ))}
                   </SortableContext>
                 </tr>
               ))}
@@ -941,6 +1044,19 @@ export function InvoiceTable({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Column header context menu */}
+      <ColumnHeaderContextMenu
+        position={contextMenu.position}
+        columnId={contextMenu.columnId}
+        onClose={closeContextMenu}
+        onHideColumn={handleHideColumn}
+        onHideOthers={handleHideOthers}
+        onShowAll={handleShowAll}
+        onResetOrder={handleResetOrder}
+        onResetWidth={handleResetWidth}
+        onResetAll={handleResetAll}
+      />
     </div>
   )
 }
