@@ -978,7 +978,20 @@ const handleResetAll = useCallback(() => {
     try {
       const res = await fetch('https://max24vin.ru/webhook/analytics-invoice-list-03ae810caa3f')
       const data = await res.json()
-      setInvoices(Array.isArray(data) ? data : [])
+      console.log("[v0] Invoices raw:", data)
+      
+      // Map backend format { id, number } to component format
+      const mapped: InvoiceItem[] = Array.isArray(data) 
+        ? data.map((item: { id: string; number: string }) => ({
+            id: item.id,
+            number: item.number,
+            supplier: '',
+            date: ''
+          }))
+        : []
+      
+      console.log("[v0] Invoices mapped:", mapped)
+      setInvoices(mapped)
       setInvoicesLoaded(true)
     } catch (error) {
       console.error('Failed to fetch invoices:', error)
@@ -995,13 +1008,12 @@ const handleResetAll = useCallback(() => {
     }
   }, [mode, invoicesLoaded, isLoadingInvoices, fetchInvoices])
   
-  // Filter invoices based on search query
+  // Filter invoices based on search query (by number only since supplier may be empty)
   const filteredInvoices = useMemo(() => {
     if (!invoiceSearchQuery.trim()) return invoices
     const query = invoiceSearchQuery.toLowerCase()
     return invoices.filter(
-      inv => inv.number.toLowerCase().includes(query) || 
-             inv.supplier.toLowerCase().includes(query)
+      inv => inv.number.toLowerCase().includes(query)
     )
   }, [invoices, invoiceSearchQuery])
   
@@ -1920,7 +1932,7 @@ const table = useReactTable({
                           <span className="text-sm text-muted-foreground">
                             {mode === 'stock' && 'Нажмите "Показать склад"'}
                             {mode === 'invoice' && (selectedInvoiceForAnalysis ? 'Нажмите "Загрузить" для анализа' : 'Выберите инвойс для анализа')}
-                            {mode === 'custom' && 'Custom mode - функционал в разработке'}
+                            {mode === 'custom' && 'Custom mode - фу��кционал в разработке'}
                           </span>
                         </div>
                       ) : analyticsData.length === 0 ? (
