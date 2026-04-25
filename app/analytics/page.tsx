@@ -1452,6 +1452,7 @@ const table = useReactTable({
     </DropdownMenuLabel>
     <DropdownMenuItem
       onClick={() => setTheme("light")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
     >
       <Sun className="h-3.5 w-3.5" />
@@ -1459,6 +1460,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => setTheme("soft")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
     >
       <Sun className="h-3.5 w-3.5 text-amber-400" />
@@ -1466,6 +1468,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => setTheme("mellow")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}
     >
       <Sun className="h-3.5 w-3.5 text-stone-500" />
@@ -1473,6 +1476,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => setTheme("dark")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
     >
       <Moon className="h-3.5 w-3.5" />
@@ -1480,6 +1484,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => setTheme("warm-dark")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}
     >
       <Moon className="h-3.5 w-3.5 text-amber-500" />
@@ -1487,6 +1492,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => setTheme("graphite")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}
     >
       <Monitor className="h-3.5 w-3.5" />
@@ -1500,6 +1506,7 @@ const table = useReactTable({
     </DropdownMenuLabel>
     <DropdownMenuItem
       onClick={() => handleDensityChange("comfortable")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}
     >
       <Maximize2 className="h-3.5 w-3.5" />
@@ -1507,6 +1514,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => handleDensityChange("compact")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}
     >
       <Minimize2 className="h-3.5 w-3.5" />
@@ -1520,6 +1528,7 @@ const table = useReactTable({
     </DropdownMenuLabel>
     <DropdownMenuItem
       onClick={() => handleScaleChange("90")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}
     >
       <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span>
@@ -1527,6 +1536,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => handleScaleChange("100")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}
     >
       <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span>
@@ -1534,6 +1544,7 @@ const table = useReactTable({
     </DropdownMenuItem>
     <DropdownMenuItem
       onClick={() => handleScaleChange("110")}
+      onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}
     >
       <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
