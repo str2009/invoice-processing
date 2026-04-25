@@ -837,10 +837,24 @@ const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => 
   const [filterCompetitor, setFilterCompetitor] = useState(false)
   const [filterBulk, setFilterBulk] = useState(false)
 
+  // Data mode: stock (warehouse), invoice, or custom
+  const [mode, setMode] = useState<'stock' | 'invoice' | 'custom'>('stock')
+  const [selectedInvoiceForAnalysis, setSelectedInvoiceForAnalysis] = useState<string>('')
+  
   // Data — manual load only, no auto-fetch
   const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>([])
   const [isDataLoading, setIsDataLoading] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
+
+  // Handle mode change - reset data when switching modes
+  const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
+    if (newMode !== mode) {
+      setMode(newMode)
+      setRawInvoiceRows([])
+      setIsDataLoaded(false)
+      setSelectedInvoiceForAnalysis('')
+    }
+  }, [mode])
 
   // Manual data load function - called by button click only
   const loadWarehouseData = useCallback(async () => {
@@ -1194,15 +1208,84 @@ const table = useReactTable({
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
           <h1 className="text-sm font-semibold text-foreground">Analytics</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 px-3 text-xs"
-            onClick={loadWarehouseData}
-            disabled={isDataLoading}
-          >
-            {isDataLoading ? "Загрузка..." : isDataLoaded ? "Обновить" : "Показать склад"}
-          </Button>
+          
+          {/* Mode Switcher */}
+          <div className="flex items-center rounded-md border border-border bg-muted/30 p-0.5">
+            <button
+              type="button"
+              onClick={() => handleModeChange('stock')}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${
+                mode === 'stock'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              STOCK
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('invoice')}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${
+                mode === 'invoice'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              INVOICE
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('custom')}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${
+                mode === 'custom'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              CUSTOM
+            </button>
+          </div>
+
+          {/* Action button - changes based on mode */}
+          {mode === 'stock' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-3 text-xs"
+              onClick={loadWarehouseData}
+              disabled={isDataLoading}
+            >
+              {isDataLoading ? "Загрузка..." : isDataLoaded ? "Обновить" : "Показать склад"}
+            </Button>
+          )}
+          
+          {mode === 'invoice' && (
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedInvoiceForAnalysis}
+                onChange={(e) => setSelectedInvoiceForAnalysis(e.target.value)}
+                className="h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Выберите инвойс...</option>
+                <option value="invoice_1">Invoice_1</option>
+                <option value="invoice_2">Invoice_2</option>
+                <option value="invoice_3">Invoice_3</option>
+              </select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-3 text-xs"
+                disabled={!selectedInvoiceForAnalysis}
+              >
+                Загрузить
+              </Button>
+            </div>
+          )}
+          
+          {mode === 'custom' && (
+            <span className="text-xs text-muted-foreground italic">Custom mode (coming soon)</span>
+          )}
+          
           <span className="font-mono text-[11px] text-muted-foreground">{isDataLoading ? "loading..." : `${rowCount} rows`}</span>
         </div>
 
@@ -1587,7 +1670,11 @@ const table = useReactTable({
                         </div>
                       ) : !isDataLoaded ? (
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Нажмите &quot;Показать склад&quot;</span>
+                          <span className="text-sm text-muted-foreground">
+                            {mode === 'stock' && 'Нажмите "Показать склад"'}
+                            {mode === 'invoice' && 'Выберите инвойс для анализа'}
+                            {mode === 'custom' && 'Custom mode - функционал в разработке'}
+                          </span>
                         </div>
                       ) : analyticsData.length === 0 ? (
                         <div className="flex flex-col items-center gap-1">
