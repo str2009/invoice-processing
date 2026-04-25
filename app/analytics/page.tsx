@@ -1103,7 +1103,7 @@ const handleResetAll = useCallback(() => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: "INVOICE",
+          mode: "INVOICE_ID",
           invoice_id: invoiceId,
         }),
       })
