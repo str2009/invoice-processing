@@ -47,6 +47,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -63,6 +71,7 @@ import {
   BarChart3,
   ChevronUp,
   ChevronDown,
+  ChevronsUpDown,
   PanelLeft,
   GripHorizontal,
   Columns3,
@@ -75,6 +84,8 @@ import {
   Minimize2,
   LogOut,
   User,
+  Check,
+  FileText,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
@@ -943,7 +954,41 @@ const handleResetAll = useCallback(() => {
 
   // Data mode: stock (warehouse), invoice, or custom
   const [mode, setMode] = useState<'stock' | 'invoice' | 'custom'>('stock')
-  const [selectedInvoiceForAnalysis, setSelectedInvoiceForAnalysis] = useState<string>('')
+  
+  // Invoice selector state
+  interface InvoiceItem {
+    id: string
+    number: string
+    supplier: string
+    date: string
+  }
+  
+  // Mock invoice data (will be replaced with API call)
+  const mockInvoices: InvoiceItem[] = useMemo(() => [
+    { id: '1', number: '45_11_01_2026_AMX_STR', supplier: 'Автопрагматик', date: '11.01.2026' },
+    { id: '2', number: '46_12_01_2026_BMW_STR', supplier: 'BMW Parts', date: '12.01.2026' },
+    { id: '3', number: '47_15_01_2026_MER_STR', supplier: 'Mercedes Store', date: '15.01.2026' },
+    { id: '4', number: '48_18_01_2026_AUD_STR', supplier: 'Audi Center', date: '18.01.2026' },
+    { id: '5', number: '49_20_01_2026_VLK_STR', supplier: 'Volkswagen Parts', date: '20.01.2026' },
+    { id: '6', number: '50_22_01_2026_TOY_STR', supplier: 'Toyota Motors', date: '22.01.2026' },
+    { id: '7', number: '51_25_01_2026_HYU_STR', supplier: 'Hyundai Parts', date: '25.01.2026' },
+    { id: '8', number: '52_28_01_2026_KIA_STR', supplier: 'KIA Motors', date: '28.01.2026' },
+  ], [])
+  
+  const [selectedInvoiceForAnalysis, setSelectedInvoiceForAnalysis] = useState<InvoiceItem | null>(null)
+  const [invoiceSelectorOpen, setInvoiceSelectorOpen] = useState(false)
+  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('')
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false)
+  
+  // Filter invoices based on search query
+  const filteredInvoices = useMemo(() => {
+    if (!invoiceSearchQuery.trim()) return mockInvoices
+    const query = invoiceSearchQuery.toLowerCase()
+    return mockInvoices.filter(
+      inv => inv.number.toLowerCase().includes(query) || 
+             inv.supplier.toLowerCase().includes(query)
+    )
+  }, [mockInvoices, invoiceSearchQuery])
   
   // Data — manual load only, no auto-fetch
   const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>([])
@@ -956,7 +1001,8 @@ const handleResetAll = useCallback(() => {
       setMode(newMode)
       setRawInvoiceRows([])
       setIsDataLoaded(false)
-      setSelectedInvoiceForAnalysis('')
+      setSelectedInvoiceForAnalysis(null)
+      setInvoiceSearchQuery('')
     }
   }, [mode])
 
@@ -1365,16 +1411,73 @@ const table = useReactTable({
           
           {mode === 'invoice' && (
             <div className="flex items-center gap-2">
-              <select
-                value={selectedInvoiceForAnalysis}
-                onChange={(e) => setSelectedInvoiceForAnalysis(e.target.value)}
-                className="h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">Выберите инвойс...</option>
-                <option value="invoice_1">Invoice_1</option>
-                <option value="invoice_2">Invoice_2</option>
-                <option value="invoice_3">Invoice_3</option>
-              </select>
+              <Popover open={invoiceSelectorOpen} onOpenChange={setInvoiceSelectorOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={invoiceSelectorOpen}
+                    className="h-7 w-[260px] justify-between px-2 text-xs font-normal"
+                  >
+                    {isLoadingInvoices ? (
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Загрузка инвойсов...
+                      </span>
+                    ) : selectedInvoiceForAnalysis ? (
+                      <span className="flex items-center gap-1.5 truncate">
+                        <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{selectedInvoiceForAnalysis.number}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Выберите инвойс...</span>
+                    )}
+                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput 
+                      placeholder="Поиск по номеру, поставщику..." 
+                      value={invoiceSearchQuery}
+                      onValueChange={setInvoiceSearchQuery}
+                      className="text-xs"
+                    />
+                    <CommandList>
+                      <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
+                        Ничего не найдено
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {filteredInvoices.map((invoice) => (
+                          <CommandItem
+                            key={invoice.id}
+                            value={invoice.id}
+                            onSelect={() => {
+                              setSelectedInvoiceForAnalysis(invoice)
+                              setInvoiceSelectorOpen(false)
+                              setInvoiceSearchQuery('')
+                            }}
+                            className="flex items-start gap-2 py-2"
+                          >
+                            <Check
+                              className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                                selectedInvoiceForAnalysis?.id === invoice.id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              }`}
+                            />
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <span className="text-xs font-medium truncate">{invoice.number}</span>
+                              <span className="text-[10px] text-muted-foreground truncate">{invoice.supplier}</span>
+                              <span className="text-[10px] text-muted-foreground/70">{invoice.date}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <Button
                 variant="outline"
                 size="sm"
@@ -1796,7 +1899,7 @@ const table = useReactTable({
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-sm text-muted-foreground">
                             {mode === 'stock' && 'Нажмите "Показать склад"'}
-                            {mode === 'invoice' && 'Выберите инвойс для анализа'}
+                            {mode === 'invoice' && (selectedInvoiceForAnalysis ? 'Нажмите "Загрузить" для анализа' : 'Выберите инвойс для анализа')}
                             {mode === 'custom' && 'Custom mode - функционал в разработке'}
                           </span>
                         </div>
@@ -1805,7 +1908,7 @@ const table = useReactTable({
                           <span className="text-sm text-muted-foreground">Нет данных</span>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Нет результатов по текущим фильтрам</span>
+                        <span className="text-sm text-muted-foreground">Нет результатов по текущи�� фильтрам</span>
                       )}
                     </td>
                   </tr>
