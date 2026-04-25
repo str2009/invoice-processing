@@ -976,7 +976,7 @@ const handleResetAll = useCallback(() => {
     
     setIsLoadingInvoices(true)
     try {
-      const res = await fetch('/api/analytics/invoices')
+      const res = await fetch('/api/analytics-invoice-list')
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`)
       }
