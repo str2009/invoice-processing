@@ -146,54 +146,55 @@
     --sidebar-border: 216 9% 22%;
     --sidebar-ring: 43 50% 57%;
   }
-  /* Mellow - теплый кремовый/бежевый, увеличенный шрифт 17px, teal primary */
+  /* Mellow - теплые серые тона (hue 90), увеличенный шрифт 17px, приглушённый синий primary (hue 250) */
+  /* Based on oklch values: background 0.95/0.008/90, primary 0.40/0.06/250 */
   .mellow {
-    --background: 38 35% 92%;
-    --foreground: 30 10% 15%;
-    --card: 38 30% 95%;
-    --card-foreground: 30 10% 15%;
-    --popover: 38 30% 95%;
-    --popover-foreground: 30 10% 15%;
-    --primary: 175 45% 32%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 38 25% 88%;
-    --secondary-foreground: 30 10% 20%;
-    --muted: 38 20% 88%;
-    --muted-foreground: 30 8% 40%;
-    --accent: 38 25% 85%;
-    --accent-foreground: 30 10% 15%;
-    --destructive: 0 55% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 38 20% 82%;
-    --input: 38 25% 90%;
-    --ring: 175 45% 32%;
-    --chart-1: 175 45% 32%;
-    --chart-2: 215 45% 45%;
-    --chart-3: 30 60% 45%;
-    --chart-4: 0 55% 45%;
-    --chart-5: 280 40% 50%;
-    --sidebar-background: 38 30% 90%;
-    --sidebar-foreground: 30 10% 20%;
-    --sidebar-primary: 175 45% 32%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 38 25% 85%;
-    --sidebar-accent-foreground: 30 10% 15%;
-    --sidebar-border: 38 20% 82%;
-    --sidebar-ring: 175 45% 32%;
+    --background: 90 4% 93%;
+    --foreground: 90 4% 20%;
+    --card: 90 3% 96%;
+    --card-foreground: 90 4% 20%;
+    --popover: 90 3% 96%;
+    --popover-foreground: 90 4% 20%;
+    --primary: 250 25% 35%;
+    --primary-foreground: 90 2% 96%;
+    --secondary: 90 5% 88%;
+    --secondary-foreground: 90 4% 25%;
+    --muted: 90 5% 88%;
+    --muted-foreground: 90 4% 42%;
+    --accent: 90 6% 85%;
+    --accent-foreground: 90 4% 20%;
+    --destructive: 25 65% 48%;
+    --destructive-foreground: 25 65% 48%;
+    --border: 90 7% 78%;
+    --input: 90 4% 90%;
+    --ring: 250 20% 45%;
+    --chart-1: 250 35% 45%;
+    --chart-2: 160 30% 50%;
+    --chart-3: 30 25% 40%;
+    --chart-4: 90 35% 55%;
+    --chart-5: 330 40% 45%;
+    --sidebar-background: 90 5% 91%;
+    --sidebar-foreground: 90 4% 20%;
+    --sidebar-primary: 250 25% 35%;
+    --sidebar-primary-foreground: 90 2% 96%;
+    --sidebar-accent: 90 6% 85%;
+    --sidebar-accent-foreground: 90 4% 20%;
+    --sidebar-border: 90 7% 78%;
+    --sidebar-ring: 250 20% 45%;
     font-size: 17px;
   }
   
   /* Override amber colors in mellow theme for better contrast */
-  .mellow .text-amber-400 { color: hsl(30, 70%, 35%) !important; }
-  .mellow .text-amber-500 { color: hsl(30, 75%, 32%) !important; }
-  .mellow .text-amber-600 { color: hsl(30, 80%, 28%) !important; }
-  .mellow .bg-amber-500 { background-color: hsl(30, 70%, 35%) !important; }
-  .mellow .bg-amber-500\/10 { background-color: hsl(30 70% 35% / 0.15) !important; }
-  .mellow .bg-amber-500\/20 { background-color: hsl(30 70% 35% / 0.25) !important; }
-  .mellow .border-amber-500\/30 { border-color: hsl(30 70% 35% / 0.4) !important; }
-  .mellow .border-amber-500\/40 { border-color: hsl(30 70% 35% / 0.5) !important; }
-  .mellow .border-amber-500\/50 { border-color: hsl(30 70% 35% / 0.6) !important; }
-  .mellow .ring-amber-500\/30 { --tw-ring-color: hsl(30 70% 35% / 0.4) !important; }
+  .mellow .text-amber-400 { color: hsl(30, 50%, 38%) !important; }
+  .mellow .text-amber-500 { color: hsl(30, 55%, 35%) !important; }
+  .mellow .text-amber-600 { color: hsl(30, 60%, 30%) !important; }
+  .mellow .bg-amber-500 { background-color: hsl(30, 50%, 38%) !important; }
+  .mellow .bg-amber-500\/10 { background-color: hsl(30 50% 38% / 0.15) !important; }
+  .mellow .bg-amber-500\/20 { background-color: hsl(30 50% 38% / 0.25) !important; }
+  .mellow .border-amber-500\/30 { border-color: hsl(30 50% 38% / 0.4) !important; }
+  .mellow .border-amber-500\/40 { border-color: hsl(30 50% 38% / 0.5) !important; }
+  .mellow .border-amber-500\/50 { border-color: hsl(30 50% 38% / 0.6) !important; }
+  .mellow .ring-amber-500\/30 { --tw-ring-color: hsl(30 50% 38% / 0.4) !important; }
   
   /* Soft - мягкая светлая тема, минималистичная, дорогой вид */
   .soft {
