@@ -10,10 +10,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     
+    console.log("[v0] Analytics API received:", JSON.stringify(body))
+    
     // Route to appropriate webhook based on mode
     const webhookUrl = body.mode === 'INVOICE_LIST' 
       ? WEBHOOK_URLS.INVOICE_LIST 
       : WEBHOOK_URLS.DEFAULT
+    
+    console.log("[v0] Routing to webhook:", webhookUrl)
     
     const res = await fetch(webhookUrl, {
       method: 'POST',
