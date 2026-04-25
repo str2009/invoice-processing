@@ -976,9 +976,12 @@ const handleResetAll = useCallback(() => {
     
     setIsLoadingInvoices(true)
     try {
-      const res = await fetch('https://max24vin.ru/webhook/analytics-invoice-list-03ae810caa3f')
+      const res = await fetch('/api/analytics/invoices')
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
+      }
       const data = await res.json()
-      console.log("[v0] Invoices raw:", data)
+      console.log("[v0] Invoices fetched:", data?.length || 0, "items")
       
       // Map backend format { id, number } to component format
       const mapped: InvoiceItem[] = Array.isArray(data) 
