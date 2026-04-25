@@ -146,54 +146,54 @@
     --sidebar-border: 216 9% 22%;
     --sidebar-ring: 43 50% 57%;
   }
-  /* Mellow - теплые серые тона (oklch hue 90), увеличенный шрифт 17px, приглушённый синий primary */
+  /* Mellow - теплый кремовый/бежевый, увеличенный шрифт 17px, teal primary */
   .mellow {
-    --background: 48 10% 91%;
-    --foreground: 48 8% 12%;
-    --card: 48 10% 94%;
-    --card-foreground: 48 8% 12%;
-    --popover: 48 10% 94%;
-    --popover-foreground: 48 8% 12%;
-    --primary: 215 40% 42%;
+    --background: 38 35% 92%;
+    --foreground: 30 10% 15%;
+    --card: 38 30% 95%;
+    --card-foreground: 30 10% 15%;
+    --popover: 38 30% 95%;
+    --popover-foreground: 30 10% 15%;
+    --primary: 175 45% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 48 8% 86%;
-    --secondary-foreground: 48 8% 18%;
-    --muted: 48 10% 87%;
-    --muted-foreground: 48 6% 38%;
-    --accent: 48 12% 84%;
-    --accent-foreground: 48 8% 12%;
+    --secondary: 38 25% 88%;
+    --secondary-foreground: 30 10% 20%;
+    --muted: 38 20% 88%;
+    --muted-foreground: 30 8% 40%;
+    --accent: 38 25% 85%;
+    --accent-foreground: 30 10% 15%;
     --destructive: 0 55% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 48 10% 78%;
-    --input: 48 10% 80%;
-    --ring: 215 40% 42%;
-    --chart-1: 215 40% 42%;
-    --chart-2: 165 45% 40%;
-    --chart-3: 25 70% 38%;
+    --border: 38 20% 82%;
+    --input: 38 25% 90%;
+    --ring: 175 45% 32%;
+    --chart-1: 175 45% 32%;
+    --chart-2: 215 45% 45%;
+    --chart-3: 30 60% 45%;
     --chart-4: 0 55% 45%;
-    --chart-5: 260 40% 50%;
-    --sidebar-background: 48 10% 89%;
-    --sidebar-foreground: 48 8% 18%;
-    --sidebar-primary: 215 40% 42%;
+    --chart-5: 280 40% 50%;
+    --sidebar-background: 38 30% 90%;
+    --sidebar-foreground: 30 10% 20%;
+    --sidebar-primary: 175 45% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 48 12% 82%;
-    --sidebar-accent-foreground: 48 8% 12%;
-    --sidebar-border: 48 10% 78%;
-    --sidebar-ring: 215 40% 42%;
+    --sidebar-accent: 38 25% 85%;
+    --sidebar-accent-foreground: 30 10% 15%;
+    --sidebar-border: 38 20% 82%;
+    --sidebar-ring: 175 45% 32%;
     font-size: 17px;
   }
   
   /* Override amber colors in mellow theme for better contrast */
-  .mellow .text-amber-400 { color: hsl(25, 70%, 35%) !important; }
-  .mellow .text-amber-500 { color: hsl(25, 75%, 32%) !important; }
-  .mellow .text-amber-600 { color: hsl(25, 80%, 28%) !important; }
-  .mellow .bg-amber-500 { background-color: hsl(25, 70%, 35%) !important; }
-  .mellow .bg-amber-500\/10 { background-color: hsl(25 70% 35% / 0.15) !important; }
-  .mellow .bg-amber-500\/20 { background-color: hsl(25 70% 35% / 0.25) !important; }
-  .mellow .border-amber-500\/30 { border-color: hsl(25 70% 35% / 0.4) !important; }
-  .mellow .border-amber-500\/40 { border-color: hsl(25 70% 35% / 0.5) !important; }
-  .mellow .border-amber-500\/50 { border-color: hsl(25 70% 35% / 0.6) !important; }
-  .mellow .ring-amber-500\/30 { --tw-ring-color: hsl(25 70% 35% / 0.4) !important; }
+  .mellow .text-amber-400 { color: hsl(30, 70%, 35%) !important; }
+  .mellow .text-amber-500 { color: hsl(30, 75%, 32%) !important; }
+  .mellow .text-amber-600 { color: hsl(30, 80%, 28%) !important; }
+  .mellow .bg-amber-500 { background-color: hsl(30, 70%, 35%) !important; }
+  .mellow .bg-amber-500\/10 { background-color: hsl(30 70% 35% / 0.15) !important; }
+  .mellow .bg-amber-500\/20 { background-color: hsl(30 70% 35% / 0.25) !important; }
+  .mellow .border-amber-500\/30 { border-color: hsl(30 70% 35% / 0.4) !important; }
+  .mellow .border-amber-500\/40 { border-color: hsl(30 70% 35% / 0.5) !important; }
+  .mellow .border-amber-500\/50 { border-color: hsl(30 70% 35% / 0.6) !important; }
+  .mellow .ring-amber-500\/30 { --tw-ring-color: hsl(30 70% 35% / 0.4) !important; }
   
   /* Soft - мягкая светлая тема, минималистичная, дорогой вид */
   .soft {
