@@ -184,17 +184,17 @@
     font-size: 17px;
   }
   
-  /* Override amber colors in mellow theme for better contrast */
-  .mellow .text-amber-400 { color: hsl(30, 50%, 38%) !important; }
-  .mellow .text-amber-500 { color: hsl(30, 55%, 35%) !important; }
-  .mellow .text-amber-600 { color: hsl(30, 60%, 30%) !important; }
-  .mellow .bg-amber-500 { background-color: hsl(30, 50%, 38%) !important; }
-  .mellow .bg-amber-500\/10 { background-color: hsl(30 50% 38% / 0.15) !important; }
-  .mellow .bg-amber-500\/20 { background-color: hsl(30 50% 38% / 0.25) !important; }
-  .mellow .border-amber-500\/30 { border-color: hsl(30 50% 38% / 0.4) !important; }
-  .mellow .border-amber-500\/40 { border-color: hsl(30 50% 38% / 0.5) !important; }
-  .mellow .border-amber-500\/50 { border-color: hsl(30 50% 38% / 0.6) !important; }
-  .mellow .ring-amber-500\/30 { --tw-ring-color: hsl(30 50% 38% / 0.4) !important; }
+  /* Override amber colors in mellow theme to green (like Login button) */
+  .mellow .text-amber-400 { color: hsl(145, 55%, 35%) !important; }
+  .mellow .text-amber-500 { color: hsl(145, 60%, 32%) !important; }
+  .mellow .text-amber-600 { color: hsl(145, 65%, 28%) !important; }
+  .mellow .bg-amber-500 { background-color: hsl(145, 55%, 40%) !important; }
+  .mellow .bg-amber-500\/10 { background-color: hsl(145 55% 40% / 0.15) !important; }
+  .mellow .bg-amber-500\/20 { background-color: hsl(145 55% 40% / 0.25) !important; }
+  .mellow .border-amber-500\/30 { border-color: hsl(145 55% 40% / 0.4) !important; }
+  .mellow .border-amber-500\/40 { border-color: hsl(145 55% 40% / 0.5) !important; }
+  .mellow .border-amber-500\/50 { border-color: hsl(145 55% 40% / 0.6) !important; }
+  .mellow .ring-amber-500\/30 { --tw-ring-color: hsl(145 55% 40% / 0.4) !important; }
   
   /* Soft - мягкая светлая тема, минималистичная, дорогой вид */
   .soft {
