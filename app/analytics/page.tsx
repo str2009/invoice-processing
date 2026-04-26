@@ -132,7 +132,7 @@ interface AnalyticsRow {
   coverageDays: number
   pricingGroup: string
   weight: number
-  bulk: number
+  bulk: boolean
   competitorPrice: number
   competitorStock: number
   lastSaleDate: string
@@ -189,7 +189,7 @@ function toAnalyticsRows(rows: InvoiceRow[]): AnalyticsRow[] {
       coverageDays: coverage,
       pricingGroup: pricingGroups[idx % pricingGroups.length],
       weight: row.weight,
-      bulk: row.qty,
+      bulk: row.isBulky,
       competitorPrice,
       competitorStock,
       lastSaleDate: "",
@@ -1007,7 +1007,7 @@ if (filterInStock) d = d.filter((r) => r.stock > 0)
     if (filterSlowMoving) d = d.filter((r) => r.sales12m < 100)
     if (filterNegativeMargin) d = d.filter((r) => r.marginPct < 0)
     if (filterCompetitor) d = d.filter((r) => r.competitorPrice > 0 && r.competitorPrice < r.current)
-if (filterBulk) d = d.filter((r) => r.bulk >= 50)
+if (filterBulk) d = d.filter((r) => r.bulk === true)
   return d
   }, [analyticsData, supplierFilter, pricingGroupFilter, filterInStock, filterSlowMoving, filterNegativeMargin, filterCompetitor, filterBulk])
 
