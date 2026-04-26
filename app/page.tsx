@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockLogs } from "@/lib/mock-data"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2, LogOut, User } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
@@ -119,6 +120,7 @@ useEffect(() => {
   const [globalFilter, setGlobalFilter] = useState("")
   const [rowCount, setRowCount] = useState(0)
   const [selectedRow, setSelectedRow] = useState<InvoiceRow | null>(null)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
 
   // Supabase user state
   const [user, setUser] = useState<SupabaseUser | null>(null)
@@ -960,9 +962,9 @@ const handleClear = useCallback(() => {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
-    console.log("[v0] CLICK ROW:", row)
+    if (!detailsPanelEnabled) return // Block panel opening when disabled
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-  }, [])
+  }, [detailsPanelEnabled])
 
   // Update a single row (used for manual MOOT edits)
   const handleUpdateRow = useCallback((id: string, updates: Partial<InvoiceRow>) => {
@@ -1309,6 +1311,20 @@ selectedInvoices={selectedInvoices}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Details Panel toggle */}
+            <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-[10px] text-muted-foreground">Details Panel</span>
+              <Switch
+                checked={detailsPanelEnabled}
+                onCheckedChange={(checked) => {
+                  setDetailsPanelEnabled(checked)
+                  if (!checked) setSelectedRow(null)
+                }}
+                className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
+              />
+            </label>
 
             {/* User menu */}
             {user && (

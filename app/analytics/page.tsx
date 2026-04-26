@@ -593,7 +593,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
-  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(true)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
@@ -1788,6 +1788,7 @@ const table = useReactTable({
         <div className="flex items-center gap-4">
           {/* Details Panel toggle */}
           <label className="flex items-center gap-2 cursor-pointer">
+            <span className="text-[10px] text-muted-foreground">Details Panel</span>
             <Switch
               checked={detailsPanelEnabled}
               onCheckedChange={(checked) => {
@@ -1796,7 +1797,6 @@ const table = useReactTable({
               }}
               className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
             />
-            <span className="text-[10px] text-muted-foreground">Details Panel</span>
           </label>
 
           {/* Column manager */}
