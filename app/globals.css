@@ -311,6 +311,7 @@
 }
 
 /* Text Intensity - enhances text contrast/brightness */
+/* Applied to <html> element alongside theme class */
 /* Normal = theme defaults, Medium/High = brighter/bolder text */
 .text-intensity-normal {
   /* Default - no changes, use theme defaults */
@@ -323,7 +324,7 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 /* Dark theme - Medium intensity */
-.dark .text-intensity-medium {
+.dark.text-intensity-medium {
   --foreground: 0 0% 95%;
   --muted-foreground: 0 0% 75%;
   --card-foreground: 0 0% 95%;
@@ -331,7 +332,7 @@
 }
 
 /* Dark theme - High intensity */
-.dark .text-intensity-high {
+.dark.text-intensity-high {
   --foreground: 0 0% 100%;
   --muted-foreground: 0 0% 88%;
   --card-foreground: 0 0% 100%;
@@ -339,7 +340,7 @@
 }
 
 /* Warm Dark theme - Medium intensity */
-.warm-dark .text-intensity-medium {
+.warm-dark.text-intensity-medium {
   --foreground: 40 8% 95%;
   --muted-foreground: 40 6% 75%;
   --card-foreground: 40 8% 95%;
@@ -347,7 +348,7 @@
 }
 
 /* Warm Dark theme - High intensity */
-.warm-dark .text-intensity-high {
+.warm-dark.text-intensity-high {
   --foreground: 40 5% 100%;
   --muted-foreground: 40 4% 88%;
   --card-foreground: 40 5% 100%;
@@ -355,7 +356,7 @@
 }
 
 /* Graphite theme - Medium intensity */
-.graphite .text-intensity-medium {
+.graphite.text-intensity-medium {
   --foreground: 215 8% 95%;
   --muted-foreground: 215 6% 75%;
   --card-foreground: 215 8% 95%;
@@ -363,7 +364,7 @@
 }
 
 /* Graphite theme - High intensity */
-.graphite .text-intensity-high {
+.graphite.text-intensity-high {
   --foreground: 215 5% 100%;
   --muted-foreground: 215 4% 88%;
   --card-foreground: 215 5% 100%;
@@ -377,8 +378,8 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 /* Light theme - Medium intensity */
-:root .text-intensity-medium,
-.light .text-intensity-medium {
+.light.text-intensity-medium,
+:root.text-intensity-medium:not(.dark):not(.warm-dark):not(.graphite):not(.soft):not(.mellow) {
   --foreground: 0 0% 8%;
   --muted-foreground: 0 0% 32%;
   --card-foreground: 0 0% 8%;
@@ -386,8 +387,8 @@
 }
 
 /* Light theme - High intensity */
-:root .text-intensity-high,
-.light .text-intensity-high {
+.light.text-intensity-high,
+:root.text-intensity-high:not(.dark):not(.warm-dark):not(.graphite):not(.soft):not(.mellow) {
   --foreground: 0 0% 0%;
   --muted-foreground: 0 0% 22%;
   --card-foreground: 0 0% 0%;
@@ -395,7 +396,7 @@
 }
 
 /* Soft theme - Medium intensity */
-.soft .text-intensity-medium {
+.soft.text-intensity-medium {
   --foreground: 220 12% 10%;
   --muted-foreground: 220 8% 35%;
   --card-foreground: 220 12% 10%;
@@ -403,7 +404,7 @@
 }
 
 /* Soft theme - High intensity */
-.soft .text-intensity-high {
+.soft.text-intensity-high {
   --foreground: 220 15% 2%;
   --muted-foreground: 220 10% 25%;
   --card-foreground: 220 15% 2%;
@@ -411,7 +412,7 @@
 }
 
 /* Mellow theme - Medium intensity */
-.mellow .text-intensity-medium {
+.mellow.text-intensity-medium {
   --foreground: 40 12% 10%;
   --muted-foreground: 40 8% 35%;
   --card-foreground: 40 12% 10%;
@@ -419,7 +420,7 @@
 }
 
 /* Mellow theme - High intensity */
-.mellow .text-intensity-high {
+.mellow.text-intensity-high {
   --foreground: 40 15% 2%;
   --muted-foreground: 40 10% 25%;
   --card-foreground: 40 20% 5%;

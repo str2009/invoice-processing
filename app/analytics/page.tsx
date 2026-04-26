@@ -548,7 +548,16 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const handleTextIntensityChange = useCallback((value: "normal" | "medium" | "high") => {
     setTextIntensity(value)
     localStorage.setItem("workspace_text_intensity", value)
+    // Apply to html element for CSS variable cascade
+    document.documentElement.classList.remove("text-intensity-normal", "text-intensity-medium", "text-intensity-high")
+    document.documentElement.classList.add(`text-intensity-${value}`)
   }, [])
+
+  // Apply text intensity class to html element on mount and when it changes
+  useEffect(() => {
+    document.documentElement.classList.remove("text-intensity-normal", "text-intensity-medium", "text-intensity-high")
+    document.documentElement.classList.add(`text-intensity-${textIntensity}`)
+  }, [textIntensity])
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient()
@@ -1209,7 +1218,7 @@ const table = useReactTable({
 }
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale} text-intensity-${textIntensity}`}>
+    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
       {/* Control Panel */}
       <ControlPanel
         mode="analytics"
