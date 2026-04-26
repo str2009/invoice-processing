@@ -108,19 +108,26 @@ import { ColumnHeaderContextMenu, useColumnContextMenu } from "@/components/ui/c
 interface AnalyticsRow {
   id: string
   partCode: string
+  part_code: string // snake_case alias
   brand: string
   supplier: string
   partName: string
+  part_name: string // snake_case alias
   purchase: number
   current: number
   marginPct: number
+  margin_percent: number // snake_case alias
   marginAbs: number
+  margin_abs: number // snake_case alias
   deltaPct: number
+  delta_percent: number // snake_case alias
   deltaAbs: number
   stock: number
   incoming: number
   totalStock: number
+  total_stock: number // snake_case alias
   sales12m: number
+  sales_12m: number // snake_case alias
   sales3m: number
   coverageDays: number
   pricingGroup: string
@@ -158,19 +165,26 @@ function toAnalyticsRows(rows: InvoiceRow[]): AnalyticsRow[] {
     return {
       id: row.id ?? String(idx + 1),
       partCode: row.partCode,
+      part_code: row.partCode, // snake_case alias
       brand: row.manufacturer,
       supplier: row.manufacturer,
       partName: row.partName,
+      part_name: row.partName, // snake_case alias
       purchase: row.cost,
       current: row.now,
       marginPct: margin,
+      margin_percent: margin, // snake_case alias
       marginAbs,
+      margin_abs: marginAbs, // snake_case alias
       deltaPct: row.deltaPercent,
+      delta_percent: row.deltaPercent, // snake_case alias
       deltaAbs,
       stock: row.stock,
       incoming,
       totalStock: row.stock + incoming,
+      total_stock: row.stock + incoming, // snake_case alias
       sales12m: row.sales12m,
+      sales_12m: row.sales12m, // snake_case alias
       sales3m,
       coverageDays: coverage,
       pricingGroup: pricingGroups[idx % pricingGroups.length],
@@ -179,10 +193,10 @@ function toAnalyticsRows(rows: InvoiceRow[]): AnalyticsRow[] {
       competitorPrice,
       competitorStock,
       lastSaleDate: "",
-abcClass: abcClasses[idx % abcClasses.length],
-    riskScore: Math.min(riskScore, 100),
-    part_brand_key: row.part_brand_key ?? `${row.partCode}_${row.manufacturer}`,
-  }
+      abcClass: abcClasses[idx % abcClasses.length],
+      riskScore: Math.min(riskScore, 100),
+      part_brand_key: row.part_brand_key ?? `${row.partCode}_${row.manufacturer}`,
+    }
   })
 }
 

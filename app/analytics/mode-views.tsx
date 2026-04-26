@@ -11,6 +11,7 @@ import type { Column } from "@tanstack/react-table"
 export interface StockRow {
   id: string
   part_code: string
+  part_name: string
   brand: string
   purchase: number
   current: number
@@ -77,10 +78,7 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
       id: "part_name",
       accessorKey: "part_name",
       header: ({ column }) => <SortHeader column={column} label="Part Name" />,
-      cell: ({ row }) => {
-        console.log("[v0] row.original:", row.original)
-        return <span className="text-[11px]">{row.original.part_name}</span>
-      },
+      cell: ({ row }) => <span className="text-[11px]">{row.getValue("part_name")}</span>,
     },
     {
       id: "brand",
