@@ -925,7 +925,6 @@ const handleHideColumn = useCallback((columnId: string) => {
       }
       
       const data = await response.json()
-      console.log("[v0] Invoice data response:", data)
       const rows = Array.isArray(data) ? data : []
       
       const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
@@ -934,13 +933,13 @@ const handleHideColumn = useCallback((columnId: string) => {
         manufacturer: (r.brand as string) ?? (r.manufacturer as string) ?? "",
         partName: (r.part_name as string) ?? (r.partName as string) ?? "",
         qty: Number(r.qty ?? 0),
-        cost: Number(r.purchase_price ?? r.cost ?? 0),
-        now: Number(r.price ?? r.now ?? r.price_now ?? 0),
+        cost: Number(r.purchase ?? r.purchase_price ?? r.cost ?? 0),
+        now: Number(r.current ?? r.price ?? r.now ?? r.price_now ?? 0),
         ship: Number(r.ship ?? r.price_ship ?? 0),
         deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
         stock: Number(r.stock_qty ?? r.stock ?? 0),
         weight: Number(r.weight ?? 0),
-        isBulky: Boolean(r.isBulky),
+        isBulky: Boolean(r.bulk ?? r.isBulky),
         productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
         sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
       })) as InvoiceRow[]
