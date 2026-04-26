@@ -657,45 +657,7 @@ const handleHideColumn = useCallback((columnId: string) => {
   })
 }, [persistColumnState])
 
-const handleHideOthers = useCallback((columnId: string) => {
-  setColumnVisibility(() => {
-    const next = allColumnIds.reduce((acc, id) => {
-      acc[id] = id === columnId
-      return acc
-    }, {} as VisibilityState)
-    persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
-    return next
-  })
-}, [allColumnIds, persistColumnState])
 
-const handleShowAll = useCallback(() => {
-  setColumnVisibility(() => {
-    persistColumnState(columnOrderRef.current, defaultVisibility, columnSizingRef.current)
-    return defaultVisibility
-  })
-}, [defaultVisibility, persistColumnState])
-
-const handleResetOrder = useCallback(() => {
-  setColumnOrder(() => {
-    persistColumnState(allColumnIds, columnVisibilityRef.current, columnSizingRef.current)
-    return allColumnIds
-  })
-}, [allColumnIds, persistColumnState])
-
-const handleResetWidth = useCallback(() => {
-  setColumnSizing(() => {
-    persistColumnState(columnOrderRef.current, columnVisibilityRef.current, defaultColumnSizing)
-    return defaultColumnSizing
-  })
-}, [persistColumnState])
-
-const handleResetAll = useCallback(() => {
-  setColumnOrder(allColumnIds)
-  setColumnVisibility(defaultVisibility)
-  setColumnSizing(defaultColumnSizing)
-  clearColumnState()
-}, [allColumnIds, defaultVisibility]
-)
 
 
 
@@ -749,6 +711,46 @@ const handleResetAll = useCallback(() => {
 
     setIsHydrated(true)
   }, [allColumnIds])
+  
+  // Column visibility/order handlers (defined after allColumnIds and defaultVisibility)
+  const handleHideOthers = useCallback((columnId: string) => {
+    setColumnVisibility(() => {
+      const next = allColumnIds.reduce((acc, id) => {
+        acc[id] = id === columnId
+        return acc
+      }, {} as VisibilityState)
+      persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
+      return next
+    })
+  }, [allColumnIds, persistColumnState])
+
+  const handleShowAll = useCallback(() => {
+    setColumnVisibility(() => {
+      persistColumnState(columnOrderRef.current, defaultVisibility, columnSizingRef.current)
+      return defaultVisibility
+    })
+  }, [defaultVisibility, persistColumnState])
+
+  const handleResetOrder = useCallback(() => {
+    setColumnOrder(() => {
+      persistColumnState(allColumnIds, columnVisibilityRef.current, columnSizingRef.current)
+      return allColumnIds
+    })
+  }, [allColumnIds, persistColumnState])
+
+  const handleResetWidth = useCallback(() => {
+    setColumnSizing(() => {
+      persistColumnState(columnOrderRef.current, columnVisibilityRef.current, defaultColumnSizing)
+      return defaultColumnSizing
+    })
+  }, [persistColumnState])
+
+  const handleResetAll = useCallback(() => {
+    setColumnOrder(allColumnIds)
+    setColumnVisibility(defaultVisibility)
+    setColumnSizing(defaultColumnSizing)
+    clearColumnState()
+  }, [allColumnIds, defaultVisibility])
   
   // Invoice selector state
   interface InvoiceItem {
