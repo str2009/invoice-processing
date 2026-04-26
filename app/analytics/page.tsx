@@ -1783,14 +1783,103 @@ const table = useReactTable({
           <FilterToggle label="Competitor Available" active={filterCompetitor} onClick={() => setFilterCompetitor((p) => !p)} />
           <FilterToggle label="Bulk Only" active={filterBulk} onClick={() => setFilterBulk((p) => !p)} />
         </div>
-        {/* Column manager */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground">
-              <Columns3 className="h-3 w-3" />
-              Columns
-            </Button>
-          </PopoverTrigger>
+        <div className="flex items-center gap-3">
+          {/* Settings dropdown - same as header but in filter row */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
+                {mounted && (
+                  theme === "light" ? (
+                    <Sun className="h-3 w-3" />
+                  ) : theme === "soft" ? (
+                    <Sun className="h-3 w-3 text-amber-400" />
+                  ) : theme === "mellow" ? (
+                    <Sun className="h-3 w-3 text-stone-500" />
+                  ) : theme === "graphite" ? (
+                    <Monitor className="h-3 w-3" />
+                  ) : theme === "warm-dark" ? (
+                    <Moon className="h-3 w-3 text-amber-500" />
+                  ) : (
+                    <Moon className="h-3 w-3" />
+                  )
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[160px]">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                Theme
+              </DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setTheme("light")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}>
+                <Sun className="h-3.5 w-3.5" /> Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("soft")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}>
+                <Sun className="h-3.5 w-3.5 text-amber-400" /> Soft
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("mellow")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}>
+                <Sun className="h-3.5 w-3.5 text-stone-500" /> Mellow
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}>
+                <Moon className="h-3.5 w-3.5" /> Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("warm-dark")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}>
+                <Moon className="h-3.5 w-3.5 text-amber-500" /> Warm Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("graphite")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}>
+                <Monitor className="h-3.5 w-3.5" /> Graphite
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                Density
+              </DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleDensityChange("comfortable")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}>
+                <Maximize2 className="h-3.5 w-3.5" /> Comfortable
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDensityChange("compact")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}>
+                <Minimize2 className="h-3.5 w-3.5" /> Compact
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                UI Scale
+              </DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleScaleChange("90")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span> 90%
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleScaleChange("100")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span> 100%
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleScaleChange("110")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span> 110%
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleScaleChange("120")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "120" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">120</span> 120%
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleScaleChange("130")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "130" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">130</span> 130%
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                Text Intensity
+              </DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleTextIntensityChange("normal")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${textIntensity === "normal" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">N</span> Normal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleTextIntensityChange("medium")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${textIntensity === "medium" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">M</span> Medium
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleTextIntensityChange("high")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${textIntensity === "high" ? "bg-accent" : ""}`}>
+                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">H</span> High
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Column manager */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground">
+                <Columns3 className="h-3 w-3" />
+                Columns
+              </Button>
+            </PopoverTrigger>
           <PopoverContent align="end" className="w-56 p-0">
             <div className="max-h-72 overflow-y-auto overscroll-contain p-2">
               <div className="flex flex-col gap-0">
@@ -1815,7 +1904,8 @@ const table = useReactTable({
               </div>
             </div>
           </PopoverContent>
-        </Popover>
+          </Popover>
+        </div>
       </div>
 
       {/* Content: table + detail panel */}
