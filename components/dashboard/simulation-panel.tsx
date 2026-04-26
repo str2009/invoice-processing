@@ -1201,12 +1201,12 @@ export function SimulationPanel({
     try {
       setIsSavingData(true)
 
-      // Filter rows with id and only send id + ship
+      // Filter rows with id and only send id + ship_cost
       const payload = data
         .filter(row => row.id)
         .map(row => ({
           id: row.id,
-          ship: row.ship ?? null
+          ship_cost: row.ship ?? null
         }))
 
       if (payload.length === 0) {
