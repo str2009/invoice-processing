@@ -311,97 +311,117 @@
 }
 
 /* Text Intensity - enhances text contrast/brightness */
-/* Normal = theme defaults, Medium/High = brighter text */
+/* Normal = theme defaults, Medium/High = brighter/bolder text */
 .text-intensity-normal {
   /* Default - no changes, use theme defaults */
 }
 
-/* Text Intensity Medium - Dark themes */
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEXT INTENSITY - DARK THEMES (dark, warm-dark, graphite)
+   Medium: noticeably brighter than default
+   High: maximum brightness/contrast
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Dark theme - Medium intensity */
 .dark .text-intensity-medium {
-  --foreground: 220 10% 92%;
-  --muted-foreground: 220 8% 72%;
-  --card-foreground: 220 10% 92%;
-  --popover-foreground: 220 10% 92%;
+  --foreground: 0 0% 95%;
+  --muted-foreground: 0 0% 75%;
+  --card-foreground: 0 0% 95%;
+  --popover-foreground: 0 0% 95%;
 }
 
-.warm-dark .text-intensity-medium {
-  --foreground: 30 10% 92%;
-  --muted-foreground: 30 8% 72%;
-  --card-foreground: 30 10% 92%;
-  --popover-foreground: 30 10% 92%;
-}
-
-.graphite .text-intensity-medium {
-  --foreground: 215 10% 92%;
-  --muted-foreground: 215 8% 72%;
-  --card-foreground: 215 10% 92%;
-  --popover-foreground: 215 10% 92%;
-}
-
-/* Text Intensity High - Dark themes */
+/* Dark theme - High intensity */
 .dark .text-intensity-high {
   --foreground: 0 0% 100%;
-  --muted-foreground: 0 0% 85%;
+  --muted-foreground: 0 0% 88%;
   --card-foreground: 0 0% 100%;
   --popover-foreground: 0 0% 100%;
 }
 
-.warm-dark .text-intensity-high {
-  --foreground: 30 5% 100%;
-  --muted-foreground: 30 5% 85%;
-  --card-foreground: 30 5% 100%;
-  --popover-foreground: 30 5% 100%;
+/* Warm Dark theme - Medium intensity */
+.warm-dark .text-intensity-medium {
+  --foreground: 40 8% 95%;
+  --muted-foreground: 40 6% 75%;
+  --card-foreground: 40 8% 95%;
+  --popover-foreground: 40 8% 95%;
 }
 
+/* Warm Dark theme - High intensity */
+.warm-dark .text-intensity-high {
+  --foreground: 40 5% 100%;
+  --muted-foreground: 40 4% 88%;
+  --card-foreground: 40 5% 100%;
+  --popover-foreground: 40 5% 100%;
+}
+
+/* Graphite theme - Medium intensity */
+.graphite .text-intensity-medium {
+  --foreground: 215 8% 95%;
+  --muted-foreground: 215 6% 75%;
+  --card-foreground: 215 8% 95%;
+  --popover-foreground: 215 8% 95%;
+}
+
+/* Graphite theme - High intensity */
 .graphite .text-intensity-high {
   --foreground: 215 5% 100%;
-  --muted-foreground: 215 5% 85%;
+  --muted-foreground: 215 4% 88%;
   --card-foreground: 215 5% 100%;
   --popover-foreground: 215 5% 100%;
 }
 
-/* Text Intensity Medium - Light themes */
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEXT INTENSITY - LIGHT THEMES (light/root, soft, mellow)
+   Medium: noticeably darker than default
+   High: maximum darkness/contrast
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Light theme - Medium intensity */
 :root .text-intensity-medium,
 .light .text-intensity-medium {
-  --foreground: 220 15% 15%;
-  --muted-foreground: 220 10% 38%;
-  --card-foreground: 220 15% 15%;
-  --popover-foreground: 220 15% 15%;
+  --foreground: 0 0% 8%;
+  --muted-foreground: 0 0% 32%;
+  --card-foreground: 0 0% 8%;
+  --popover-foreground: 0 0% 8%;
 }
 
-.soft .text-intensity-medium {
-  --foreground: 220 15% 12%;
-  --muted-foreground: 220 10% 35%;
-  --card-foreground: 220 15% 12%;
-  --popover-foreground: 220 15% 12%;
-}
-
-.mellow .text-intensity-medium {
-  --foreground: 40 15% 12%;
-  --muted-foreground: 40 10% 35%;
-  --card-foreground: 40 15% 12%;
-  --popover-foreground: 40 15% 12%;
-}
-
-/* Text Intensity High - Light themes */
+/* Light theme - High intensity */
 :root .text-intensity-high,
 .light .text-intensity-high {
-  --foreground: 220 20% 5%;
-  --muted-foreground: 220 12% 28%;
-  --card-foreground: 220 20% 5%;
-  --popover-foreground: 220 20% 5%;
+  --foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 22%;
+  --card-foreground: 0 0% 0%;
+  --popover-foreground: 0 0% 0%;
 }
 
+/* Soft theme - Medium intensity */
+.soft .text-intensity-medium {
+  --foreground: 220 12% 10%;
+  --muted-foreground: 220 8% 35%;
+  --card-foreground: 220 12% 10%;
+  --popover-foreground: 220 12% 10%;
+}
+
+/* Soft theme - High intensity */
 .soft .text-intensity-high {
-  --foreground: 220 20% 5%;
-  --muted-foreground: 220 12% 25%;
-  --card-foreground: 220 20% 5%;
-  --popover-foreground: 220 20% 5%;
+  --foreground: 220 15% 2%;
+  --muted-foreground: 220 10% 25%;
+  --card-foreground: 220 15% 2%;
+  --popover-foreground: 220 15% 2%;
 }
 
+/* Mellow theme - Medium intensity */
+.mellow .text-intensity-medium {
+  --foreground: 40 12% 10%;
+  --muted-foreground: 40 8% 35%;
+  --card-foreground: 40 12% 10%;
+  --popover-foreground: 40 12% 10%;
+}
+
+/* Mellow theme - High intensity */
 .mellow .text-intensity-high {
-  --foreground: 40 20% 5%;
-  --muted-foreground: 40 12% 25%;
+  --foreground: 40 15% 2%;
+  --muted-foreground: 40 10% 25%;
   --card-foreground: 40 20% 5%;
   --popover-foreground: 40 20% 5%;
 }
