@@ -74,6 +74,12 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
       cell: ({ row }) => <span className="font-mono text-[11px] text-foreground">{row.getValue("part_code")}</span>,
     },
     {
+      id: "part_name",
+      accessorKey: "part_name",
+      header: ({ column }) => <SortHeader column={column} label="Part Name" />,
+      cell: ({ row }) => <span className="text-[11px]">{row.getValue("part_name")}</span>,
+    },
+    {
       id: "brand",
       accessorKey: "brand",
       header: ({ column }) => <SortHeader column={column} label="Brand" />,
@@ -82,7 +88,7 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
     {
       id: "purchase",
       accessorKey: "purchase",
-      header: ({ column }) => <SortHeader column={column} label="Purchase" />,
+      header: ({ column }) => <SortHeader column={column} label="Cost" />,
       cell: ({ row }) => {
         const v = row.getValue("purchase") as number | undefined
         return <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{v != null ? v.toFixed(2) : "---"}</span>
@@ -204,7 +210,7 @@ export function getInvoiceColumns(): ColumnDef<InvoiceRow>[] {
     {
       id: "purchase",
       accessorKey: "purchase",
-      header: ({ column }) => <SortHeader column={column} label="Purchase" />,
+      header: ({ column }) => <SortHeader column={column} label="Cost" />,
       cell: ({ row }) => {
         const v = row.getValue("purchase") as number | undefined
         return <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{v != null ? v.toFixed(2) : "---"}</span>
