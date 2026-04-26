@@ -622,7 +622,7 @@ export function InvoiceTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [isHydrated, setIsHydrated] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(true)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Context menu hook
@@ -903,21 +903,21 @@ export function InvoiceTable({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Toolbar with toggle and column visibility */}
       <div className="flex shrink-0 items-center justify-end gap-4 border-b border-border bg-background px-2 py-1.5">
-        {/* Details Panel Toggle */}
-        <div className="flex items-center gap-2">
-          <Switch
-            id="details-panel-toggle"
-            checked={detailsPanelEnabled}
-            onCheckedChange={handleDetailsPanelToggle}
-            className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30"
-          />
-          <Label
-            htmlFor="details-panel-toggle"
-            className="text-xs text-muted-foreground cursor-pointer select-none"
-          >
-            Details Panel
-          </Label>
-        </div>
+{/* Details Panel Toggle */}
+  <div className="flex items-center gap-2">
+  <Label
+  htmlFor="details-panel-toggle"
+  className="text-xs text-muted-foreground cursor-pointer select-none"
+  >
+  Details Panel
+  </Label>
+  <Switch
+  id="details-panel-toggle"
+  checked={detailsPanelEnabled}
+  onCheckedChange={handleDetailsPanelToggle}
+  className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30"
+  />
+  </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
