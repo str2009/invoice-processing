@@ -34,8 +34,6 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -904,20 +902,16 @@ export function InvoiceTable({
       {/* Toolbar with toggle and column visibility */}
       <div className="flex shrink-0 items-center justify-end gap-4 border-b border-border bg-background px-2 py-1.5">
 {/* Details Panel Toggle */}
-  <div className="flex items-center gap-2">
-  <Label
-  htmlFor="details-panel-toggle"
-  className="text-xs text-muted-foreground cursor-pointer select-none"
-  >
-  Details Panel
-  </Label>
-  <Switch
-  id="details-panel-toggle"
-  checked={detailsPanelEnabled}
-  onCheckedChange={handleDetailsPanelToggle}
-  className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30"
-  />
-  </div>
+        <button
+          onClick={handleDetailsPanelToggle}
+          className={`px-2 py-1 text-xs rounded transition-all cursor-pointer select-none ${
+            detailsPanelEnabled 
+              ? "text-green-500 ring-1 ring-green-500/70" 
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Details Panel
+        </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

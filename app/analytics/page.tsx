@@ -40,7 +40,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
 import { MultiLevelCalendar } from "@/components/ui/multi-level-calendar"
 import type { DateRange } from "react-day-picker"
 import {
@@ -1358,7 +1357,7 @@ const table = useReactTable({
                 <PopoverContent className="w-[300px] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput 
-                      placeholder="Поиск по номеру, поставщику..." 
+                      placeholder="Поиск по номеру, поста��щику..." 
                       value={invoiceSearchQuery}
                       onValueChange={setInvoiceSearchQuery}
                       className="text-xs"
@@ -1787,17 +1786,20 @@ const table = useReactTable({
         </div>
         <div className="flex items-center gap-4">
           {/* Details Panel toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <span className="text-[10px] text-muted-foreground">Details Panel</span>
-            <Switch
-              checked={detailsPanelEnabled}
-              onCheckedChange={(checked) => {
-                setDetailsPanelEnabled(checked)
-                if (!checked) setSelectedRow(null) // Close panel when disabled
-              }}
-              className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
-            />
-          </label>
+          <button
+            onClick={() => {
+              const newValue = !detailsPanelEnabled
+              setDetailsPanelEnabled(newValue)
+              if (!newValue) setSelectedRow(null)
+            }}
+            className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
+              detailsPanelEnabled 
+                ? "text-green-500 ring-1 ring-green-500/70" 
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Details Panel
+          </button>
 
           {/* Column manager */}
           <Popover>
@@ -1900,7 +1902,7 @@ const table = useReactTable({
                           <span className="text-sm text-muted-foreground">Нет данных</span>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Нет результатов по текущи�� фильтрам</span>
+                        <span className="text-sm text-muted-foreground">Нет результ��тов по текущи�� фильтрам</span>
                       )}
                     </td>
                   </tr>
