@@ -903,7 +903,7 @@ export function InvoiceTable({
       <div className="flex shrink-0 items-center justify-end gap-4 border-b border-border bg-background px-2 py-1.5">
 {/* Details Panel Toggle */}
         <button
-          onClick={handleDetailsPanelToggle}
+          onClick={() => handleDetailsPanelToggle(!detailsPanelEnabled)}
           className={`px-2 py-1 text-xs rounded transition-all cursor-pointer select-none ${
             detailsPanelEnabled 
               ? "text-green-500 ring-1 ring-green-500/70" 
