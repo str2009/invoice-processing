@@ -83,20 +83,27 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
       id: "purchase",
       accessorKey: "purchase",
       header: ({ column }) => <SortHeader column={column} label="Purchase" />,
-      cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("purchase") as number).toFixed(2)}</span>,
+      cell: ({ row }) => {
+        const v = row.getValue("purchase") as number | undefined
+        return <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{v != null ? v.toFixed(2) : "---"}</span>
+      },
     },
     {
       id: "current",
       accessorKey: "current",
       header: ({ column }) => <SortHeader column={column} label="Current" />,
-      cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{(row.getValue("current") as number).toFixed(2)}</span>,
+      cell: ({ row }) => {
+        const v = row.getValue("current") as number | undefined
+        return <span className="font-mono text-[11px] tabular-nums">{v != null ? v.toFixed(2) : "---"}</span>
+      },
     },
     {
       id: "margin_percent",
       accessorKey: "margin_percent",
       header: ({ column }) => <SortHeader column={column} label="Margin %" />,
       cell: ({ row }) => {
-        const v = row.getValue("margin_percent") as number
+        const v = row.getValue("margin_percent") as number | undefined
+        if (v == null) return <span className="font-mono text-[11px] text-muted-foreground">---</span>
         return (
           <span className={`font-mono text-[11px] tabular-nums ${v > 40 ? "text-emerald-600 dark:text-emerald-400" : v > 20 ? "text-foreground" : v < 0 ? "text-red-500" : "text-amber-600 dark:text-amber-400"}`}>
             {v.toFixed(1)}%
@@ -109,7 +116,8 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
       accessorKey: "margin_abs",
       header: ({ column }) => <SortHeader column={column} label="Margin Abs" />,
       cell: ({ row }) => {
-        const v = row.getValue("margin_abs") as number
+        const v = row.getValue("margin_abs") as number | undefined
+        if (v == null) return <span className="font-mono text-[11px] text-muted-foreground">---</span>
         return <span className={`font-mono text-[11px] tabular-nums ${v < 0 ? "text-red-500" : "text-muted-foreground"}`}>{v.toFixed(2)}</span>
       },
     },
@@ -118,7 +126,8 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
       accessorKey: "stock",
       header: ({ column }) => <SortHeader column={column} label="Stock" />,
       cell: ({ row }) => {
-        const v = row.getValue("stock") as number
+        const v = row.getValue("stock") as number | undefined
+        if (v == null) return <span className="font-mono text-[11px] text-muted-foreground">---</span>
         return <span className={`font-mono text-[11px] tabular-nums ${v < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>{v}</span>
       },
     },
@@ -126,20 +135,27 @@ export function getStockColumns(): ColumnDef<StockRow>[] {
       id: "total_stock",
       accessorKey: "total_stock",
       header: ({ column }) => <SortHeader column={column} label="Total Stock" />,
-      cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{row.getValue("total_stock")}</span>,
+      cell: ({ row }) => {
+        const v = row.getValue("total_stock") as number | undefined
+        return <span className="font-mono text-[11px] tabular-nums">{v ?? "---"}</span>
+      },
     },
     {
       id: "sales_12m",
       accessorKey: "sales_12m",
       header: ({ column }) => <SortHeader column={column} label="12m Sales" />,
-      cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("sales_12m") as number).toLocaleString("en-US")}</span>,
+      cell: ({ row }) => {
+        const v = row.getValue("sales_12m") as number | undefined
+        return <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{v != null ? v.toLocaleString("en-US") : "---"}</span>
+      },
     },
     {
       id: "weight",
       accessorKey: "weight",
       header: ({ column }) => <SortHeader column={column} label="Weight" />,
       cell: ({ row }) => {
-        const w = row.getValue("weight") as number
+        const w = row.getValue("weight") as number | undefined
+        if (w == null) return <span className="font-mono text-[11px] text-muted-foreground">---</span>
         return <span className={`font-mono text-[11px] tabular-nums ${w === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}>{w.toFixed(3)}</span>
       },
     },
@@ -189,14 +205,18 @@ export function getInvoiceColumns(): ColumnDef<InvoiceRow>[] {
       id: "purchase",
       accessorKey: "purchase",
       header: ({ column }) => <SortHeader column={column} label="Purchase" />,
-      cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("purchase") as number).toFixed(2)}</span>,
+      cell: ({ row }) => {
+        const v = row.getValue("purchase") as number | undefined
+        return <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{v != null ? v.toFixed(2) : "---"}</span>
+      },
     },
     {
       id: "stock",
       accessorKey: "stock",
       header: ({ column }) => <SortHeader column={column} label="Stock" />,
       cell: ({ row }) => {
-        const v = row.getValue("stock") as number
+        const v = row.getValue("stock") as number | undefined
+        if (v == null) return <span className="font-mono text-[11px] text-muted-foreground">---</span>
         return <span className={`font-mono text-[11px] tabular-nums ${v < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>{v}</span>
       },
     },
@@ -220,7 +240,8 @@ export function getInvoiceColumns(): ColumnDef<InvoiceRow>[] {
       accessorKey: "weight",
       header: ({ column }) => <SortHeader column={column} label="Weight" />,
       cell: ({ row }) => {
-        const w = row.getValue("weight") as number
+        const w = row.getValue("weight") as number | undefined
+        if (w == null) return <span className="font-mono text-[11px] text-muted-foreground">---</span>
         return <span className={`font-mono text-[11px] tabular-nums ${w === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}>{w.toFixed(3)}</span>
       },
     },
