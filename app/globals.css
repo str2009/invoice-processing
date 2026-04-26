@@ -295,11 +295,136 @@
   --ui-scale: 1.1;
 }
 
+.scale-120 {
+  --ui-scale: 1.2;
+}
+
+.scale-130 {
+  --ui-scale: 1.3;
+}
+
 /* Density Variables */
 :root {
   --density-spacing: 1;
   --density-row-height: 1;
   --density-padding: 1;
+}
+
+/* Text Intensity - enhances text contrast/brightness */
+/* Applied to <html> element alongside theme class */
+/* Normal = theme defaults, Medium/High = brighter/bolder text */
+.text-intensity-normal {
+  /* Default - no changes, use theme defaults */
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEXT INTENSITY - DARK THEMES (dark, warm-dark, graphite)
+   Medium: noticeably brighter than default
+   High: maximum brightness/contrast
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Dark theme - Medium intensity */
+.dark.text-intensity-medium {
+  --foreground: 0 0% 95%;
+  --muted-foreground: 0 0% 75%;
+  --card-foreground: 0 0% 95%;
+  --popover-foreground: 0 0% 95%;
+}
+
+/* Dark theme - High intensity */
+.dark.text-intensity-high {
+  --foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 88%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+}
+
+/* Warm Dark theme - Medium intensity */
+.warm-dark.text-intensity-medium {
+  --foreground: 40 8% 95%;
+  --muted-foreground: 40 6% 75%;
+  --card-foreground: 40 8% 95%;
+  --popover-foreground: 40 8% 95%;
+}
+
+/* Warm Dark theme - High intensity */
+.warm-dark.text-intensity-high {
+  --foreground: 40 5% 100%;
+  --muted-foreground: 40 4% 88%;
+  --card-foreground: 40 5% 100%;
+  --popover-foreground: 40 5% 100%;
+}
+
+/* Graphite theme - Medium intensity */
+.graphite.text-intensity-medium {
+  --foreground: 215 8% 95%;
+  --muted-foreground: 215 6% 75%;
+  --card-foreground: 215 8% 95%;
+  --popover-foreground: 215 8% 95%;
+}
+
+/* Graphite theme - High intensity */
+.graphite.text-intensity-high {
+  --foreground: 215 5% 100%;
+  --muted-foreground: 215 4% 88%;
+  --card-foreground: 215 5% 100%;
+  --popover-foreground: 215 5% 100%;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEXT INTENSITY - LIGHT THEMES (light/root, soft, mellow)
+   Medium: noticeably darker than default
+   High: maximum darkness/contrast
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Light theme - Medium intensity */
+.light.text-intensity-medium,
+:root.text-intensity-medium:not(.dark):not(.warm-dark):not(.graphite):not(.soft):not(.mellow) {
+  --foreground: 0 0% 8%;
+  --muted-foreground: 0 0% 32%;
+  --card-foreground: 0 0% 8%;
+  --popover-foreground: 0 0% 8%;
+}
+
+/* Light theme - High intensity */
+.light.text-intensity-high,
+:root.text-intensity-high:not(.dark):not(.warm-dark):not(.graphite):not(.soft):not(.mellow) {
+  --foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 22%;
+  --card-foreground: 0 0% 0%;
+  --popover-foreground: 0 0% 0%;
+}
+
+/* Soft theme - Medium intensity */
+.soft.text-intensity-medium {
+  --foreground: 220 12% 10%;
+  --muted-foreground: 220 8% 35%;
+  --card-foreground: 220 12% 10%;
+  --popover-foreground: 220 12% 10%;
+}
+
+/* Soft theme - High intensity */
+.soft.text-intensity-high {
+  --foreground: 220 15% 2%;
+  --muted-foreground: 220 10% 25%;
+  --card-foreground: 220 15% 2%;
+  --popover-foreground: 220 15% 2%;
+}
+
+/* Mellow theme - Medium intensity */
+.mellow.text-intensity-medium {
+  --foreground: 40 12% 10%;
+  --muted-foreground: 40 8% 35%;
+  --card-foreground: 40 12% 10%;
+  --popover-foreground: 40 12% 10%;
+}
+
+/* Mellow theme - High intensity */
+.mellow.text-intensity-high {
+  --foreground: 40 15% 2%;
+  --muted-foreground: 40 10% 25%;
+  --card-foreground: 40 20% 5%;
+  --popover-foreground: 40 20% 5%;
 }
 
 .density-comfortable {

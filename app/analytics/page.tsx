@@ -35,6 +35,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { ControlPanel } from "@/components/dashboard/control-panel"
 import { PartDetailsPanel } from "@/components/dashboard/part-details-panel"
+import { modeConfig, getStockColumns, getInvoiceColumns, getCustomColumns, type StockRow, type InvoiceRow, type ModeType } from "./mode-views"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -107,24 +108,31 @@ import { ColumnHeaderContextMenu, useColumnContextMenu } from "@/components/ui/c
 interface AnalyticsRow {
   id: string
   partCode: string
+  part_code: string // snake_case alias
   brand: string
   supplier: string
   partName: string
+  part_name: string // snake_case alias
   purchase: number
   current: number
   marginPct: number
+  margin_percent: number // snake_case alias
   marginAbs: number
+  margin_abs: number // snake_case alias
   deltaPct: number
+  delta_percent: number // snake_case alias
   deltaAbs: number
   stock: number
   incoming: number
   totalStock: number
+  total_stock: number // snake_case alias
   sales12m: number
+  sales_12m: number // snake_case alias
   sales3m: number
   coverageDays: number
   pricingGroup: string
   weight: number
-  bulk: number
+  bulk: boolean
   competitorPrice: number
   competitorStock: number
   lastSaleDate: string
@@ -157,31 +165,38 @@ function toAnalyticsRows(rows: InvoiceRow[]): AnalyticsRow[] {
     return {
       id: row.id ?? String(idx + 1),
       partCode: row.partCode,
+      part_code: row.partCode, // snake_case alias
       brand: row.manufacturer,
       supplier: row.manufacturer,
       partName: row.partName,
+      part_name: row.partName, // snake_case alias
       purchase: row.cost,
       current: row.now,
       marginPct: margin,
+      margin_percent: margin, // snake_case alias
       marginAbs,
+      margin_abs: marginAbs, // snake_case alias
       deltaPct: row.deltaPercent,
+      delta_percent: row.deltaPercent, // snake_case alias
       deltaAbs,
       stock: row.stock,
       incoming,
       totalStock: row.stock + incoming,
+      total_stock: row.stock + incoming, // snake_case alias
       sales12m: row.sales12m,
+      sales_12m: row.sales12m, // snake_case alias
       sales3m,
       coverageDays: coverage,
       pricingGroup: pricingGroups[idx % pricingGroups.length],
       weight: row.weight,
-      bulk: row.qty,
+      bulk: row.isBulky,
       competitorPrice,
       competitorStock,
       lastSaleDate: "",
-abcClass: abcClasses[idx % abcClasses.length],
-    riskScore: Math.min(riskScore, 100),
-    part_brand_key: row.part_brand_key ?? `${row.partCode}_${row.manufacturer}`,
-  }
+      abcClass: abcClasses[idx % abcClasses.length],
+      riskScore: Math.min(riskScore, 100),
+      part_brand_key: row.part_brand_key ?? `${row.partCode}_${row.manufacturer}`,
+    }
   })
 }
 
@@ -465,221 +480,8 @@ const columnLabels: Record<string, string> = {
   riskScore: "Risk Score",
 }
 
-// --- Column definitions (23 columns) ---
-function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
-  return [
-  {
-    id: "partCode",
-    accessorKey: "partCode",
-    header: ({ column }) => <SortHeader column={column} label="Part Code" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] text-foreground">{row.getValue("partCode")}</span>,
-  },
-  {
-    id: "brand",
-    accessorKey: "brand",
-    header: ({ column }) => <SortHeader column={column} label="Brand" />,
-    cell: ({ row }) => <span className="text-[11px]">{row.getValue("brand")}</span>,
-  },
-  {
-    id: "supplier",
-    accessorKey: "supplier",
-    header: ({ column }) => <SortHeader column={column} label="Supplier" />,
-    cell: ({ row }) => <span className="text-[11px] text-muted-foreground">{row.getValue("supplier")}</span>,
-  },
-  {
-    id: "purchase",
-    accessorKey: "purchase",
-    header: ({ column }) => <SortHeader column={column} label="Purchase" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("purchase") as number).toFixed(2)}</span>,
-  },
-  {
-    id: "current",
-    accessorKey: "current",
-    header: ({ column }) => <SortHeader column={column} label="Current" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{(row.getValue("current") as number).toFixed(2)}</span>,
-  },
-  {
-    id: "marginPct",
-    accessorKey: "marginPct",
-    header: ({ column }) => <SortHeader column={column} label="Margin %" />,
-    cell: ({ row }) => {
-      const v = row.getValue("marginPct") as number
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${v > 40 ? "text-emerald-600 dark:text-emerald-400" : v > 20 ? "text-foreground" : v < 0 ? "text-red-500" : "text-amber-600 dark:text-amber-400"}`}>
-          {v.toFixed(1)}%
-        </span>
-      )
-    },
-  },
-  {
-    id: "marginAbs",
-    accessorKey: "marginAbs",
-    header: ({ column }) => <SortHeader column={column} label="Margin Abs" />,
-    cell: ({ row }) => {
-      const v = row.getValue("marginAbs") as number
-      return <span className={`font-mono text-[11px] tabular-nums ${v < 0 ? "text-red-500" : "text-muted-foreground"}`}>{v.toFixed(2)}</span>
-    },
-  },
-  {
-    id: "deltaPct",
-    accessorKey: "deltaPct",
-    header: ({ column }) => <SortHeader column={column} label="Delta %" />,
-    cell: ({ row }) => {
-      const v = row.getValue("deltaPct") as number
-      if (v === -100) return <span className="font-mono text-[11px] text-muted-foreground/40">---</span>
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${v > 0 ? "text-amber-600 dark:text-amber-400" : v < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-          {v > 0 ? "+" : ""}{v.toFixed(1)}%
-        </span>
-      )
-    },
-  },
-  {
-    id: "deltaAbs",
-    accessorKey: "deltaAbs",
-    header: ({ column }) => <SortHeader column={column} label="Delta Abs" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("deltaAbs") as number).toFixed(2)}</span>,
-  },
-  {
-    id: "stock",
-    accessorKey: "stock",
-    header: ({ column }) => <SortHeader column={column} label="Stock" />,
-    cell: ({ row }) => {
-      const v = row.getValue("stock") as number
-      return <span className={`font-mono text-[11px] tabular-nums ${v < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>{v}</span>
-    },
-  },
-  {
-    id: "incoming",
-    accessorKey: "incoming",
-    header: ({ column }) => <SortHeader column={column} label="Incoming" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{row.getValue("incoming")}</span>,
-  },
-  {
-    id: "totalStock",
-    accessorKey: "totalStock",
-    header: ({ column }) => <SortHeader column={column} label="Total Stock" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{row.getValue("totalStock")}</span>,
-  },
-  {
-    id: "sales12m",
-    accessorKey: "sales12m",
-    header: ({ column }) => <SortHeader column={column} label="12m Sales" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("sales12m") as number).toLocaleString("en-US")}</span>,
-  },
-  {
-    id: "sales3m",
-    accessorKey: "sales3m",
-    header: ({ column }) => <SortHeader column={column} label="3m Sales" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("sales3m") as number).toLocaleString("en-US")}</span>,
-  },
-  {
-    id: "coverageDays",
-    accessorKey: "coverageDays",
-    header: ({ column }) => <SortHeader column={column} label="Coverage" />,
-    cell: ({ row }) => {
-      const d = row.getValue("coverageDays") as number
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${d < 30 ? "text-amber-600 dark:text-amber-400" : d > 365 ? "text-muted-foreground/50" : "text-foreground"}`}>
-          {d >= 9999 ? "---" : `${d}d`}
-        </span>
-      )
-    },
-  },
-  {
-    id: "pricingGroup",
-    accessorKey: "pricingGroup",
-    header: ({ column }) => <SortHeader column={column} label="Pricing Grp" />,
-    cell: ({ row }) => <span className="text-[11px]">{row.getValue("pricingGroup")}</span>,
-  },
-  {
-    id: "moot",
-    accessorKey: "moot",
-    header: ({ column }) => <SortHeader column={column} label="MOOT" />,
-    cell: ({ row }) => (
-      <MootEditor row={row} setMootChanges={setMootChanges} />
-    ),
-  },
-  {
-    id: "weight",
-    accessorKey: "weight",
-    header: ({ column }) => <SortHeader column={column} label="Weight" />,
-    cell: ({ row }) => {
-      const w = row.getValue("weight") as number
-      return <span className={`font-mono text-[11px] tabular-nums ${w === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}>{w.toFixed(3)}</span>
-    },
-  },
-  {
-    id: "bulk",
-    accessorKey: "bulk",
-    header: ({ column }) => <SortHeader column={column} label="Bulk" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{row.getValue("bulk")}</span>,
-  },
-  {
-    id: "competitorPrice",
-    accessorKey: "competitorPrice",
-    header: ({ column }) => <SortHeader column={column} label="Comp. Price" />,
-    cell: ({ row }) => {
-      const cp = row.getValue("competitorPrice") as number
-      const current = row.original.current
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${cp > 0 && cp < current ? "text-red-500" : "text-muted-foreground"}`}>
-          {cp > 0 ? cp.toFixed(2) : "---"}
-        </span>
-      )
-    },
-  },
-  {
-    id: "competitorStock",
-    accessorKey: "competitorStock",
-    header: ({ column }) => <SortHeader column={column} label="Comp. Stock" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{row.getValue("competitorStock")}</span>,
-  },
-  {
-    id: "lastSaleDate",
-    accessorKey: "lastSaleDate",
-    header: ({ column }) => <SortHeader column={column} label="Last Sale" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] text-muted-foreground">{row.getValue("lastSaleDate")}</span>,
-  },
-  {
-    id: "abcClass",
-    accessorKey: "abcClass",
-    header: ({ column }) => <SortHeader column={column} label="ABC" />,
-    cell: ({ row }) => {
-      const c = row.getValue("abcClass") as string
-      return (
-        <span className={`text-[11px] font-semibold ${c === "A" ? "text-emerald-600 dark:text-emerald-400" : c === "B" ? "text-foreground" : "text-muted-foreground"}`}>
-          {c}
-        </span>
-      )
-    },
-  },
-{
-  id: "riskScore",
-  accessorKey: "riskScore",
-  header: ({ column }) => <SortHeader column={column} label="Risk" />,
-  cell: ({ row }) => {
-  const v = row.getValue("riskScore") as number
-  return (
-  <span className={`font-mono text-[11px] tabular-nums font-semibold ${v >= 60 ? "text-red-500" : v >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-  {v}
-  </span>
-  )
-  },
-  },
-  {
-  id: "part_brand_key",
-  accessorKey: "part_brand_key",
-  header: ({ column }) => <SortHeader column={column} label="Key" />,
-  cell: ({ row }) => (
-  <span className="font-mono text-[10px] text-muted-foreground truncate block max-w-[180px]" title={row.original.part_brand_key}>
-    {row.original.part_brand_key}
-  </span>
-  ),
-  },
-  ]}
-
-
+// NOTE: Mode-based columns are now defined in mode-views.tsx
+// Each mode (stock, invoice, custom) has its own column configuration
 
 // Default visible columns (hide some less important ones by default)
 const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", "competitorStock", "lastSaleDate"]
@@ -694,18 +496,23 @@ const [mounted, setMounted] = useState(false)
   
   // Workspace display settings
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
-  const [uiScale, setUiScale] = useState<"90" | "100" | "110">("100")
+  const [uiScale, setUiScale] = useState<"90" | "100" | "110" | "120" | "130">("100")
+  const [textIntensity, setTextIntensity] = useState<"normal" | "medium" | "high">("normal")
   
   useEffect(() => {
   setMounted(true)
   // Load workspace settings from localStorage
   const savedDensity = localStorage.getItem("workspace_density")
   const savedScale = localStorage.getItem("workspace_ui_scale")
+  const savedTextIntensity = localStorage.getItem("workspace_text_intensity")
   if (savedDensity === "comfortable" || savedDensity === "compact") {
   setDensity(savedDensity)
   }
-  if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
+  if (savedScale === "90" || savedScale === "100" || savedScale === "110" || savedScale === "120" || savedScale === "130") {
   setUiScale(savedScale)
+  }
+  if (savedTextIntensity === "normal" || savedTextIntensity === "medium" || savedTextIntensity === "high") {
+  setTextIntensity(savedTextIntensity)
   }
   
   // Fetch current user and role
@@ -733,10 +540,24 @@ const [mounted, setMounted] = useState(false)
     localStorage.setItem("workspace_density", value)
   }, [])
 
-const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
+const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "130") => {
   setUiScale(value)
   localStorage.setItem("workspace_ui_scale", value)
   }, [])
+
+  const handleTextIntensityChange = useCallback((value: "normal" | "medium" | "high") => {
+    setTextIntensity(value)
+    localStorage.setItem("workspace_text_intensity", value)
+    // Apply to html element for CSS variable cascade
+    document.documentElement.classList.remove("text-intensity-normal", "text-intensity-medium", "text-intensity-high")
+    document.documentElement.classList.add(`text-intensity-${value}`)
+  }, [])
+
+  // Apply text intensity class to html element on mount and when it changes
+  useEffect(() => {
+    document.documentElement.classList.remove("text-intensity-normal", "text-intensity-medium", "text-intensity-high")
+    document.documentElement.classList.add(`text-intensity-${textIntensity}`)
+  }, [textIntensity])
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient()
@@ -757,12 +578,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
   const [isHydrated, setIsHydrated] = useState(false)
 
-  const columns = useMemo(() => getColumns(setMootChanges), [setMootChanges])
-
-  const allColumnIds = useMemo(
-    () => columns.map((c) => c.id!),
-    [columns]
-  )
+  
 
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -776,6 +592,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
@@ -802,28 +619,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
 // Context menu hook
 const { contextMenu, handleContextMenu, closeContextMenu } = useColumnContextMenu()
 
-// Default visibility state (all columns visible)
-const defaultVisibility = useMemo(() => {
-  return allColumnIds.reduce((acc, id) => {
-    acc[id] = true
-    return acc
-  }, {} as VisibilityState)
-}, [allColumnIds])
 
-// Load saved settings from localStorage on mount
-useEffect(() => {
-  const saved = loadColumnState(allColumnIds)
-  if (saved) {
-    if (saved.columnOrder) setColumnOrder(saved.columnOrder)
-    else setColumnOrder(allColumnIds)
-    if (saved.columnSizing) setColumnSizing({ ...defaultColumnSizing, ...saved.columnSizing })
-    if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility)
-  } else {
-    setColumnOrder(allColumnIds)
-  }
-
-  setIsHydrated(true)
-}, [allColumnIds])
 
 // Refs to hold current state for callbacks
 const columnOrderRef = useRef(columnOrder)
@@ -895,45 +691,7 @@ const handleHideColumn = useCallback((columnId: string) => {
   })
 }, [persistColumnState])
 
-const handleHideOthers = useCallback((columnId: string) => {
-  setColumnVisibility(() => {
-    const next = allColumnIds.reduce((acc, id) => {
-      acc[id] = id === columnId
-      return acc
-    }, {} as VisibilityState)
-    persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
-    return next
-  })
-}, [allColumnIds, persistColumnState])
 
-const handleShowAll = useCallback(() => {
-  setColumnVisibility(() => {
-    persistColumnState(columnOrderRef.current, defaultVisibility, columnSizingRef.current)
-    return defaultVisibility
-  })
-}, [defaultVisibility, persistColumnState])
-
-const handleResetOrder = useCallback(() => {
-  setColumnOrder(() => {
-    persistColumnState(allColumnIds, columnVisibilityRef.current, columnSizingRef.current)
-    return allColumnIds
-  })
-}, [allColumnIds, persistColumnState])
-
-const handleResetWidth = useCallback(() => {
-  setColumnSizing(() => {
-    persistColumnState(columnOrderRef.current, columnVisibilityRef.current, defaultColumnSizing)
-    return defaultColumnSizing
-  })
-}, [persistColumnState])
-
-const handleResetAll = useCallback(() => {
-  setColumnOrder(allColumnIds)
-  setColumnVisibility(defaultVisibility)
-  setColumnSizing(defaultColumnSizing)
-  clearColumnState()
-}, [allColumnIds, defaultVisibility]
-)
 
 
 
@@ -953,7 +711,80 @@ const handleResetAll = useCallback(() => {
   const [filterBulk, setFilterBulk] = useState(false)
 
   // Data mode: stock (warehouse), invoice, or custom
-  const [mode, setMode] = useState<'stock' | 'invoice' | 'custom'>('stock')
+  const [mode, setMode] = useState<ModeType>('stock')
+  
+  // Mode-based columns - changes when mode changes
+  const columns = useMemo(() => {
+    return modeConfig[mode].getColumns() as ColumnDef<AnalyticsRow>[]
+  }, [mode])
+  
+  const allColumnIds = useMemo(
+    () => columns.map((c) => c.id!),
+    [columns]
+  )
+  
+  // Default visibility state (all columns visible)
+  const defaultVisibility = useMemo(() => {
+    return allColumnIds.reduce((acc, id) => {
+      acc[id] = true
+      return acc
+    }, {} as VisibilityState)
+  }, [allColumnIds])
+  
+  // Load saved settings from localStorage on mount (after allColumnIds is defined)
+  useEffect(() => {
+    const saved = loadColumnState(allColumnIds)
+    if (saved) {
+      if (saved.columnOrder) setColumnOrder(saved.columnOrder)
+      else setColumnOrder(allColumnIds)
+      if (saved.columnSizing) setColumnSizing({ ...defaultColumnSizing, ...saved.columnSizing })
+      if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility)
+    } else {
+      setColumnOrder(allColumnIds)
+    }
+
+    setIsHydrated(true)
+  }, [allColumnIds])
+  
+  // Column visibility/order handlers (defined after allColumnIds and defaultVisibility)
+  const handleHideOthers = useCallback((columnId: string) => {
+    setColumnVisibility(() => {
+      const next = allColumnIds.reduce((acc, id) => {
+        acc[id] = id === columnId
+        return acc
+      }, {} as VisibilityState)
+      persistColumnState(columnOrderRef.current, next, columnSizingRef.current)
+      return next
+    })
+  }, [allColumnIds, persistColumnState])
+
+  const handleShowAll = useCallback(() => {
+    setColumnVisibility(() => {
+      persistColumnState(columnOrderRef.current, defaultVisibility, columnSizingRef.current)
+      return defaultVisibility
+    })
+  }, [defaultVisibility, persistColumnState])
+
+  const handleResetOrder = useCallback(() => {
+    setColumnOrder(() => {
+      persistColumnState(allColumnIds, columnVisibilityRef.current, columnSizingRef.current)
+      return allColumnIds
+    })
+  }, [allColumnIds, persistColumnState])
+
+  const handleResetWidth = useCallback(() => {
+    setColumnSizing(() => {
+      persistColumnState(columnOrderRef.current, columnVisibilityRef.current, defaultColumnSizing)
+      return defaultColumnSizing
+    })
+  }, [persistColumnState])
+
+  const handleResetAll = useCallback(() => {
+    setColumnOrder(allColumnIds)
+    setColumnVisibility(defaultVisibility)
+    setColumnSizing(defaultColumnSizing)
+    clearColumnState()
+  }, [allColumnIds, defaultVisibility])
   
   // Invoice selector state
   interface InvoiceItem {
@@ -1114,7 +945,6 @@ const handleResetAll = useCallback(() => {
       }
       
       const data = await response.json()
-      console.log("[v0] Invoice data response:", data)
       const rows = Array.isArray(data) ? data : []
       
       const mappedRows = rows.map((r: Record<string, unknown>, idx: number) => ({
@@ -1123,13 +953,13 @@ const handleResetAll = useCallback(() => {
         manufacturer: (r.brand as string) ?? (r.manufacturer as string) ?? "",
         partName: (r.part_name as string) ?? (r.partName as string) ?? "",
         qty: Number(r.qty ?? 0),
-        cost: Number(r.purchase_price ?? r.cost ?? 0),
-        now: Number(r.price ?? r.now ?? r.price_now ?? 0),
+        cost: Number(r.purchase ?? r.purchase_price ?? r.cost ?? 0),
+        now: Number(r.current ?? r.price ?? r.now ?? r.price_now ?? 0),
         ship: Number(r.ship ?? r.price_ship ?? 0),
         deltaPercent: Number(r.delta_percent ?? r.deltaPercent ?? 0),
         stock: Number(r.stock_qty ?? r.stock ?? 0),
         weight: Number(r.weight ?? 0),
-        isBulky: Boolean(r.isBulky),
+        isBulky: Boolean(r.bulk ?? r.isBulky),
         productGroup: (r.product_group as string) ?? (r.productGroup as string) ?? "",
         sales12m: Number(r.sales_12m ?? r.sales12m ?? 0),
       })) as InvoiceRow[]
@@ -1197,7 +1027,7 @@ if (filterInStock) d = d.filter((r) => r.stock > 0)
     if (filterSlowMoving) d = d.filter((r) => r.sales12m < 100)
     if (filterNegativeMargin) d = d.filter((r) => r.marginPct < 0)
     if (filterCompetitor) d = d.filter((r) => r.competitorPrice > 0 && r.competitorPrice < r.current)
-if (filterBulk) d = d.filter((r) => r.bulk >= 50)
+if (filterBulk) d = d.filter((r) => r.bulk === true)
   return d
   }, [analyticsData, supplierFilter, pricingGroupFilter, filterInStock, filterSlowMoving, filterNegativeMargin, filterCompetitor, filterBulk])
 
@@ -1341,9 +1171,9 @@ const table = useReactTable({
   }, [invoiceList, ts])
 
   const handleRowClick = useCallback((row: AnalyticsRow) => {
-    console.log("[v0] ROW CLICKED:", row.partCode, row.brand, row)
+    if (!detailsPanelEnabled) return // Block panel opening when disabled
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-  }, [])
+  }, [detailsPanelEnabled])
 
   // Close detail panel when filter hides the selected row
   useEffect(() => {
@@ -1527,7 +1357,7 @@ const table = useReactTable({
                 <PopoverContent className="w-[300px] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput 
-                      placeholder="Поиск по номеру, поставщику..." 
+                      placeholder="Поиск по номеру, поста��щику..." 
                       value={invoiceSearchQuery}
                       onValueChange={setInvoiceSearchQuery}
                       className="text-xs"
@@ -1857,6 +1687,52 @@ const table = useReactTable({
       <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
       110%
     </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("120")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${uiScale === "120" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">120</span>
+      120%
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("130")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${uiScale === "130" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">130</span>
+      130%
+    </DropdownMenuItem>
+    
+    <DropdownMenuSeparator />
+    
+    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+      Text Intensity
+    </DropdownMenuLabel>
+    <DropdownMenuItem
+      onClick={() => handleTextIntensityChange("normal")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${textIntensity === "normal" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">N</span>
+      Normal
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleTextIntensityChange("medium")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${textIntensity === "medium" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">M</span>
+      Medium
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleTextIntensityChange("high")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${textIntensity === "high" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">H</span>
+      High
+    </DropdownMenuItem>
 </DropdownMenuContent>
   </DropdownMenu>
 
@@ -1908,14 +1784,31 @@ const table = useReactTable({
           <FilterToggle label="Competitor Available" active={filterCompetitor} onClick={() => setFilterCompetitor((p) => !p)} />
           <FilterToggle label="Bulk Only" active={filterBulk} onClick={() => setFilterBulk((p) => !p)} />
         </div>
-        {/* Column manager */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground">
-              <Columns3 className="h-3 w-3" />
-              Columns
-            </Button>
-          </PopoverTrigger>
+        <div className="flex items-center gap-4">
+          {/* Details Panel toggle */}
+          <button
+            onClick={() => {
+              const newValue = !detailsPanelEnabled
+              setDetailsPanelEnabled(newValue)
+              if (!newValue) setSelectedRow(null)
+            }}
+            className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
+              detailsPanelEnabled 
+                ? "text-green-500 ring-1 ring-green-500/70" 
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Details Panel
+          </button>
+
+          {/* Column manager */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground">
+                <Columns3 className="h-3 w-3" />
+                Columns
+              </Button>
+            </PopoverTrigger>
           <PopoverContent align="end" className="w-56 p-0">
             <div className="max-h-72 overflow-y-auto overscroll-contain p-2">
               <div className="flex flex-col gap-0">
@@ -1940,7 +1833,8 @@ const table = useReactTable({
               </div>
             </div>
           </PopoverContent>
-        </Popover>
+          </Popover>
+        </div>
       </div>
 
       {/* Content: table + detail panel */}
@@ -2008,7 +1902,7 @@ const table = useReactTable({
                           <span className="text-sm text-muted-foreground">Нет данных</span>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Нет результатов по текущи�� фильтрам</span>
+                        <span className="text-sm text-muted-foreground">Нет результ��тов по текущи�� фильтрам</span>
                       )}
                     </td>
                   </tr>

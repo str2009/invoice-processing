@@ -960,7 +960,6 @@ const handleClear = useCallback(() => {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
-    console.log("[v0] CLICK ROW:", row)
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
 

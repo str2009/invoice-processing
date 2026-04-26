@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles, FileText, Download } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -1185,7 +1186,50 @@ export function SimulationPanel({
   const hasBulky = model.bulkyWeight > 0
 
   const [isSavingShipping, setIsSavingShipping] = useState(false)
+  const [isSavingData, setIsSavingData] = useState(false)
   const [isLoadingShipping, setIsLoadingShipping] = useState(false)
+
+  // Save ship column to Supabase directly
+  const handleSaveData = useCallback(async () => {
+    if (data.length === 0) {
+      toast.error("Нет данных для сохранения")
+      return
+    }
+
+    const loadingToast = toast.loading("Сохранение...")
+
+    try {
+      setIsSavingData(true)
+
+      // Filter rows with id and only send id + ship_cost
+      const payload = data
+        .filter(row => row.id)
+        .map(row => ({
+          id: row.id,
+          ship_cost: row.ship ?? null
+        }))
+
+      if (payload.length === 0) {
+        toast.error("Нет строк с id для сохранения", { id: loadingToast })
+        return
+      }
+
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('invoice_rows')
+        .upsert(payload, { onConflict: 'id' })
+
+      if (error) throw error
+
+      toast.success(`Сохранено: ${payload.length} строк`, { id: loadingToast })
+
+    } catch (err) {
+      console.error(err)
+      toast.error("Ошибка сохранения", { id: loadingToast })
+    } finally {
+      setIsSavingData(false)
+    }
+  }, [data])
 
   // -------------------- Validation --------------------
 
@@ -2574,33 +2618,7 @@ export function SimulationPanel({
                                   )}
                                 </div>
 
-                                {/* Enrich Button - same styling as Control Panel */}
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    // Same logic as Control Panel Enrich button
-                                    if (invoiceIds.length > 0) {
-                                      onEnrichSelected?.(invoiceIds)
-                                    } else if (selectedInvoice) {
-                                      onEnrich?.()
-                                    } else {
-                                      toast.error("Выберите инвойс")
-                                    }
-                                  }}
-                                  disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
-                                  className="h-8 gap-1.5 rounded-md px-3 text-[11px] w-full"
-                                >
-                                  {isEnriching ? (
-                                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                                  ) : (
-                                    <Sparkles className="h-3 w-3 shrink-0" />
-                                  )}
-                                  {isEnriching ? "Enriching..." : "Enrich"}
-                                </Button>
-
-                                <div className="border-t border-border/40 my-1" />
-
-                                {/* Предварител��ная цена Button */}
+                                {/* 1. Предварительная цена Button */}
                                 <Button
                                   variant="default"
                                   size="sm"
@@ -2628,18 +2646,64 @@ export function SimulationPanel({
                                   )}
                                 </Button>
 
-                                {/* Clear PriceNorm Button */}
+                                {/* 2. Сохранить данные Button - saves full row data */}
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="h-7 text-[10px] w-full justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                                  onClick={handleSaveData}
+                                  disabled={isSavingData || data.length === 0}
+                                >
+                                  {isSavingData ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Сохранение...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="h-3 w-3 shrink-0" />
+                                      Сохранить данные
+                                    </>
+                                  )}
+                                </Button>
+
+                                {/* 3. Clear PriceNorm Button */}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-xs"
+                                  className="h-7 text-[10px] w-full"
                                   onClick={onClearMoot}
                                   disabled={!onClearMoot}
                                 >
                                   Очистить PriceNorm
                                 </Button>
 
-                                {/* Export to Excel Button */}
+                                {/* 4. Enrich Button */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    // Same logic as Control Panel Enrich button
+                                    if (invoiceIds.length > 0) {
+                                      onEnrichSelected?.(invoiceIds)
+                                    } else if (selectedInvoice) {
+                                      onEnrich?.()
+                                    } else {
+                                      toast.error("Выберите инвойс")
+                                    }
+                                  }}
+                                  disabled={isEnriching || (invoiceIds.length === 0 && !selectedInvoice)}
+                                  className="h-7 gap-1.5 text-[10px] w-full"
+                                >
+                                  {isEnriching ? (
+                                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-3 w-3 shrink-0" />
+                                  )}
+                                  {isEnriching ? "Enriching..." : "Enrich"}
+                                </Button>
+
+                                {/* 5. Export to Excel Button */}
                                 <Button
                                   variant="outline"
                                   size="sm"
