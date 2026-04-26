@@ -35,6 +35,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { ControlPanel } from "@/components/dashboard/control-panel"
 import { PartDetailsPanel } from "@/components/dashboard/part-details-panel"
+import { modeConfig, getStockColumns, getInvoiceColumns, getCustomColumns, type StockRow, type InvoiceRow, type ModeType } from "./mode-views"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -465,242 +466,8 @@ const columnLabels: Record<string, string> = {
   riskScore: "Risk Score",
 }
 
-// --- Column definitions (23 columns) ---
-function getColumns(setMootChanges: any): ColumnDef<AnalyticsRow>[] {
-  return [
-  {
-    id: "partCode",
-    accessorKey: "partCode",
-    header: ({ column }) => <SortHeader column={column} label="Part Code" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] text-foreground">{row.getValue("partCode")}</span>,
-  },
-  {
-    id: "part_name",
-    accessorKey: "part_name",
-    header: ({ column }) => <SortHeader column={column} label="Part Name" />,
-    cell: ({ row }) => <span className="text-[11px]">{row.getValue("part_name")}</span>,
-  },
-  {
-    id: "gtd_number",
-    accessorKey: "gtd_number",
-    header: ({ column }) => <SortHeader column={column} label="GTD" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] text-muted-foreground">{row.getValue("gtd_number")}</span>,
-  },
-  {
-    id: "part_code_fixed",
-    accessorKey: "part_code_fixed",
-    header: ({ column }) => <SortHeader column={column} label="Fixed" />,
-    cell: ({ row }) => <span className="font-mono text-[11px]">{row.getValue("part_code_fixed")}</span>,
-  },
-  {
-    id: "brand",
-    accessorKey: "brand",
-    header: ({ column }) => <SortHeader column={column} label="Brand" />,
-    cell: ({ row }) => <span className="text-[11px]">{row.getValue("brand")}</span>,
-  },
-  {
-    id: "supplier",
-    accessorKey: "supplier",
-    header: ({ column }) => <SortHeader column={column} label="Supplier" />,
-    cell: ({ row }) => <span className="text-[11px] text-muted-foreground">{row.getValue("supplier")}</span>,
-  },
-  {
-    id: "purchase",
-    accessorKey: "purchase",
-    header: ({ column }) => <SortHeader column={column} label="Purchase" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("purchase") as number).toFixed(2)}</span>,
-  },
-  {
-    id: "current",
-    accessorKey: "current",
-    header: ({ column }) => <SortHeader column={column} label="Current" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{(row.getValue("current") as number).toFixed(2)}</span>,
-  },
-  {
-    id: "marginPct",
-    accessorKey: "marginPct",
-    header: ({ column }) => <SortHeader column={column} label="Margin %" />,
-    cell: ({ row }) => {
-      const v = row.getValue("marginPct") as number
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${v > 40 ? "text-emerald-600 dark:text-emerald-400" : v > 20 ? "text-foreground" : v < 0 ? "text-red-500" : "text-amber-600 dark:text-amber-400"}`}>
-          {v.toFixed(1)}%
-        </span>
-      )
-    },
-  },
-  {
-    id: "marginAbs",
-    accessorKey: "marginAbs",
-    header: ({ column }) => <SortHeader column={column} label="Margin Abs" />,
-    cell: ({ row }) => {
-      const v = row.getValue("marginAbs") as number
-      return <span className={`font-mono text-[11px] tabular-nums ${v < 0 ? "text-red-500" : "text-muted-foreground"}`}>{v.toFixed(2)}</span>
-    },
-  },
-  {
-    id: "deltaPct",
-    accessorKey: "deltaPct",
-    header: ({ column }) => <SortHeader column={column} label="Delta %" />,
-    cell: ({ row }) => {
-      const v = row.getValue("deltaPct") as number
-      if (v === -100) return <span className="font-mono text-[11px] text-muted-foreground/40">---</span>
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${v > 0 ? "text-amber-600 dark:text-amber-400" : v < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-          {v > 0 ? "+" : ""}{v.toFixed(1)}%
-        </span>
-      )
-    },
-  },
-  {
-    id: "deltaAbs",
-    accessorKey: "deltaAbs",
-    header: ({ column }) => <SortHeader column={column} label="Delta Abs" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("deltaAbs") as number).toFixed(2)}</span>,
-  },
-  {
-    id: "stock",
-    accessorKey: "stock",
-    header: ({ column }) => <SortHeader column={column} label="Stock" />,
-    cell: ({ row }) => {
-      const v = row.getValue("stock") as number
-      return <span className={`font-mono text-[11px] tabular-nums ${v < 20 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>{v}</span>
-    },
-  },
-  {
-    id: "incoming",
-    accessorKey: "incoming",
-    header: ({ column }) => <SortHeader column={column} label="Incoming" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{row.getValue("incoming")}</span>,
-  },
-  {
-    id: "totalStock",
-    accessorKey: "totalStock",
-    header: ({ column }) => <SortHeader column={column} label="Total Stock" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums">{row.getValue("totalStock")}</span>,
-  },
-  {
-    id: "sales12m",
-    accessorKey: "sales12m",
-    header: ({ column }) => <SortHeader column={column} label="12m Sales" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("sales12m") as number).toLocaleString("en-US")}</span>,
-  },
-  {
-    id: "sales3m",
-    accessorKey: "sales3m",
-    header: ({ column }) => <SortHeader column={column} label="3m Sales" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{(row.getValue("sales3m") as number).toLocaleString("en-US")}</span>,
-  },
-  {
-    id: "coverageDays",
-    accessorKey: "coverageDays",
-    header: ({ column }) => <SortHeader column={column} label="Coverage" />,
-    cell: ({ row }) => {
-      const d = row.getValue("coverageDays") as number
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${d < 30 ? "text-amber-600 dark:text-amber-400" : d > 365 ? "text-muted-foreground/50" : "text-foreground"}`}>
-          {d >= 9999 ? "---" : `${d}d`}
-        </span>
-      )
-    },
-  },
-  {
-    id: "pricingGroup",
-    accessorKey: "pricingGroup",
-    header: ({ column }) => <SortHeader column={column} label="Pricing Grp" />,
-    cell: ({ row }) => <span className="text-[11px]">{row.getValue("pricingGroup")}</span>,
-  },
-  {
-    id: "moot",
-    accessorKey: "moot",
-    header: ({ column }) => <SortHeader column={column} label="MOOT" />,
-    cell: ({ row }) => (
-      <MootEditor row={row} setMootChanges={setMootChanges} />
-    ),
-  },
-  {
-    id: "weight",
-    accessorKey: "weight",
-    header: ({ column }) => <SortHeader column={column} label="Weight" />,
-    cell: ({ row }) => {
-      const w = row.getValue("weight") as number
-      return <span className={`font-mono text-[11px] tabular-nums ${w === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}>{w.toFixed(3)}</span>
-    },
-  },
-  {
-    id: "bulk",
-    accessorKey: "bulk",
-    header: ({ column }) => <SortHeader column={column} label="Bulk" />,
-    cell: ({ row }) => {
-      const val = row.getValue("bulk")
-      return val ? <span className="text-[11px]">🚛</span> : null
-    },
-  },
-  {
-    id: "competitorPrice",
-    accessorKey: "competitorPrice",
-    header: ({ column }) => <SortHeader column={column} label="Comp. Price" />,
-    cell: ({ row }) => {
-      const cp = row.getValue("competitorPrice") as number
-      const current = row.original.current
-      return (
-        <span className={`font-mono text-[11px] tabular-nums ${cp > 0 && cp < current ? "text-red-500" : "text-muted-foreground"}`}>
-          {cp > 0 ? cp.toFixed(2) : "---"}
-        </span>
-      )
-    },
-  },
-  {
-    id: "competitorStock",
-    accessorKey: "competitorStock",
-    header: ({ column }) => <SortHeader column={column} label="Comp. Stock" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{row.getValue("competitorStock")}</span>,
-  },
-  {
-    id: "lastSaleDate",
-    accessorKey: "lastSaleDate",
-    header: ({ column }) => <SortHeader column={column} label="Last Sale" />,
-    cell: ({ row }) => <span className="font-mono text-[11px] text-muted-foreground">{row.getValue("lastSaleDate")}</span>,
-  },
-  {
-    id: "abcClass",
-    accessorKey: "abcClass",
-    header: ({ column }) => <SortHeader column={column} label="ABC" />,
-    cell: ({ row }) => {
-      const c = row.getValue("abcClass") as string
-      return (
-        <span className={`text-[11px] font-semibold ${c === "A" ? "text-emerald-600 dark:text-emerald-400" : c === "B" ? "text-foreground" : "text-muted-foreground"}`}>
-          {c}
-        </span>
-      )
-    },
-  },
-{
-  id: "riskScore",
-  accessorKey: "riskScore",
-  header: ({ column }) => <SortHeader column={column} label="Risk" />,
-  cell: ({ row }) => {
-  const v = row.getValue("riskScore") as number
-  return (
-  <span className={`font-mono text-[11px] tabular-nums font-semibold ${v >= 60 ? "text-red-500" : v >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-  {v}
-  </span>
-  )
-  },
-  },
-  {
-  id: "part_brand_key",
-  accessorKey: "part_brand_key",
-  header: ({ column }) => <SortHeader column={column} label="Key" />,
-  cell: ({ row }) => (
-  <span className="font-mono text-[10px] text-muted-foreground truncate block max-w-[180px]" title={row.original.part_brand_key}>
-    {row.original.part_brand_key}
-  </span>
-  ),
-  },
-  ]}
-
-
+// NOTE: Mode-based columns are now defined in mode-views.tsx
+// Each mode (stock, invoice, custom) has its own column configuration
 
 // Default visible columns (hide some less important ones by default)
 const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", "competitorStock", "lastSaleDate"]
@@ -778,12 +545,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
   const [isHydrated, setIsHydrated] = useState(false)
 
-  const columns = useMemo(() => getColumns(setMootChanges), [setMootChanges])
-
-  const allColumnIds = useMemo(
-    () => columns.map((c) => c.id!),
-    [columns]
-  )
+  
 
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -823,28 +585,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
 // Context menu hook
 const { contextMenu, handleContextMenu, closeContextMenu } = useColumnContextMenu()
 
-// Default visibility state (all columns visible)
-const defaultVisibility = useMemo(() => {
-  return allColumnIds.reduce((acc, id) => {
-    acc[id] = true
-    return acc
-  }, {} as VisibilityState)
-}, [allColumnIds])
 
-// Load saved settings from localStorage on mount
-useEffect(() => {
-  const saved = loadColumnState(allColumnIds)
-  if (saved) {
-    if (saved.columnOrder) setColumnOrder(saved.columnOrder)
-    else setColumnOrder(allColumnIds)
-    if (saved.columnSizing) setColumnSizing({ ...defaultColumnSizing, ...saved.columnSizing })
-    if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility)
-  } else {
-    setColumnOrder(allColumnIds)
-  }
-
-  setIsHydrated(true)
-}, [allColumnIds])
 
 // Refs to hold current state for callbacks
 const columnOrderRef = useRef(columnOrder)
@@ -974,7 +715,40 @@ const handleResetAll = useCallback(() => {
   const [filterBulk, setFilterBulk] = useState(false)
 
   // Data mode: stock (warehouse), invoice, or custom
-  const [mode, setMode] = useState<'stock' | 'invoice' | 'custom'>('stock')
+  const [mode, setMode] = useState<ModeType>('stock')
+  
+  // Mode-based columns - changes when mode changes
+  const columns = useMemo(() => {
+    return modeConfig[mode].getColumns() as ColumnDef<AnalyticsRow>[]
+  }, [mode])
+  
+  const allColumnIds = useMemo(
+    () => columns.map((c) => c.id!),
+    [columns]
+  )
+  
+  // Default visibility state (all columns visible)
+  const defaultVisibility = useMemo(() => {
+    return allColumnIds.reduce((acc, id) => {
+      acc[id] = true
+      return acc
+    }, {} as VisibilityState)
+  }, [allColumnIds])
+  
+  // Load saved settings from localStorage on mount (after allColumnIds is defined)
+  useEffect(() => {
+    const saved = loadColumnState(allColumnIds)
+    if (saved) {
+      if (saved.columnOrder) setColumnOrder(saved.columnOrder)
+      else setColumnOrder(allColumnIds)
+      if (saved.columnSizing) setColumnSizing({ ...defaultColumnSizing, ...saved.columnSizing })
+      if (saved.columnVisibility) setColumnVisibility(saved.columnVisibility)
+    } else {
+      setColumnOrder(allColumnIds)
+    }
+
+    setIsHydrated(true)
+  }, [allColumnIds])
   
   // Invoice selector state
   interface InvoiceItem {
