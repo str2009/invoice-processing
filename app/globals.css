@@ -295,11 +295,58 @@
   --ui-scale: 1.1;
 }
 
+.scale-120 {
+  --ui-scale: 1.2;
+}
+
+.scale-130 {
+  --ui-scale: 1.3;
+}
+
 /* Density Variables */
 :root {
   --density-spacing: 1;
   --density-row-height: 1;
   --density-padding: 1;
+}
+
+/* Text Intensity - enhances readability without changing theme colors */
+/* Applied on top of any theme */
+.text-intensity-normal {
+  /* Default - no changes */
+}
+
+.text-intensity-medium {
+  --foreground: 220 10% 95%;
+  --muted-foreground: 220 10% 65%;
+  --card-foreground: 220 10% 95%;
+  --popover-foreground: 220 10% 95%;
+}
+
+.text-intensity-high {
+  --foreground: 0 0% 98%;
+  --muted-foreground: 0 0% 78%;
+  --card-foreground: 0 0% 98%;
+  --popover-foreground: 0 0% 98%;
+}
+
+/* Light theme intensity overrides */
+:root.text-intensity-medium,
+.soft.text-intensity-medium,
+.mellow.text-intensity-medium {
+  --foreground: 220 15% 12%;
+  --muted-foreground: 220 10% 35%;
+  --card-foreground: 220 15% 12%;
+  --popover-foreground: 220 15% 12%;
+}
+
+:root.text-intensity-high,
+.soft.text-intensity-high,
+.mellow.text-intensity-high {
+  --foreground: 220 20% 5%;
+  --muted-foreground: 220 12% 28%;
+  --card-foreground: 220 20% 5%;
+  --popover-foreground: 220 20% 5%;
 }
 
 .density-comfortable {

@@ -496,18 +496,23 @@ const [mounted, setMounted] = useState(false)
   
   // Workspace display settings
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
-  const [uiScale, setUiScale] = useState<"90" | "100" | "110">("100")
+  const [uiScale, setUiScale] = useState<"90" | "100" | "110" | "120" | "130">("100")
+  const [textIntensity, setTextIntensity] = useState<"normal" | "medium" | "high">("normal")
   
   useEffect(() => {
   setMounted(true)
   // Load workspace settings from localStorage
   const savedDensity = localStorage.getItem("workspace_density")
   const savedScale = localStorage.getItem("workspace_ui_scale")
+  const savedTextIntensity = localStorage.getItem("workspace_text_intensity")
   if (savedDensity === "comfortable" || savedDensity === "compact") {
   setDensity(savedDensity)
   }
-  if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
+  if (savedScale === "90" || savedScale === "100" || savedScale === "110" || savedScale === "120" || savedScale === "130") {
   setUiScale(savedScale)
+  }
+  if (savedTextIntensity === "normal" || savedTextIntensity === "medium" || savedTextIntensity === "high") {
+  setTextIntensity(savedTextIntensity)
   }
   
   // Fetch current user and role
@@ -535,9 +540,14 @@ const [mounted, setMounted] = useState(false)
     localStorage.setItem("workspace_density", value)
   }, [])
 
-const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
+const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "130") => {
   setUiScale(value)
   localStorage.setItem("workspace_ui_scale", value)
+  }, [])
+
+  const handleTextIntensityChange = useCallback((value: "normal" | "medium" | "high") => {
+    setTextIntensity(value)
+    localStorage.setItem("workspace_text_intensity", value)
   }, [])
 
   const handleLogout = useCallback(async () => {
@@ -1199,7 +1209,7 @@ const table = useReactTable({
 }
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
+    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale} text-intensity-${textIntensity}`}>
       {/* Control Panel */}
       <ControlPanel
         mode="analytics"
@@ -1666,6 +1676,52 @@ const table = useReactTable({
     >
       <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
       110%
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("120")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${uiScale === "120" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">120</span>
+      120%
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleScaleChange("130")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${uiScale === "130" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">130</span>
+      130%
+    </DropdownMenuItem>
+    
+    <DropdownMenuSeparator />
+    
+    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+      Text Intensity
+    </DropdownMenuLabel>
+    <DropdownMenuItem
+      onClick={() => handleTextIntensityChange("normal")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${textIntensity === "normal" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">N</span>
+      Normal
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleTextIntensityChange("medium")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${textIntensity === "medium" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">M</span>
+      Medium
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      onClick={() => handleTextIntensityChange("high")}
+      onSelect={(e) => e.preventDefault()}
+      className={`gap-2 text-xs ${textIntensity === "high" ? "bg-accent" : ""}`}
+    >
+      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">H</span>
+      High
     </DropdownMenuItem>
 </DropdownMenuContent>
   </DropdownMenu>
