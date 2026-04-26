@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Plus, Trash2, RotateCcw, Save, Play, Loader2, Truck, Check, Link2, Plane, Ship, Anchor, ChevronDown, ChevronUp, X, Sparkles, FileText, Download } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 // Helper to get transport type icon
 function getTransportIcon(type: string | null, isSelected: boolean) {
@@ -1188,16 +1189,10 @@ export function SimulationPanel({
   const [isSavingData, setIsSavingData] = useState(false)
   const [isLoadingShipping, setIsLoadingShipping] = useState(false)
 
-  // Save full row data to backend
+  // Save ship column to Supabase directly
   const handleSaveData = useCallback(async () => {
     if (data.length === 0) {
       toast.error("Нет данных для сохранения")
-      return
-    }
-
-    const currentInvoiceId = selectedInvoice || selectedInvoiceId
-    if (!currentInvoiceId) {
-      toast.error("Выберите инвойс")
       return
     }
 
@@ -1206,24 +1201,27 @@ export function SimulationPanel({
     try {
       setIsSavingData(true)
 
-      const payload = data.map(row => ({
-        ...row // Send full row object
-      }))
+      // Filter rows with id and only send id + ship
+      const payload = data
+        .filter(row => row.id)
+        .map(row => ({
+          id: row.id,
+          ship: row.ship ?? null
+        }))
 
-      const response = await fetch('/api/invoice-rows/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invoice_id: currentInvoiceId,
-          rows: payload
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`)
+      if (payload.length === 0) {
+        toast.error("Нет строк с id для сохранения", { id: loadingToast })
+        return
       }
 
-      toast.success(`Сохранено (${payload.length} позиций)`, { id: loadingToast })
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('invoice_rows')
+        .upsert(payload, { onConflict: 'id' })
+
+      if (error) throw error
+
+      toast.success(`Сохранено: ${payload.length} строк`, { id: loadingToast })
 
     } catch (err) {
       console.error(err)
@@ -1231,7 +1229,7 @@ export function SimulationPanel({
     } finally {
       setIsSavingData(false)
     }
-  }, [data, selectedInvoice, selectedInvoiceId])
+  }, [data])
 
   // -------------------- Validation --------------------
 
