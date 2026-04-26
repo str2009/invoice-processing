@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { MultiLevelCalendar } from "@/components/ui/multi-level-calendar"
 import type { DateRange } from "react-day-picker"
 import {
@@ -592,6 +593,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
@@ -1170,9 +1172,9 @@ const table = useReactTable({
   }, [invoiceList, ts])
 
   const handleRowClick = useCallback((row: AnalyticsRow) => {
-    console.log("[v0] ROW CLICKED:", row.partCode, row.brand, row)
+    if (!detailsPanelEnabled) return // Block panel opening when disabled
     setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-  }, [])
+  }, [detailsPanelEnabled])
 
   // Close detail panel when filter hides the selected row
   useEffect(() => {
@@ -1783,94 +1785,19 @@ const table = useReactTable({
           <FilterToggle label="Competitor Available" active={filterCompetitor} onClick={() => setFilterCompetitor((p) => !p)} />
           <FilterToggle label="Bulk Only" active={filterBulk} onClick={() => setFilterBulk((p) => !p)} />
         </div>
-        <div className="flex items-center gap-3">
-          {/* Settings dropdown - same as header but in filter row */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
-                {mounted && (
-                  theme === "light" ? (
-                    <Sun className="h-3 w-3" />
-                  ) : theme === "soft" ? (
-                    <Sun className="h-3 w-3 text-amber-400" />
-                  ) : theme === "mellow" ? (
-                    <Sun className="h-3 w-3 text-stone-500" />
-                  ) : theme === "graphite" ? (
-                    <Monitor className="h-3 w-3" />
-                  ) : theme === "warm-dark" ? (
-                    <Moon className="h-3 w-3 text-amber-500" />
-                  ) : (
-                    <Moon className="h-3 w-3" />
-                  )
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[160px]">
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                Theme
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setTheme("light")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}>
-                <Sun className="h-3.5 w-3.5" /> Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("soft")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}>
-                <Sun className="h-3.5 w-3.5 text-amber-400" /> Soft
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("mellow")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}>
-                <Sun className="h-3.5 w-3.5 text-stone-500" /> Mellow
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}>
-                <Moon className="h-3.5 w-3.5" /> Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("warm-dark")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}>
-                <Moon className="h-3.5 w-3.5 text-amber-500" /> Warm Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("graphite")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}>
-                <Monitor className="h-3.5 w-3.5" /> Graphite
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                Density
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleDensityChange("comfortable")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}>
-                <Maximize2 className="h-3.5 w-3.5" /> Comfortable
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDensityChange("compact")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}>
-                <Minimize2 className="h-3.5 w-3.5" /> Compact
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                UI Scale
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleScaleChange("90")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span> 90%
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleScaleChange("100")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span> 100%
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleScaleChange("110")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span> 110%
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleScaleChange("120")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "120" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">120</span> 120%
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleScaleChange("130")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${uiScale === "130" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">130</span> 130%
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                Text Intensity
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleTextIntensityChange("normal")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${textIntensity === "normal" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">N</span> Normal
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleTextIntensityChange("medium")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${textIntensity === "medium" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">M</span> Medium
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleTextIntensityChange("high")} onSelect={(e) => e.preventDefault()} className={`gap-2 text-xs ${textIntensity === "high" ? "bg-accent" : ""}`}>
-                <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">H</span> High
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex items-center gap-4">
+          {/* Details Panel toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Switch
+              checked={detailsPanelEnabled}
+              onCheckedChange={(checked) => {
+                setDetailsPanelEnabled(checked)
+                if (!checked) setSelectedRow(null) // Close panel when disabled
+              }}
+              className="h-4 w-7 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
+            />
+            <span className="text-[10px] text-muted-foreground">Details Panel</span>
+          </label>
 
           {/* Column manager */}
           <Popover>
