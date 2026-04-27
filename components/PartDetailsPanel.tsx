@@ -456,14 +456,14 @@ function AnalogsBlock({
         ) : (
           <div className="max-h-48 overflow-auto">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b border-border/50 text-muted-foreground">
                   <th className="w-4 px-1 py-1.5"></th>
                   <th className="px-2 py-1.5 text-left font-medium">Code</th>
-                      <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
-                      <th className="px-2 py-1.5 text-right font-medium">Now</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Наличие</th>
+                  <th className="px-2 py-1.5 text-center font-medium">Наличие</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
