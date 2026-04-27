@@ -497,6 +497,7 @@ function AnalogsBlock({
               </thead>
               <tbody>
                 {analogs.map((analog, idx) => {
+                  console.log("[v0] ANALOG ROW:", analog.part_brand_key, "stock_by_wh:", analog.stock_by_wh)
                   const isCurrentPart = analog.part_brand_key === currentPartKey
                   const isSelected = selectedAnalog?.part_brand_key === analog.part_brand_key
                   
