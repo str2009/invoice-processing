@@ -491,7 +491,7 @@ function AnalogsBlock({
                       <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
                       <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Наличие</th>
+                  <th className="px-2 py-1.5 text-right font-medium whitespace-nowrap">Наличие</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
