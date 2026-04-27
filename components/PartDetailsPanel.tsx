@@ -542,19 +542,19 @@ function AnalogsBlock({
                       >
                         {(() => {
                           const stock = Number(analog.stock ?? 0)
-                          const byWh = analog.stock_by_wh || {}
-                          const komsa = byWh["Комс 18"] || 0
-                          const salut = byWh["Салют"] || 0
-                          const talnah = byWh["Талнах"] || 0
-                          const sum = (komsa + salut + talnah) || stock
-                          const mismatch = (komsa + salut + talnah) !== stock
+                          const byWh = analog.stock_by_wh ?? {}
+                          const komsa = byWh["Комс 18"] ?? 0
+                          const salut = byWh["Салют"] ?? 0
+                          const talnah = byWh["Талнах"] ?? 0
+                          const hasBreakdown = Object.keys(byWh).length > 0
+                          const sum = hasBreakdown ? (komsa + salut + talnah) : stock
+                          const mismatch = hasBreakdown && sum !== stock
                           return (
-                            <div className="grid grid-cols-[36px_28px_28px_28px_16px] items-center justify-end gap-1 font-mono tabular-nums text-right">
+                            <div className="flex items-center justify-end gap-2 font-mono tabular-nums text-right">
                               <span>{sum}</span>
-                              <span>{komsa}</span>
-                              <span>{salut}</span>
-                              <span>{talnah}</span>
-                              <span className="text-muted-foreground">{mismatch ? "⚠" : ""}</span>
+                              <span className="text-muted-foreground">|</span>
+                              <span className="text-muted-foreground">{komsa} {salut} {talnah}</span>
+                              {mismatch && <span className="text-muted-foreground">⚠</span>}
                             </div>
                           )
                         })()}
