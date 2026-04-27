@@ -106,6 +106,11 @@ interface AnalogItem {
   price: number
   purchase_price?: number
   stock: number
+  stock_by_wh?: {
+    "Комс 18"?: number
+    "Салют"?: number
+    "Талнах"?: number
+  } | null
   purchase_history?: PurchaseHistoryItem[]
   last_sale_price?: number
   last_sale_date?: string
@@ -486,11 +491,13 @@ function AnalogsBlock({
                       <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
                       <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
+                  <th className="px-2 py-1.5 text-right font-medium whitespace-nowrap">Наличие</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
               <tbody>
                 {analogs.map((analog, idx) => {
+                  console.log("[v0] ANALOG ROW:", analog.part_brand_key, "stock_by_wh:", analog.stock_by_wh)
                   const isCurrentPart = analog.part_brand_key === currentPartKey
                   const isSelected = selectedAnalog?.part_brand_key === analog.part_brand_key
                   
@@ -557,6 +564,14 @@ function AnalogsBlock({
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.purchase_price}
+                      </td>
+                      <td 
+                        className={`px-2 py-1.5 text-right font-mono tabular-nums ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
+                        title={analog.stock_by_wh ? `Комс 18: ${analog.stock_by_wh["Комс 18"] || 0}\nСалют: ${analog.stock_by_wh["Салют"] || 0}\nТалнах: ${analog.stock_by_wh["Талнах"] || 0}` : undefined}
+                      >
+                        {analog.stock_by_wh 
+                          ? `${analog.stock} (${analog.stock_by_wh["Комс 18"] || 0}-${analog.stock_by_wh["Салют"] || 0}-${analog.stock_by_wh["Талнах"] || 0})`
+                          : analog.stock}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.stock}
