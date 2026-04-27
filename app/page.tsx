@@ -1375,6 +1375,20 @@ selectedInvoices={selectedInvoices}
                     <p className="text-xs text-muted-foreground/60">
                       Выберите поставку и инвойс для отображения данных
                     </p>
+                    {/* Admin greeting - desktop only */}
+                    {role === "admin" && (
+                      <div className="hidden lg:block mt-6">
+                        <p className="text-lg font-medium text-muted-foreground/80">
+                          {(() => {
+                            const hour = new Date().getHours()
+                            const name = "Олег Анатольевич"
+                            if (hour < 12) return `Доброе утро, ${name}`
+                            if (hour < 18) return `Добрый день, ${name}`
+                            return `Добрый вечер, ${name}`
+                          })()}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
