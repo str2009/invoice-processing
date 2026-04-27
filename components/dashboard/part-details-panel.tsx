@@ -106,6 +106,11 @@ interface AnalogItem {
   price: number
   purchase_price?: number
   stock: number
+  stock_by_wh?: {
+    komsa18?: number
+    salut?: number
+    talnah?: number
+  }
   purchase_history?: PurchaseHistoryItem[]
   last_sale_price?: number
   last_sale_date?: string
@@ -486,6 +491,7 @@ function AnalogsBlock({
                       <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
                       <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Наличие</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
@@ -557,6 +563,11 @@ function AnalogsBlock({
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.purchase_price}
+                      </td>
+                      <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                        {analog.stock_by_wh 
+                          ? `${analog.stock} (${analog.stock_by_wh.komsa18 || 0}-${analog.stock_by_wh.salut || 0}-${analog.stock_by_wh.talnah || 0})`
+                          : analog.stock}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.stock}
