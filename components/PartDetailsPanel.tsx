@@ -455,16 +455,16 @@ function AnalogsBlock({
           <p className="px-3 py-2 text-xs text-muted-foreground/60">No analogs</p>
         ) : (
           <div className="max-h-48 overflow-auto">
-            <table className="w-full text-xs">
+            <table className="w-full table-fixed text-xs">
               <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b border-border/50 text-muted-foreground">
-                  <th className="w-4 px-1 py-1.5"></th>
-                  <th className="px-2 py-1.5 text-left font-medium">Code</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Cost</th>
-                  <th className="px-2 py-1.5 text-center font-medium">Наличие</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Stock</th>
+                  <th className="w-[24px] px-1 py-1.5 truncate whitespace-nowrap"></th>
+                  <th className="w-[180px] px-2 py-1.5 text-left font-medium truncate whitespace-nowrap">Code</th>
+                  <th className="w-[70px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Sold 12m</th>
+                  <th className="w-[70px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Now</th>
+                  <th className="w-[70px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Cost</th>
+                  <th className="w-[120px] px-2 py-1.5 text-center font-medium truncate whitespace-nowrap">Наличие</th>
+                  <th className="w-[60px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Stock</th>
                 </tr>
               </thead>
               <tbody>
@@ -505,15 +505,15 @@ function AnalogsBlock({
                       }`}
                       style={inactivityBg && !isSelected ? { backgroundColor: inactivityBg } : undefined}
                     >
-                      <td className="w-4 px-1 py-1.5 text-center">
+                      <td className="w-[24px] px-1 py-1.5 text-center">
                         {commentsMap[analog.part_brand_key] && (
                           <span className="text-red-500 font-bold text-[10px]">!</span>
                         )}
                       </td>
-                      <td className={`px-2 py-1.5 font-mono ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
+                      <td className={`w-[180px] px-2 py-1.5 font-mono truncate ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
                       </td>
-                      <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${
+                      <td className={`w-[70px] px-2 py-1.5 text-right font-mono tabular-nums ${
                         analog.sold_12m === undefined 
                           ? "text-muted-foreground" 
                           : analog.sold_12m === 0 
@@ -525,7 +525,7 @@ function AnalogsBlock({
                         {analog.sold_12m === undefined ? "—" : analog.sold_12m}
                       </td>
                       <td
-                        className={`px-2 py-1.5 text-right font-mono ${
+                        className={`w-[70px] px-2 py-1.5 text-right font-mono ${
                           analog.price === bestPrice
                             ? "text-emerald-600 dark:text-emerald-400"
                             : isCurrentPart ? "text-foreground" : "text-foreground/80"
@@ -533,33 +533,35 @@ function AnalogsBlock({
                       >
                         {analog.price}
                       </td>
-                      <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                      <td className={`w-[70px] px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.purchase_price}
                       </td>
                       <td 
-                        className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
+                        className={`w-[120px] px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
                         title={analog.stock_by_wh ? `Комс 18: ${analog.stock_by_wh["Комс 18"] || 0}\nСалют: ${analog.stock_by_wh["Салют"] || 0}\nТалнах: ${analog.stock_by_wh["Талнах"] || 0}` : undefined}
                       >
                         {(() => {
                           const stock = Number(analog.stock ?? 0)
-                          const byWh = analog.stock_by_wh || {}
-                          const komsa = byWh["Комс 18"] || 0
-                          const salut = byWh["Салют"] || 0
-                          const talnah = byWh["Талнах"] || 0
-                          const sum = (komsa + salut + talnah) || stock
-                          const mismatch = (komsa + salut + talnah) !== stock
+                          const byWh = analog.stock_by_wh ?? {}
+                          const komsa = byWh["Комс 18"] ?? 0
+                          const salut = byWh["Салют"] ?? 0
+                          const talnah = byWh["Талнах"] ?? 0
+                          const hasBreakdown = Object.keys(byWh).length > 0
+                          const sum = hasBreakdown ? (komsa + salut + talnah) : stock
+                          const mismatch = hasBreakdown && sum !== stock
                           return (
-                            <div className="grid grid-cols-[36px_28px_28px_28px_16px] items-center justify-end gap-1 font-mono tabular-nums text-right">
+                            <div className="grid grid-cols-[32px_12px_24px_24px_24px_16px] items-center justify-end gap-0.5 font-mono tabular-nums text-right">
                               <span>{sum}</span>
-                              <span>{komsa}</span>
-                              <span>{salut}</span>
-                              <span>{talnah}</span>
+                              <span className="text-muted-foreground text-center">|</span>
+                              <span className="text-muted-foreground">{komsa}</span>
+                              <span className="text-muted-foreground">{salut}</span>
+                              <span className="text-muted-foreground">{talnah}</span>
                               <span className="text-muted-foreground">{mismatch ? "⚠" : ""}</span>
                             </div>
                           )
                         })()}
                       </td>
-                      <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                      <td className={`w-[60px] px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.stock}
                       </td>
                     </tr>
