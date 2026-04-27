@@ -84,6 +84,11 @@ interface AnalogItem {
   price: number
   purchase_price?: number
   stock: number
+  stock_by_wh?: {
+    "Комс 18"?: number
+    "Салют"?: number
+    "Талнах"?: number
+  } | null
   purchase_history?: PurchaseHistoryItem[]
   last_sale_price?: number
   last_sale_date?: string
@@ -451,13 +456,14 @@ function AnalogsBlock({
         ) : (
           <div className="max-h-48 overflow-auto">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b border-border/50 text-muted-foreground">
                   <th className="w-4 px-1 py-1.5"></th>
                   <th className="px-2 py-1.5 text-left font-medium">Code</th>
-                      <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
-                      <th className="px-2 py-1.5 text-right font-medium">Now</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Sold 12m</th>
+                  <th className="px-2 py-1.5 text-right font-medium">Now</th>
                   <th className="px-2 py-1.5 text-right font-medium">Cost</th>
+                  <th className="px-2 py-1.5 text-center font-medium">Наличие</th>
                   <th className="px-2 py-1.5 text-right font-medium">Stock</th>
                 </tr>
               </thead>
@@ -529,6 +535,29 @@ function AnalogsBlock({
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.purchase_price}
+                      </td>
+                      <td 
+                        className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
+                        title={analog.stock_by_wh ? `Комс 18: ${analog.stock_by_wh["Комс 18"] || 0}\nСалют: ${analog.stock_by_wh["Салют"] || 0}\nТалнах: ${analog.stock_by_wh["Талнах"] || 0}` : undefined}
+                      >
+                        {(() => {
+                          const stock = Number(analog.stock ?? 0)
+                          const byWh = analog.stock_by_wh || {}
+                          const komsa = byWh["Комс 18"] || 0
+                          const salut = byWh["Салют"] || 0
+                          const talnah = byWh["Талнах"] || 0
+                          const sum = (komsa + salut + talnah) || stock
+                          const mismatch = (komsa + salut + talnah) !== stock
+                          return (
+                            <div className="grid grid-cols-[36px_28px_28px_28px_16px] items-center justify-end gap-1 font-mono tabular-nums text-right">
+                              <span>{sum}</span>
+                              <span>{komsa}</span>
+                              <span>{salut}</span>
+                              <span>{talnah}</span>
+                              <span className="text-muted-foreground">{mismatch ? "⚠" : ""}</span>
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.stock}
