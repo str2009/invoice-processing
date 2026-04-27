@@ -537,19 +537,27 @@ function AnalogsBlock({
                         {analog.purchase_price}
                       </td>
                       <td 
-                        className={`px-2 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
+                        className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
                         title={analog.stock_by_wh ? `Комс 18: ${analog.stock_by_wh["Комс 18"] || 0}\nСалют: ${analog.stock_by_wh["Салют"] || 0}\nТалнах: ${analog.stock_by_wh["Талнах"] || 0}` : undefined}
                       >
                         {(() => {
                           const total = analog.stock ?? 0
                           const byWh = analog.stock_by_wh
-                          if (!byWh) return total
+                          if (!byWh) return <span className="font-mono tabular-nums text-right block">{total}</span>
                           const komsa = byWh["Комс 18"] || 0
                           const salut = byWh["Салют"] || 0
                           const talnah = byWh["Талнах"] || 0
                           const sum = komsa + salut + talnah
                           const mismatch = sum !== total
-                          return `${sum} (${komsa}-${salut}-${talnah})${mismatch ? " ⚠" : ""}`
+                          return (
+                            <div className="grid grid-cols-[28px_24px_24px_24px_16px] items-center justify-end gap-0.5 font-mono tabular-nums text-right">
+                              <span>{sum}</span>
+                              <span>{komsa}</span>
+                              <span>{salut}</span>
+                              <span>{talnah}</span>
+                              <span className="text-muted-foreground">{mismatch ? "⚠" : ""}</span>
+                            </div>
+                          )
                         })()}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
