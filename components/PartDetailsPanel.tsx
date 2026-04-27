@@ -416,55 +416,6 @@ function AnalogsBlock({
 }) {
   const bestPrice = analogs.length > 0 ? Math.min(...analogs.map((a) => a.price)) : 0
 
-  // Resizable columns state
-  const ANALOGS_COLS_KEY = "analogs_col_widths"
-  const DEFAULT_WIDTHS = {
-    indicator: 24,
-    code: 180,
-    sold12m: 70,
-    now: 70,
-    cost: 70,
-    availability: 120,
-    stock: 60,
-  }
-
-  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-    if (typeof window === "undefined") return DEFAULT_WIDTHS
-    try {
-      const saved = localStorage.getItem(ANALOGS_COLS_KEY)
-      return saved ? { ...DEFAULT_WIDTHS, ...JSON.parse(saved) } : DEFAULT_WIDTHS
-    } catch {
-      return DEFAULT_WIDTHS
-    }
-  })
-
-  useEffect(() => {
-    localStorage.setItem(ANALOGS_COLS_KEY, JSON.stringify(colWidths))
-  }, [colWidths])
-
-  const startResize = (e: React.MouseEvent, colKey: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const startX = e.clientX
-    const startWidth = colWidths[colKey]
-
-    const onMove = (eMove: MouseEvent) => {
-      const delta = eMove.clientX - startX
-      setColWidths((prev) => ({
-        ...prev,
-        [colKey]: Math.max(40, startWidth + delta),
-      }))
-    }
-
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("mouseup", onUp)
-    }
-
-    window.addEventListener("mousemove", onMove)
-    window.addEventListener("mouseup", onUp)
-  }
-
   return (
     <div className="pl-6">
       <div className="mb-2 flex items-center">
@@ -507,31 +458,13 @@ function AnalogsBlock({
             <table className="w-full table-fixed text-xs">
               <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b border-border/50 text-muted-foreground">
-                  <th style={{ width: colWidths.indicator }} className="px-1 py-1.5"></th>
-                  <th style={{ width: colWidths.code }} className="relative px-2 py-1.5 text-left font-medium truncate">
-                    Code
-                    <div onMouseDown={(e) => startResize(e, "code")} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
-                  </th>
-                  <th style={{ width: colWidths.sold12m }} className="relative px-2 py-1.5 text-right font-medium">
-                    Sold 12m
-                    <div onMouseDown={(e) => startResize(e, "sold12m")} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
-                  </th>
-                  <th style={{ width: colWidths.now }} className="relative px-2 py-1.5 text-right font-medium">
-                    Now
-                    <div onMouseDown={(e) => startResize(e, "now")} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
-                  </th>
-                  <th style={{ width: colWidths.cost }} className="relative px-2 py-1.5 text-right font-medium">
-                    Cost
-                    <div onMouseDown={(e) => startResize(e, "cost")} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
-                  </th>
-                  <th style={{ width: colWidths.availability }} className="relative px-2 py-1.5 text-center font-medium">
-                    Наличие
-                    <div onMouseDown={(e) => startResize(e, "availability")} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
-                  </th>
-                  <th style={{ width: colWidths.stock }} className="relative px-2 py-1.5 text-right font-medium">
-                    Stock
-                    <div onMouseDown={(e) => startResize(e, "stock")} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40" />
-                  </th>
+                  <th className="w-[24px] px-1 py-1.5 truncate whitespace-nowrap"></th>
+                  <th className="w-[180px] px-2 py-1.5 text-left font-medium truncate whitespace-nowrap">Code</th>
+                  <th className="w-[70px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Sold 12m</th>
+                  <th className="w-[70px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Now</th>
+                  <th className="w-[70px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Cost</th>
+                  <th className="w-[120px] px-2 py-1.5 text-center font-medium truncate whitespace-nowrap">Наличие</th>
+                  <th className="w-[60px] px-2 py-1.5 text-right font-medium truncate whitespace-nowrap">Stock</th>
                 </tr>
               </thead>
               <tbody>
@@ -572,15 +505,15 @@ function AnalogsBlock({
                       }`}
                       style={inactivityBg && !isSelected ? { backgroundColor: inactivityBg } : undefined}
                     >
-                      <td style={{ width: colWidths.indicator }} className="px-1 py-1.5 text-center">
+                      <td className="w-[24px] px-1 py-1.5 text-center">
                         {commentsMap[analog.part_brand_key] && (
                           <span className="text-red-500 font-bold text-[10px]">!</span>
                         )}
                       </td>
-                      <td style={{ width: colWidths.code }} className={`px-2 py-1.5 font-mono truncate ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
+                      <td className={`w-[180px] px-2 py-1.5 font-mono truncate ${isCurrentPart ? "font-semibold text-foreground" : "text-foreground/80"}`}>
                         {analog.part_brand_key}
                       </td>
-                      <td style={{ width: colWidths.sold12m }} className={`px-2 py-1.5 text-right font-mono tabular-nums ${
+                      <td className={`w-[70px] px-2 py-1.5 text-right font-mono tabular-nums ${
                         analog.sold_12m === undefined 
                           ? "text-muted-foreground" 
                           : analog.sold_12m === 0 
@@ -592,8 +525,7 @@ function AnalogsBlock({
                         {analog.sold_12m === undefined ? "—" : analog.sold_12m}
                       </td>
                       <td
-                        style={{ width: colWidths.now }}
-                        className={`px-2 py-1.5 text-right font-mono ${
+                        className={`w-[70px] px-2 py-1.5 text-right font-mono ${
                           analog.price === bestPrice
                             ? "text-emerald-600 dark:text-emerald-400"
                             : isCurrentPart ? "text-foreground" : "text-foreground/80"
@@ -601,12 +533,11 @@ function AnalogsBlock({
                       >
                         {analog.price}
                       </td>
-                      <td style={{ width: colWidths.cost }} className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                      <td className={`w-[70px] px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.purchase_price}
                       </td>
                       <td 
-                        style={{ width: colWidths.availability }}
-                        className={`px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
+                        className={`w-[120px] px-2 py-1.5 ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}
                         title={analog.stock_by_wh ? `Комс 18: ${analog.stock_by_wh["Комс 18"] || 0}\nСалют: ${analog.stock_by_wh["Салют"] || 0}\nТалнах: ${analog.stock_by_wh["Талнах"] || 0}` : undefined}
                       >
                         {(() => {
@@ -628,7 +559,7 @@ function AnalogsBlock({
                           )
                         })()}
                       </td>
-                      <td style={{ width: colWidths.stock }} className={`px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
+                      <td className={`w-[60px] px-2 py-1.5 text-right font-mono ${isCurrentPart ? "text-foreground" : "text-foreground/80"}`}>
                         {analog.stock}
                       </td>
                     </tr>
