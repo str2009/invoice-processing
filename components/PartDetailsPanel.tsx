@@ -541,16 +541,15 @@ function AnalogsBlock({
                         title={analog.stock_by_wh ? `Комс 18: ${analog.stock_by_wh["Комс 18"] || 0}\nСалют: ${analog.stock_by_wh["Салют"] || 0}\nТалнах: ${analog.stock_by_wh["Талнах"] || 0}` : undefined}
                       >
                         {(() => {
-                          const total = analog.stock ?? 0
-                          const byWh = analog.stock_by_wh
-                          if (!byWh) return <span className="font-mono tabular-nums text-right block">{total}</span>
+                          const stock = Number(analog.stock ?? 0)
+                          const byWh = analog.stock_by_wh || {}
                           const komsa = byWh["Комс 18"] || 0
                           const salut = byWh["Салют"] || 0
                           const talnah = byWh["Талнах"] || 0
-                          const sum = komsa + salut + talnah
-                          const mismatch = sum !== total
+                          const sum = (komsa + salut + talnah) || stock
+                          const mismatch = (komsa + salut + talnah) !== stock
                           return (
-                            <div className="grid grid-cols-[28px_24px_24px_24px_16px] items-center justify-end gap-0.5 font-mono tabular-nums text-right">
+                            <div className="grid grid-cols-[36px_28px_28px_28px_16px] items-center justify-end gap-1 font-mono tabular-nums text-right">
                               <span>{sum}</span>
                               <span>{komsa}</span>
                               <span>{salut}</span>
