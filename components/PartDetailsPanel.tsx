@@ -550,11 +550,13 @@ function AnalogsBlock({
                           const sum = hasBreakdown ? (komsa + salut + talnah) : stock
                           const mismatch = hasBreakdown && sum !== stock
                           return (
-                            <div className="flex items-center justify-end gap-2 font-mono tabular-nums text-right">
+                            <div className="grid grid-cols-[32px_12px_24px_24px_24px_16px] items-center justify-end gap-0.5 font-mono tabular-nums text-right">
                               <span>{sum}</span>
-                              <span className="text-muted-foreground">|</span>
-                              <span className="text-muted-foreground">{komsa} {salut} {talnah}</span>
-                              {mismatch && <span className="text-muted-foreground">⚠</span>}
+                              <span className="text-muted-foreground text-center">|</span>
+                              <span className="text-muted-foreground">{komsa}</span>
+                              <span className="text-muted-foreground">{salut}</span>
+                              <span className="text-muted-foreground">{talnah}</span>
+                              <span className="text-muted-foreground">{mismatch ? "⚠" : ""}</span>
                             </div>
                           )
                         })()}
