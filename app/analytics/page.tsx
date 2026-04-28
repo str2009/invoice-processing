@@ -601,7 +601,6 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [supplierFilter, setSupplierFilter] = useState(() => savedUI?.supplierFilter ?? "all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState(() => savedUI?.pricingGroupFilter ?? "all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(() => savedUI?.selectedRowId ?? null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(() => savedUI?.detailsPanelEnabled ?? false)
   const [drawerOpen, setDrawerOpen] = useState(() => savedUI?.drawerOpen ?? false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -921,7 +920,6 @@ const handleHideColumn = useCallback((columnId: string) => {
   useEffect(() => {
     try {
       localStorage.setItem(ANALYTICS_UI_KEY, JSON.stringify({
-        selectedRowId: selectedRow?.id ?? selectedRowId,
         globalFilter,
         detailsPanelEnabled,
         drawerOpen,
@@ -930,7 +928,7 @@ const handleHideColumn = useCallback((columnId: string) => {
         timestamp: Date.now()
       }))
     } catch { /* ignore */ }
-  }, [selectedRow, selectedRowId, globalFilter, detailsPanelEnabled, drawerOpen, supplierFilter, pricingGroupFilter])
+  }, [globalFilter, detailsPanelEnabled, drawerOpen, supplierFilter, pricingGroupFilter])
 
   // Handle mode change - preserve data when switching modes for independent state
   const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
@@ -1049,17 +1047,7 @@ const handleHideColumn = useCallback((columnId: string) => {
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
 
-  // Restore selectedRow from analyticsData when data changes and we have a saved selectedRowId
-  useEffect(() => {
-    if (selectedRowId && analyticsData.length > 0 && !selectedRow) {
-      const found = analyticsData.find(r => r.id === selectedRowId)
-      if (found) {
-        setSelectedRow(found)
-      }
-    }
-  }, [analyticsData, selectedRowId, selectedRow])
-
-// Auto-fit column width to content
+  // Auto-fit column width to content
 const handleAutoFit = useCallback((columnId: string) => {
   // Create a temporary element to measure text
   const measureEl = document.createElement("span")
@@ -1253,11 +1241,7 @@ const table = useReactTable({
 
   const handleRowClick = useCallback((row: AnalyticsRow) => {
     if (!detailsPanelEnabled) return // Block panel opening when disabled
-    setSelectedRow((prev) => {
-      const newRow = prev?.id === row.id ? null : row
-      setSelectedRowId(newRow?.id ?? null)
-      return newRow
-    })
+    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [detailsPanelEnabled])
 
   // Close detail panel when filter hides the selected row
@@ -1265,7 +1249,7 @@ const table = useReactTable({
     if (selectedRow && globalFilter) {
       const lf = globalFilter.toLowerCase()
       const match = Object.values(selectedRow).some((v) => String(v).toLowerCase().includes(lf))
-      if (!match) { setSelectedRow(null); setSelectedRowId(null) }
+      if (!match) { setSelectedRow(null) }
     }
   }, [globalFilter, selectedRow])
 
@@ -1875,7 +1859,7 @@ const table = useReactTable({
             onClick={() => {
               const newValue = !detailsPanelEnabled
               setDetailsPanelEnabled(newValue)
-              if (!newValue) { setSelectedRow(null); setSelectedRowId(null) }
+              if (!newValue) { setSelectedRow(null) }
             }}
             className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
               detailsPanelEnabled 
@@ -2016,7 +2000,7 @@ const table = useReactTable({
               />
 <PartDetailsPanel
   row={selectedRow}
-  onClose={() => { setSelectedRow(null); setSelectedRowId(null) }}
+  onClose={() => setSelectedRow(null)}
   />
             </div>
           )}

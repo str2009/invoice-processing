@@ -131,7 +131,6 @@ export default function InvoiceDashboard() {
   const [globalFilter, setGlobalFilter] = useState(() => savedUI?.globalFilter ?? "")
   const [rowCount, setRowCount] = useState(0)
   const [selectedRow, setSelectedRow] = useState<InvoiceRow | null>(null)
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(() => savedUI?.selectedRowId ?? null)
 
   // Supabase user state
   const [user, setUser] = useState<SupabaseUser | null>(null)
@@ -210,24 +209,14 @@ export default function InvoiceDashboard() {
   useEffect(() => {
     try {
       localStorage.setItem(INVOICE_UI_KEY, JSON.stringify({
-        selectedRowId: selectedRow?.id ?? selectedRowId,
         globalFilter,
         panelOpen,
         simPanelOpen,
         timestamp: Date.now()
       }))
     } catch { /* ignore */ }
-  }, [selectedRow, selectedRowId, globalFilter, panelOpen, simPanelOpen])
+  }, [globalFilter, panelOpen, simPanelOpen])
 
-  // Restore selectedRow from rows when rows change and we have a saved selectedRowId
-  useEffect(() => {
-    if (selectedRowId && rows.length > 0 && !selectedRow) {
-      const found = rows.find(r => r.id === selectedRowId)
-      if (found) {
-        setSelectedRow(found)
-      }
-    }
-  }, [rows, selectedRowId, selectedRow])
   const [simPanelHeight, setSimPanelHeight] = useState(40)
 
   // Load saved height AFTER mount (avoids hydration mismatch)
@@ -408,7 +397,6 @@ export default function InvoiceDashboard() {
     (invoiceId: string) => {
       setSelectedInvoice(invoiceId)
       setSelectedRow(null)
-      setSelectedRowId(null)
       setIsEnriched(false)
       loadInvoice(invoiceId, "raw")
     },
@@ -964,7 +952,6 @@ export default function InvoiceDashboard() {
     setProgress(0)
     setIsProcessing(false)
     setSelectedRow(null)
-    setSelectedRowId(null)
     setDataVersion((v) => v + 1)
 
     setLogs((prev) => [
@@ -1044,11 +1031,7 @@ export default function InvoiceDashboard() {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
-    setSelectedRow((prev) => {
-      const newRow = prev?.id === row.id ? null : row
-      setSelectedRowId(newRow?.id ?? null)
-      return newRow
-    })
+    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
   }, [])
 
   // Update a single row (used for manual MOOT edits)
@@ -1060,7 +1043,6 @@ export default function InvoiceDashboard() {
 
   const handleCloseAnalytics = useCallback(() => {
     setSelectedRow(null)
-    setSelectedRowId(null)
   }, [])
 
   // Close analytics panel if filter removes the selected row
@@ -1070,7 +1052,7 @@ export default function InvoiceDashboard() {
       const match = Object.values(selectedRow).some((val) =>
         String(val).toLowerCase().includes(lowerFilter)
       )
-      if (!match) { setSelectedRow(null); setSelectedRowId(null) }
+      if (!match) { setSelectedRow(null) }
     }
   }, [globalFilter, selectedRow])
 
