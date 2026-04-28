@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockLogs } from "@/lib/mock-data"
 import { Input } from "@/components/ui/input"
-import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2, LogOut, User } from "lucide-react"
+import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2, LogOut, User, Car } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 import {
@@ -1165,6 +1165,15 @@ export default function InvoiceDashboard() {
             >
               <BarChart3 className="h-3.5 w-3.5" />
               <span className="hidden xl:inline">Analytics</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => router.push("/vin")}
+            >
+              <Car className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline">VIN</span>
             </Button>
             <Button
               variant="ghost"

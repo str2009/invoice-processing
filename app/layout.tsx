@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
+import { CartProvider } from '@/components/cart/cart-context'
+import { RowContextMenuProvider } from '@/components/cart/row-context-menu'
 import { Toaster } from 'sonner'
 
 import './globals.css'
@@ -38,7 +40,11 @@ export default function RootLayout({
           themes={["light", "soft", "mellow", "dark", "warm-dark", "graphite"]}
           disableTransitionOnChange
         >
-          {children}
+          <CartProvider>
+            <RowContextMenuProvider>
+              {children}
+            </RowContextMenuProvider>
+          </CartProvider>
           <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>

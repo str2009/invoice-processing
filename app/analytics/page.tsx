@@ -35,6 +35,9 @@ import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { ControlPanel } from "@/components/dashboard/control-panel"
 import { PartDetailsPanel } from "@/components/dashboard/part-details-panel"
+import { useCart } from "@/components/cart/cart-context"
+import { CartDrawer } from "@/components/cart/cart-drawer"
+import { useRowContextMenu } from "@/components/cart/row-context-menu"
 import { modeConfig, getStockColumns, getInvoiceColumns, getCustomColumns, type StockRow, type InvoiceRow, type ModeType } from "./mode-views"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -87,6 +90,8 @@ import {
   User,
   Check,
   FileText,
+  ShoppingCart,
+  Car,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
@@ -595,6 +600,9 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
+  const [cartPanelOpen, setCartPanelOpen] = useState(false)
+  const { totalItems: cartTotalItems } = useCart()
+  const { openMenu: openContextMenu } = useRowContextMenu()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
@@ -616,6 +624,29 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
 
   const onDragEnd = useCallback(() => {
     dragStartY.current = null
+  }, [])
+
+  // Cart drawer state and handlers
+  const [cartDrawerHeight, setCartDrawerHeight] = useState(30) // vh
+  const cartDragStartY = useRef<number | null>(null)
+  const cartDragStartH = useRef<number>(30)
+
+  const onCartDragStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    cartDragStartY.current = e.clientY
+    cartDragStartH.current = cartDrawerHeight
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }, [cartDrawerHeight])
+
+  const onCartDragMove = useCallback((e: React.PointerEvent) => {
+    if (cartDragStartY.current === null) return
+    const deltaVh = ((cartDragStartY.current - e.clientY) / window.innerHeight) * 100
+    const next = Math.min(60, Math.max(20, cartDragStartH.current + deltaVh))
+    setCartDrawerHeight(next)
+  }, [])
+
+  const onCartDragEnd = useCallback(() => {
+    cartDragStartY.current = null
   }, [])
 
 // Context menu hook
@@ -1419,6 +1450,15 @@ const table = useReactTable({
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => router.push("/vin")}
+          >
+            <Car className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">VIN</span>
+          </Button>
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
           <h1 className="text-sm font-semibold text-foreground">Analytics</h1>
@@ -1701,6 +1741,21 @@ const table = useReactTable({
   >
   {drawerOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
   Charts
+  </Button>
+  <Button
+  variant={cartPanelOpen ? "secondary" : "ghost"}
+  size="sm"
+  className="relative h-7 gap-1 px-2 text-[11px]"
+  onClick={() => setCartPanelOpen((p) => !p)}
+  >
+  {cartPanelOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+  <ShoppingCart className="h-3 w-3" />
+  Cart
+  {cartTotalItems > 0 && (
+    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-medium text-primary-foreground">
+      {cartTotalItems > 99 ? "99+" : cartTotalItems}
+    </span>
+  )}
   </Button>
   <span className="h-4 w-px bg-border" aria-hidden="true" />
   <DropdownMenu>
@@ -2028,6 +2083,7 @@ const table = useReactTable({
     }
   }}
   onClick={(e) => handleRowClick(e, row.original, row.id)}
+  onContextMenu={(e) => openContextMenu(e, row.original, "analytics")}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {row.getVisibleCells().map((cell) => (
@@ -2137,6 +2193,24 @@ const table = useReactTable({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Bottom Cart drawer */}
+      <div
+        className={`shrink-0 border-t border-border bg-card transition-[height] duration-300 ease-in-out ${
+          cartPanelOpen ? "" : "h-0 overflow-hidden border-t-0"
+        }`}
+        style={cartPanelOpen ? { height: `${cartDrawerHeight}vh` } : undefined}
+      >
+        {cartPanelOpen && (
+          <CartDrawer
+            onClose={() => setCartPanelOpen(false)}
+            height={cartDrawerHeight}
+            onDragStart={onCartDragStart}
+            onDragMove={onCartDragMove}
+            onDragEnd={onCartDragEnd}
+          />
+        )}
       </div>
       </div>
       
