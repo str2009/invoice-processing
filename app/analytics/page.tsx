@@ -91,6 +91,7 @@ import {
   Check,
   FileText,
   ShoppingCart,
+  Car,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
@@ -1448,6 +1449,15 @@ const table = useReactTable({
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => router.push("/vin")}
+          >
+            <Car className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">VIN</span>
           </Button>
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
