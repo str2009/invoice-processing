@@ -624,7 +624,6 @@ export function InvoiceTable({
   // Row selection state
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
-  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Context menu hook
@@ -818,9 +817,10 @@ export function InvoiceTable({
 
   // Row click handler
   const handleRowClick = useCallback((event: React.MouseEvent, row: InvoiceRow, rowId: string) => {
-    // Always update active row for Part Details (via callback)
-    onRowClick?.(row)
-    setFocusedRowId(rowId)
+    // Part Details - ONLY when detailsPanelEnabled
+    if (detailsPanelEnabled) {
+      onRowClick?.(row)
+    }
 
     // Shift click = select range from anchor
     if (event.shiftKey && selectionAnchorId) {
@@ -841,7 +841,7 @@ export function InvoiceTable({
     // Normal click = single select
     setRowSelection({ [rowId]: true })
     setSelectionAnchorId(rowId)
-  }, [selectionAnchorId, selectRange, onRowClick])
+  }, [detailsPanelEnabled, selectionAnchorId, selectRange, onRowClick])
 
   // Keyboard handler for navigation, selection, and copy
   const handleTableKeyDown = useCallback((event: React.KeyboardEvent) => {
@@ -859,10 +859,7 @@ export function InvoiceTable({
       const nextSelection: Record<string, boolean> = {}
       rows.forEach(row => { nextSelection[row.id] = true })
       setRowSelection(nextSelection)
-      if (rows.length > 0 && detailsPanelEnabled) {
-        onRowClick?.(rows[0].original)
-        setSelectionAnchorId(rows[0].id)
-      }
+      setSelectionAnchorId(rows[0]?.id || null)
       return
     }
 
@@ -894,8 +891,8 @@ export function InvoiceTable({
     if (isArrowUp || isArrowDown) {
       event.preventDefault()
       
-      // Find current focused row
-      const currentId = focusedRowId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
+      // Find current row from selection
+      const currentId = selectionAnchorId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
       const currentIndex = rows.findIndex(r => r.id === currentId)
       const safeIndex = currentIndex === -1 ? 0 : currentIndex
       
@@ -906,16 +903,9 @@ export function InvoiceTable({
       const nextRow = rows[nextIndex]
       if (!nextRow) return
 
-      const anchorId = selectionAnchorId || currentId
-
-      // Update active row and focused row
-      onRowClick?.(nextRow.original)
-      setFocusedRowId(nextRow.id)
-
       // Shift+Arrow = expand selection from anchor
-      if (event.shiftKey) {
-        selectRange(anchorId, nextRow.id)
-        if (!selectionAnchorId) setSelectionAnchorId(anchorId)
+      if (event.shiftKey && selectionAnchorId) {
+        selectRange(selectionAnchorId, nextRow.id)
       } else {
         // Normal arrow = single select and move anchor
         setRowSelection({ [nextRow.id]: true })
@@ -926,7 +916,7 @@ export function InvoiceTable({
       const rowElement = tableContainerRef.current?.querySelector(`tr[data-row-id="${nextRow.id}"]`)
       rowElement?.scrollIntoView({ block: "nearest" })
     }
-  }, [table, rowSelection, selectionAnchorId, focusedRowId, selectRange, onRowClick])
+  }, [table, rowSelection, selectionAnchorId, selectRange])
 
   // Auto-fit column width to content
   const handleAutoFit = useCallback((columnId: string) => {

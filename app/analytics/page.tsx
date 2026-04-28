@@ -594,7 +594,6 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [activeRow, setActiveRow] = useState<AnalyticsRow | null>(null)
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
-  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -1197,9 +1196,10 @@ const table = useReactTable({
 
   // Row click handler
   const handleRowClick = useCallback((event: React.MouseEvent, row: AnalyticsRow, rowId: string) => {
-    // Always update active row for Part Details
-    setActiveRow(row)
-    setFocusedRowId(rowId)
+    // Part Details - ONLY when detailsPanelEnabled
+    if (detailsPanelEnabled) {
+      setActiveRow(row)
+    }
 
     // Shift click = select range from anchor
     if (event.shiftKey && selectionAnchorId) {
@@ -1220,7 +1220,7 @@ const table = useReactTable({
     // Normal click = single select
     setRowSelection({ [rowId]: true })
     setSelectionAnchorId(rowId)
-  }, [selectionAnchorId, selectRange])
+  }, [detailsPanelEnabled, selectionAnchorId, selectRange])
 
   // Keyboard handler for navigation, selection, and copy
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -1240,10 +1240,7 @@ const table = useReactTable({
       const nextSelection: Record<string, boolean> = {}
       rows.forEach(row => { nextSelection[row.id] = true })
       setRowSelection(nextSelection)
-      if (rows.length > 0) {
-        setActiveRow(rows[0].original)
-        setSelectionAnchorId(rows[0].id)
-      }
+      setSelectionAnchorId(rows[0]?.id || null)
       return
     }
 
@@ -1275,8 +1272,8 @@ const table = useReactTable({
     if (isArrowUp || isArrowDown) {
       event.preventDefault()
       
-      // Find current focused row
-      const currentId = focusedRowId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
+      // Find current row from selection
+      const currentId = selectionAnchorId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
       const currentIndex = rows.findIndex(r => r.id === currentId)
       const safeIndex = currentIndex === -1 ? 0 : currentIndex
       
@@ -1287,16 +1284,9 @@ const table = useReactTable({
       const nextRow = rows[nextIndex]
       if (!nextRow) return
 
-      const anchorId = selectionAnchorId || currentId
-
-      // Update active row and focused row
-      setActiveRow(nextRow.original)
-      setFocusedRowId(nextRow.id)
-
       // Shift+Arrow = expand selection from anchor
-      if (event.shiftKey) {
-        selectRange(anchorId, nextRow.id)
-        if (!selectionAnchorId) setSelectionAnchorId(anchorId)
+      if (event.shiftKey && selectionAnchorId) {
+        selectRange(selectionAnchorId, nextRow.id)
       } else {
         // Normal arrow = single select and move anchor
         setRowSelection({ [nextRow.id]: true })
@@ -1307,7 +1297,7 @@ const table = useReactTable({
       const rowElement = tableContainerRef.current?.querySelector(`tr[data-row-id="${nextRow.id}"]`)
       rowElement?.scrollIntoView({ block: "nearest" })
     }
-  }, [table, rowSelection, selectionAnchorId, focusedRowId, selectRange])
+  }, [table, rowSelection, selectionAnchorId, selectRange])
 
   // DnD
   const sensors = useSensors(
