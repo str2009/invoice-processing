@@ -51,8 +51,7 @@ import {
   Monitor,
   User,
   LogOut,
-  Maximize2,
-  Minimize2,
+  Loader2,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import {
@@ -64,77 +63,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// VIN row type
+// VIN row type - flexible to accept any fields from webhook
 interface VinRow {
-  id: string
-  vin: string
-  brand: string
-  model: string
-  engine: string
-  year: string
-  body: string
-  transmission: string
-  notes: string
+  id?: string
+  vin?: string
+  brand?: string
+  model?: string
+  engine?: string
+  year?: string
+  body?: string
+  transmission?: string
+  notes?: string
+  [key: string]: unknown
 }
 
-// Mock data
-const mockVinData: VinRow[] = [
-  {
-    id: "1",
-    vin: "JTDKN3DU5A0123456",
-    brand: "Toyota",
-    model: "Prius",
-    engine: "1.8L Hybrid",
-    year: "2010",
-    body: "Hatchback",
-    transmission: "CVT",
-    notes: "Low mileage, excellent condition",
-  },
-  {
-    id: "2",
-    vin: "KMHD35LH5GU123789",
-    brand: "Hyundai",
-    model: "Elantra",
-    engine: "2.0L I4",
-    year: "2016",
-    body: "Sedan",
-    transmission: "6-Speed Auto",
-    notes: "Single owner",
-  },
-  {
-    id: "3",
-    vin: "WBAPH5C55BA456123",
-    brand: "BMW",
-    model: "328i",
-    engine: "3.0L I6",
-    year: "2011",
-    body: "Sedan",
-    transmission: "6-Speed Manual",
-    notes: "Sport package",
-  },
-  {
-    id: "4",
-    vin: "1HGBH41JXMN109186",
-    brand: "Honda",
-    model: "Accord",
-    engine: "2.4L I4",
-    year: "2021",
-    body: "Sedan",
-    transmission: "CVT",
-    notes: "Certified pre-owned",
-  },
-  {
-    id: "5",
-    vin: "5YFBURHE2KP987654",
-    brand: "Toyota",
-    model: "Corolla",
-    engine: "1.8L I4",
-    year: "2019",
-    body: "Sedan",
-    transmission: "CVT",
-    notes: "",
-  },
-]
+// Webhook URL
+const VIN_WEBHOOK_URL = "https://max24vin.ru/webhook/vin-search-902f-c010461c8fdf"
+
+// Search mode type
+type SearchMode = "manual" | "auto"
 
 // Column definitions
 const columns: ColumnDef<VinRow>[] = [
@@ -302,6 +249,15 @@ export default function VinSearchPage() {
   // Mock user data (in production, this would come from auth context)
   const user = { email: "suzo@list.ru" }
 
+  // Search mode and data state
+  const [searchMode, setSearchMode] = useState<SearchMode>("manual")
+  const [vinData, setVinData] = useState<VinRow[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const skipAutoSearchRef = useRef(false) // Flag to skip auto search after row click
+
   // Filter state
   const [vinFilter, setVinFilter] = useState("")
   const [engineFilter, setEngineFilter] = useState("")
@@ -368,7 +324,7 @@ export default function VinSearchPage() {
 
   // Create table instance
   const table = useReactTable({
-    data: mockVinData,
+    data: vinData,
     columns,
     state: {
       sorting,
@@ -397,11 +353,112 @@ export default function VinSearchPage() {
       .reduce((sum, col) => sum + col.getSize(), 0)
   }, [table, columnSizing])
 
-  // Handle search button click (placeholder for future API integration)
+  // Fetch VIN data from webhook
+  const fetchVinData = useCallback(async (vin: string, signal?: AbortSignal) => {
+    if (!vin || vin.length < 1) {
+      setVinData([])
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(VIN_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ vin }),
+        signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      // Handle response - could be array or object with array
+      const rows: VinRow[] = Array.isArray(data) 
+        ? data.map((item: VinRow, index: number) => ({ ...item, id: item.id || String(index) }))
+        : []
+      
+      setVinData(rows)
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        // Request was aborted, ignore
+        return
+      }
+      console.error("[v0] VIN search error:", err)
+      setError(err instanceof Error ? err.message : "Search failed")
+      setVinData([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Handle manual search button click
   const handleSearch = useCallback(() => {
-    // Future: API call with vinFilter, engineFilter, brandModelFilter
-    console.log("[v0] Search clicked:", { vinFilter, engineFilter, brandModelFilter })
-  }, [vinFilter, engineFilter, brandModelFilter])
+    // Cancel any pending requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+    
+    fetchVinData(vinFilter, abortControllerRef.current.signal)
+  }, [vinFilter, fetchVinData])
+
+  // Handle VIN input change with auto mode support
+  const handleVinInputChange = useCallback((value: string) => {
+    setVinFilter(value)
+    
+    // If skipAutoSearch flag is set, clear it and don't trigger auto search
+    if (skipAutoSearchRef.current) {
+      skipAutoSearchRef.current = false
+      return
+    }
+
+    // Auto mode: trigger search with debounce
+    if (searchMode === "auto" && value.length >= 3) {
+      // Clear previous timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+      
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      
+      // Set new debounce timer
+      debounceTimerRef.current = setTimeout(() => {
+        abortControllerRef.current = new AbortController()
+        fetchVinData(value, abortControllerRef.current.signal)
+      }, 400) // 400ms debounce
+    }
+  }, [searchMode, fetchVinData])
+
+  // Handle row click - set VIN to input
+  const handleRowClick = useCallback((row: VinRow) => {
+    if (row.vin) {
+      // Set flag to skip auto search
+      skipAutoSearchRef.current = true
+      setVinFilter(row.vin)
+    }
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -576,8 +633,8 @@ export default function VinSearchPage() {
         <Input
           placeholder="Enter VIN..."
           value={vinFilter}
-          onChange={(e) => setVinFilter(e.target.value)}
-          className="h-7 w-44 text-xs"
+          onChange={(e) => handleVinInputChange(e.target.value)}
+          className="h-7 w-52 text-xs font-mono"
         />
         <Input
           placeholder="Engine..."
@@ -595,10 +652,49 @@ export default function VinSearchPage() {
           size="sm"
           className="h-7 gap-1.5 px-3 text-xs"
           onClick={handleSearch}
+          disabled={isLoading || !vinFilter}
         >
-          <Search className="h-3.5 w-3.5" />
+          {isLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Search className="h-3.5 w-3.5" />
+          )}
           Search
         </Button>
+        
+        {/* Search mode toggle */}
+        <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/50 p-0.5">
+          <button
+            type="button"
+            onClick={() => setSearchMode("manual")}
+            className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
+              searchMode === "manual"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Manual
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchMode("auto")}
+            className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
+              searchMode === "auto"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Auto
+          </button>
+        </div>
+
+        {/* Status indicators */}
+        {isLoading && (
+          <span className="text-[10px] text-muted-foreground">Loading...</span>
+        )}
+        {error && (
+          <span className="text-[10px] text-destructive">{error}</span>
+        )}
       </div>
 
       {/* Table */}
@@ -653,6 +749,7 @@ export default function VinSearchPage() {
                   <tr
                     key={row.id}
                     className="h-8 cursor-pointer transition-colors select-text bg-background hover:bg-muted/50"
+                    onClick={() => handleRowClick(row.original)}
                   >
                     <SortableContext
                       items={columnOrder}
@@ -670,7 +767,11 @@ export default function VinSearchPage() {
                     colSpan={columns.length}
                     className="h-32 text-center text-sm text-muted-foreground"
                   >
-                    No results found
+                    {isLoading 
+                      ? "Searching..." 
+                      : vinFilter.length > 0 
+                        ? "No matches found" 
+                        : "Enter VIN to search"}
                   </td>
                 </tr>
               )}
