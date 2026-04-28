@@ -590,10 +590,8 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
-  const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
-  // Excel-like multi-selection state
+  // Single row selection state (simplified)
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
-  const [anchorRowId, setAnchorRowId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -1047,6 +1045,7 @@ if (filterBulk) d = d.filter((r) => r.bulk === true)
 const table = useReactTable({
   data: filteredData,
   columns,
+  getRowId: (row) => row.part_brand_key || row.id,
   state: { sorting, globalFilter, columnOrder, columnSizing, columnVisibility },
   onSortingChange: setSorting,
   onGlobalFilterChange: setGlobalFilter,
@@ -1062,6 +1061,12 @@ const table = useReactTable({
 
   const filteredRows = table.getFilteredRowModel().rows
   const rowCount = filteredRows.length
+
+  // Compute selected row from rowSelection state (must be after table is defined)
+  const selectedRowId = Object.keys(rowSelection).find(id => rowSelection[id])
+  const selectedRow = selectedRowId 
+    ? table.getRowModel().rows.find(r => r.id === selectedRowId)?.original ?? null
+    : null
 
   // Calculate total table width for proper column resizing
   const totalWidth = table
@@ -1170,83 +1175,16 @@ const table = useReactTable({
     setTimeout(() => setIsLoadingInvoice(false), 300)
   }, [invoiceList, ts])
 
-  // Excel-like row click handler with multi-select support
-  const handleRowClick = useCallback((e: React.MouseEvent, row: AnalyticsRow) => {
-    const rows = table.getRowModel().rows
-    const idx = rows.findIndex(r => r.id === row.id)
-
-    // SHIFT → range select
-    if (e.shiftKey && anchorRowId) {
-      const anchorIdx = rows.findIndex(r => r.id === anchorRowId)
-      const [start, end] = [anchorIdx, idx].sort((a, b) => a - b)
-
-      const newSelection: Record<string, boolean> = {}
-      for (let i = start; i <= end; i++) {
-        newSelection[rows[i].id] = true
-      }
-
-      setRowSelection(prev => ({ ...prev, ...newSelection }))
-      return
-    }
-
-    // CTRL / CMD → toggle multi-select
-    if (e.ctrlKey || e.metaKey) {
-      setRowSelection(prev => ({
-        ...prev,
-        [row.id]: !prev[row.id]
-      }))
-      setAnchorRowId(row.id)
-      return
-    }
-
-    // Normal click → single select (also open details panel if enabled)
-    setRowSelection({ [row.id]: true })
-    setAnchorRowId(row.id)
-    
-    // Keep details panel behavior
-    if (detailsPanelEnabled) {
-      setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-    }
-  }, [detailsPanelEnabled, anchorRowId, table])
-
-  // Keyboard copy handler (Ctrl/Cmd + C)
-  useEffect(() => {
-    const handleCopy = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key !== "c") return
-
-      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
-      if (selectedIds.length === 0) return
-
-      const rows = table.getRowModel().rows
-        .filter(r => selectedIds.includes(r.id))
-        .map(r => r.original)
-
-      // Get visible column IDs in order
-      const visibleColumns = table.getAllLeafColumns()
-        .filter(c => c.getIsVisible())
-        .map(c => c.id)
-
-      // Build TSV text
-      const text = rows.map(row =>
-        visibleColumns.map(col => String((row as Record<string, unknown>)[col] ?? "")).join("\t")
-      ).join("\n")
-
-      navigator.clipboard.writeText(text)
-      e.preventDefault()
-    }
-
-    window.addEventListener("keydown", handleCopy)
-    return () => window.removeEventListener("keydown", handleCopy)
-  }, [rowSelection, table])
-
-  // Close detail panel when filter hides the selected row
-  useEffect(() => {
-    if (selectedRow && globalFilter) {
-      const lf = globalFilter.toLowerCase()
-      const match = Object.values(selectedRow).some((v) => String(v).toLowerCase().includes(lf))
-      if (!match) { setSelectedRow(null) }
-    }
-  }, [globalFilter, selectedRow])
+  // Simple row click handler - single selection only
+  const handleRowClick = useCallback((row: AnalyticsRow) => {
+    if (!detailsPanelEnabled) return
+    // Toggle selection: click same row to deselect, otherwise select new row
+    const rowId = row.part_brand_key || row.id
+    setRowSelection(prev => {
+      const isCurrentlySelected = prev[rowId]
+      return isCurrentlySelected ? {} : { [rowId]: true }
+    })
+  }, [detailsPanelEnabled])
 
   // DnD
   const sensors = useSensors(
@@ -1854,7 +1792,7 @@ const table = useReactTable({
             onClick={() => {
               const newValue = !detailsPanelEnabled
               setDetailsPanelEnabled(newValue)
-              if (!newValue) { setSelectedRow(null) }
+              if (!newValue) { setRowSelection({}) }
             }}
             className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
               detailsPanelEnabled 
@@ -1926,7 +1864,7 @@ const table = useReactTable({
 <tbody>
   {table.getRowModel().rows?.length ? (
   table.getRowModel().rows.map((row) => {
-  const isRowSelected = rowSelection[row.id] || selectedRow?.id === row.original.id
+  const isRowSelected = rowSelection[row.id]
   return (
 <tr
   key={row.id}
@@ -1935,7 +1873,7 @@ const table = useReactTable({
   ? "bg-blue-500/20 border-l-2 border-blue-500"
   : "bg-background hover:bg-muted/50"
   }`}
-  onClick={(e) => handleRowClick(e, row.original)}
+  onClick={() => handleRowClick(row.original)}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {row.getVisibleCells().map((cell) => (
@@ -1995,7 +1933,7 @@ const table = useReactTable({
               />
 <PartDetailsPanel
   row={selectedRow}
-  onClose={() => setSelectedRow(null)}
+  onClose={() => setRowSelection({})}
   />
             </div>
           )}
