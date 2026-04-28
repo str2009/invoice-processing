@@ -932,16 +932,6 @@ const handleHideColumn = useCallback((columnId: string) => {
     } catch { /* ignore */ }
   }, [selectedRow, selectedRowId, globalFilter, detailsPanelEnabled, drawerOpen, supplierFilter, pricingGroupFilter])
 
-  // Restore selectedRow from analyticsRows when rows change and we have a saved selectedRowId
-  useEffect(() => {
-    if (selectedRowId && analyticsRows.length > 0 && !selectedRow) {
-      const found = analyticsRows.find(r => r.id === selectedRowId)
-      if (found) {
-        setSelectedRow(found)
-      }
-    }
-  }, [analyticsRows, selectedRowId, selectedRow])
-
   // Handle mode change - preserve data when switching modes for independent state
   const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
     if (newMode !== mode) {
@@ -1058,8 +1048,16 @@ const handleHideColumn = useCallback((columnId: string) => {
   }, [])
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
-  
 
+  // Restore selectedRow from analyticsData when data changes and we have a saved selectedRowId
+  useEffect(() => {
+    if (selectedRowId && analyticsData.length > 0 && !selectedRow) {
+      const found = analyticsData.find(r => r.id === selectedRowId)
+      if (found) {
+        setSelectedRow(found)
+      }
+    }
+  }, [analyticsData, selectedRowId, selectedRow])
 
 // Auto-fit column width to content
 const handleAutoFit = useCallback((columnId: string) => {
