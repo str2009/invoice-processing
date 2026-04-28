@@ -408,23 +408,12 @@ export default function VinSearchPage() {
       {/* Header */}
       <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3">
         {/* Left side - Navigation */}
-        <div className="flex items-center gap-1">
+        <nav className="flex items-center gap-1">
           <Link
             href="/"
             className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
               pathname === "/" 
-                ? "text-foreground font-medium" 
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Analytics</span>
-          </Link>
-          <Link
-            href="/invoice"
-            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
-              pathname === "/invoice" 
-                ? "text-foreground font-medium" 
+                ? "text-foreground font-medium bg-accent" 
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
           >
@@ -432,10 +421,21 @@ export default function VinSearchPage() {
             <span className="hidden xl:inline">Invoice Processing</span>
           </Link>
           <Link
+            href="/analytics"
+            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
+              pathname === "/analytics" 
+                ? "text-foreground font-medium bg-accent" 
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">Analytics</span>
+          </Link>
+          <Link
             href="/chat"
             className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
               pathname === "/chat" 
-                ? "text-foreground font-medium" 
+                ? "text-foreground font-medium bg-accent" 
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
           >
@@ -453,7 +453,7 @@ export default function VinSearchPage() {
             <Car className="h-3.5 w-3.5" />
             <span className="hidden xl:inline">VIN Search</span>
           </Link>
-        </div>
+        </nav>
 
         {/* Right side - Theme and User */}
         <div className="flex items-center gap-1">
