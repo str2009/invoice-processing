@@ -590,12 +590,11 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
-  // Row selection state - two concepts:
-  // activeRow: single row for Part Details panel
-  // rowSelection: map of selected rows for multi-select/copy
+  // Row selection state
   const [activeRow, setActiveRow] = useState<AnalyticsRow | null>(null)
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -1173,13 +1172,39 @@ const table = useReactTable({
     setTimeout(() => setIsLoadingInvoice(false), 300)
   }, [invoiceList, ts])
 
-  // Row click handler with multi-select support
-  const handleRowClick = useCallback((event: React.MouseEvent, row: AnalyticsRow, rowId: string) => {
+  // Helper function for range selection
+  const selectRange = useCallback((fromId: string, toId: string) => {
     const rows = table.getRowModel().rows
+    const fromIndex = rows.findIndex(r => r.id === fromId)
+    const toIndex = rows.findIndex(r => r.id === toId)
 
-    // Always update active row for Part Details (if panel enabled)
-    if (detailsPanelEnabled) {
-      setActiveRow(row)
+    if (fromIndex === -1 || toIndex === -1) {
+      setRowSelection({ [toId]: true })
+      setSelectionAnchorId(toId)
+      return
+    }
+
+    const start = Math.min(fromIndex, toIndex)
+    const end = Math.max(fromIndex, toIndex)
+
+    const nextSelection: Record<string, boolean> = {}
+    for (let i = start; i <= end; i++) {
+      nextSelection[rows[i].id] = true
+    }
+
+    setRowSelection(nextSelection)
+  }, [table])
+
+  // Row click handler
+  const handleRowClick = useCallback((event: React.MouseEvent, row: AnalyticsRow, rowId: string) => {
+    // Always update active row for Part Details
+    setActiveRow(row)
+    setFocusedRowId(rowId)
+
+    // Shift click = select range from anchor
+    if (event.shiftKey && selectionAnchorId) {
+      selectRange(selectionAnchorId, rowId)
+      return
     }
 
     // Ctrl/Cmd click = toggle one row in multi-selection
@@ -1192,34 +1217,10 @@ const table = useReactTable({
       return
     }
 
-    // Shift click = select range
-    if (event.shiftKey && selectionAnchorId) {
-      const anchorIndex = rows.findIndex(r => r.id === selectionAnchorId)
-      const currentIndex = rows.findIndex(r => r.id === rowId)
-
-      if (anchorIndex === -1 || currentIndex === -1) {
-        setRowSelection({ [rowId]: true })
-        setSelectionAnchorId(rowId)
-        return
-      }
-
-      const start = Math.min(anchorIndex, currentIndex)
-      const end = Math.max(anchorIndex, currentIndex)
-
-      const rangeSelection: Record<string, boolean> = {}
-      for (let i = start; i <= end; i++) {
-        rangeSelection[rows[i].id] = true
-      }
-
-      // Overwrite selection with range (don't merge)
-      setRowSelection(rangeSelection)
-      return
-    }
-
     // Normal click = single select
     setRowSelection({ [rowId]: true })
     setSelectionAnchorId(rowId)
-  }, [detailsPanelEnabled, selectionAnchorId, table])
+  }, [selectionAnchorId, selectRange])
 
   // Keyboard handler for navigation, selection, and copy
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -1274,50 +1275,39 @@ const table = useReactTable({
     if (isArrowUp || isArrowDown) {
       event.preventDefault()
       
-      // Find current anchor index
-      const currentIndex = selectionAnchorId 
-        ? rows.findIndex(r => r.id === selectionAnchorId)
-        : -1
+      // Find current focused row
+      const currentId = focusedRowId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
+      const currentIndex = rows.findIndex(r => r.id === currentId)
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex
       
-      let nextIndex: number
-      if (currentIndex === -1) {
-        nextIndex = isArrowDown ? 0 : rows.length - 1
-      } else {
-        nextIndex = isArrowDown 
-          ? Math.min(currentIndex + 1, rows.length - 1)
-          : Math.max(currentIndex - 1, 0)
-      }
+      const nextIndex = isArrowDown 
+        ? Math.min(safeIndex + 1, rows.length - 1)
+        : Math.max(safeIndex - 1, 0)
 
       const nextRow = rows[nextIndex]
       if (!nextRow) return
 
-      // Shift+Arrow = expand selection
-      if (event.shiftKey && selectionAnchorId) {
-        const anchorIndex = rows.findIndex(r => r.id === selectionAnchorId)
-        const start = Math.min(anchorIndex, nextIndex)
-        const end = Math.max(anchorIndex, nextIndex)
+      const anchorId = selectionAnchorId || currentId
 
-        const rangeSelection: Record<string, boolean> = {}
-        for (let i = start; i <= end; i++) {
-          rangeSelection[rows[i].id] = true
-        }
-        setRowSelection(rangeSelection)
+      // Update active row and focused row
+      setActiveRow(nextRow.original)
+      setFocusedRowId(nextRow.id)
+
+      // Shift+Arrow = expand selection from anchor
+      if (event.shiftKey) {
+        selectRange(anchorId, nextRow.id)
+        if (!selectionAnchorId) setSelectionAnchorId(anchorId)
       } else {
         // Normal arrow = single select and move anchor
         setRowSelection({ [nextRow.id]: true })
         setSelectionAnchorId(nextRow.id)
       }
 
-      // Update active row for Part Details
-      if (detailsPanelEnabled) {
-        setActiveRow(nextRow.original)
-      }
-
       // Scroll row into view
       const rowElement = tableContainerRef.current?.querySelector(`tr[data-row-id="${nextRow.id}"]`)
       rowElement?.scrollIntoView({ block: "nearest" })
     }
-  }, [table, rowSelection, selectionAnchorId, detailsPanelEnabled])
+  }, [table, rowSelection, selectionAnchorId, focusedRowId, selectRange])
 
   // DnD
   const sensors = useSensors(
