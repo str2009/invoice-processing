@@ -832,10 +832,8 @@ export function InvoiceTable({
         rangeSelection[rows[i].id] = true
       }
 
-      setRowSelection(prev => ({
-        ...prev,
-        ...rangeSelection,
-      }))
+      // Overwrite selection with range (don't merge)
+      setRowSelection(rangeSelection)
       return
     }
 
@@ -844,53 +842,101 @@ export function InvoiceTable({
     setSelectionAnchorId(rowId)
   }, [detailsPanelEnabled, selectionAnchorId, table, onRowClick])
 
-  // Keyboard handler for Ctrl+A (select all) and Ctrl+C (copy)
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"
-      const isCopy = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c"
+  // Keyboard handler for navigation, selection, and copy
+  const handleTableKeyDown = useCallback((event: React.KeyboardEvent) => {
+    const rows = table.getRowModel().rows
+    if (rows.length === 0) return
 
-      if (isSelectAll) {
-        event.preventDefault()
-        const allVisibleRows = table.getRowModel().rows
-        const nextSelection: Record<string, boolean> = {}
-        allVisibleRows.forEach(row => {
-          nextSelection[row.id] = true
-        })
-        setRowSelection(nextSelection)
-        if (allVisibleRows.length > 0 && detailsPanelEnabled) {
-          onRowClick?.(allVisibleRows[0].original)
-          setSelectionAnchorId(allVisibleRows[0].id)
-        }
-        return
+    const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"
+    const isCopy = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c"
+    const isArrowUp = event.key === "ArrowUp"
+    const isArrowDown = event.key === "ArrowDown"
+
+    // Ctrl+A = select all
+    if (isSelectAll) {
+      event.preventDefault()
+      const nextSelection: Record<string, boolean> = {}
+      rows.forEach(row => { nextSelection[row.id] = true })
+      setRowSelection(nextSelection)
+      if (rows.length > 0 && detailsPanelEnabled) {
+        onRowClick?.(rows[0].original)
+        setSelectionAnchorId(rows[0].id)
       }
-
-      if (isCopy) {
-        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
-        if (selectedIds.length === 0) return
-
-        const selectedRows = table.getRowModel().rows.filter(row => selectedIds.includes(row.id))
-        const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible())
-
-        const text = selectedRows
-          .map(row =>
-            visibleColumns
-              .map(col => {
-                const value = row.getValue(col.id)
-                return value == null ? "" : String(value)
-              })
-              .join("\t")
-          )
-          .join("\n")
-
-        navigator.clipboard.writeText(text)
-        event.preventDefault()
-      }
+      return
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [table, rowSelection, detailsPanelEnabled, onRowClick])
+    // Ctrl+C = copy
+    if (isCopy) {
+      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+      if (selectedIds.length === 0) return
+
+      const selectedRows = rows.filter(row => selectedIds.includes(row.id))
+      const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible())
+
+      const text = selectedRows
+        .map(row =>
+          visibleColumns
+            .map(col => {
+              const value = row.getValue(col.id)
+              return value == null ? "" : String(value)
+            })
+            .join("\t")
+        )
+        .join("\n")
+
+      navigator.clipboard.writeText(text)
+      event.preventDefault()
+      return
+    }
+
+    // Arrow navigation
+    if (isArrowUp || isArrowDown) {
+      event.preventDefault()
+      
+      // Find current anchor index
+      const currentIndex = selectionAnchorId 
+        ? rows.findIndex(r => r.id === selectionAnchorId)
+        : -1
+      
+      let nextIndex: number
+      if (currentIndex === -1) {
+        nextIndex = isArrowDown ? 0 : rows.length - 1
+      } else {
+        nextIndex = isArrowDown 
+          ? Math.min(currentIndex + 1, rows.length - 1)
+          : Math.max(currentIndex - 1, 0)
+      }
+
+      const nextRow = rows[nextIndex]
+      if (!nextRow) return
+
+      // Shift+Arrow = expand selection
+      if (event.shiftKey && selectionAnchorId) {
+        const anchorIndex = rows.findIndex(r => r.id === selectionAnchorId)
+        const start = Math.min(anchorIndex, nextIndex)
+        const end = Math.max(anchorIndex, nextIndex)
+
+        const rangeSelection: Record<string, boolean> = {}
+        for (let i = start; i <= end; i++) {
+          rangeSelection[rows[i].id] = true
+        }
+        setRowSelection(rangeSelection)
+      } else {
+        // Normal arrow = single select and move anchor
+        setRowSelection({ [nextRow.id]: true })
+        setSelectionAnchorId(nextRow.id)
+      }
+
+      // Update active row for Part Details
+      if (detailsPanelEnabled) {
+        onRowClick?.(nextRow.original)
+      }
+
+      // Scroll row into view
+      const rowElement = tableContainerRef.current?.querySelector(`tr[data-row-id="${nextRow.id}"]`)
+      rowElement?.scrollIntoView({ block: "nearest" })
+    }
+  }, [table, rowSelection, selectionAnchorId, detailsPanelEnabled, onRowClick])
 
   // Auto-fit column width to content
   const handleAutoFit = useCallback((columnId: string) => {
@@ -1053,7 +1099,9 @@ export function InvoiceTable({
       >
         <div
           ref={tableContainerRef}
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-auto outline-none"
+          tabIndex={0}
+          onKeyDown={handleTableKeyDown}
         >
           <table
             className="border-collapse"
@@ -1089,6 +1137,7 @@ export function InvoiceTable({
                   return (
                     <tr
                       key={row.id}
+                      data-row-id={row.id}
                       className={`h-8 cursor-pointer transition-colors select-text ${
                         isRowSelected
                           ? "bg-blue-500/20 border-l-2 border-blue-500"
