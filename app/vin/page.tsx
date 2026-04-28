@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useCallback, useEffect, useMemo, useRef, type CSSProperties } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
 import {
   useReactTable,
   getCoreRowModel,
@@ -289,6 +290,7 @@ function SortableDataCell({
 
 export default function VinSearchPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -407,36 +409,50 @@ export default function VinSearchPage() {
       <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3">
         {/* Left side - Navigation */}
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => router.push("/")}
+          <Link
+            href="/"
+            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
+              pathname === "/" 
+                ? "text-foreground font-medium" 
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
           >
             <BarChart3 className="h-3.5 w-3.5" />
             <span className="hidden xl:inline">Analytics</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => router.push("/")}
+          </Link>
+          <Link
+            href="/invoice"
+            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
+              pathname === "/invoice" 
+                ? "text-foreground font-medium" 
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
           >
             <FileText className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Service</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => router.push("/chat")}
+            <span className="hidden xl:inline">Invoice Processing</span>
+          </Link>
+          <Link
+            href="/chat"
+            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
+              pathname === "/chat" 
+                ? "text-foreground font-medium" 
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
           >
             <MessageSquare className="h-3.5 w-3.5" />
             <span className="hidden xl:inline">Chat</span>
-          </Button>
-          <span className="h-4 w-px bg-border" aria-hidden="true" />
-          <Car className="h-3.5 w-3.5 text-primary" />
-          <h1 className="text-sm font-semibold text-foreground">VIN Search</h1>
+          </Link>
+          <Link
+            href="/vin"
+            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
+              pathname === "/vin" 
+                ? "text-foreground font-medium bg-accent" 
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            <Car className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">VIN Search</span>
+          </Link>
         </div>
 
         {/* Right side - Theme and User */}
