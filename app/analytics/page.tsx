@@ -566,13 +566,22 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
     router.refresh()
   }, [router])
   
+  // Persist analytics UI state key (defined early for state initialization)
+  const ANALYTICS_UI_KEY = "analytics_ui_state"
+  const savedUI = typeof window !== "undefined" ? (() => {
+    try {
+      const saved = localStorage.getItem(ANALYTICS_UI_KEY)
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })() : null
+
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "analyticsRightPanelWidth",
     defaultWidth: 450,
     minWidth: 320,
     maxWidthPct: 50,
   })
-  const [globalFilter, setGlobalFilter] = useState("")
+  const [globalFilter, setGlobalFilter] = useState(() => savedUI?.globalFilter ?? "")
   const [sorting, setSorting] = useState<SortingState>([])
   const [mootChanges, setMootChanges] = useState<Record<string, number>>({})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
@@ -589,11 +598,12 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined)
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
-  const [supplierFilter, setSupplierFilter] = useState("all")
-  const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
+  const [supplierFilter, setSupplierFilter] = useState(() => savedUI?.supplierFilter ?? "all")
+  const [pricingGroupFilter, setPricingGroupFilter] = useState(() => savedUI?.pricingGroupFilter ?? "all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
-  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(() => savedUI?.selectedRowId ?? null)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(() => savedUI?.detailsPanelEnabled ?? false)
+  const [drawerOpen, setDrawerOpen] = useState(() => savedUI?.drawerOpen ?? false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
   const dragStartH = useRef<number>(60)
@@ -906,6 +916,31 @@ const handleHideColumn = useCallback((columnId: string) => {
       }))
     } catch { /* ignore storage errors */ }
   }, [rawInvoiceRows, isDataLoaded, mode])
+
+  // Persist UI state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANALYTICS_UI_KEY, JSON.stringify({
+        selectedRowId: selectedRow?.id ?? selectedRowId,
+        globalFilter,
+        detailsPanelEnabled,
+        drawerOpen,
+        supplierFilter,
+        pricingGroupFilter,
+        timestamp: Date.now()
+      }))
+    } catch { /* ignore */ }
+  }, [selectedRow, selectedRowId, globalFilter, detailsPanelEnabled, drawerOpen, supplierFilter, pricingGroupFilter])
+
+  // Restore selectedRow from analyticsRows when rows change and we have a saved selectedRowId
+  useEffect(() => {
+    if (selectedRowId && analyticsRows.length > 0 && !selectedRow) {
+      const found = analyticsRows.find(r => r.id === selectedRowId)
+      if (found) {
+        setSelectedRow(found)
+      }
+    }
+  }, [analyticsRows, selectedRowId, selectedRow])
 
   // Handle mode change - preserve data when switching modes for independent state
   const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
@@ -1220,7 +1255,11 @@ const table = useReactTable({
 
   const handleRowClick = useCallback((row: AnalyticsRow) => {
     if (!detailsPanelEnabled) return // Block panel opening when disabled
-    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
+    setSelectedRow((prev) => {
+      const newRow = prev?.id === row.id ? null : row
+      setSelectedRowId(newRow?.id ?? null)
+      return newRow
+    })
   }, [detailsPanelEnabled])
 
   // Close detail panel when filter hides the selected row
@@ -1228,7 +1267,7 @@ const table = useReactTable({
     if (selectedRow && globalFilter) {
       const lf = globalFilter.toLowerCase()
       const match = Object.values(selectedRow).some((v) => String(v).toLowerCase().includes(lf))
-      if (!match) setSelectedRow(null)
+      if (!match) { setSelectedRow(null); setSelectedRowId(null) }
     }
   }, [globalFilter, selectedRow])
 
@@ -1838,7 +1877,7 @@ const table = useReactTable({
             onClick={() => {
               const newValue = !detailsPanelEnabled
               setDetailsPanelEnabled(newValue)
-              if (!newValue) setSelectedRow(null)
+              if (!newValue) { setSelectedRow(null); setSelectedRowId(null) }
             }}
             className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
               detailsPanelEnabled 
@@ -1979,7 +2018,7 @@ const table = useReactTable({
               />
 <PartDetailsPanel
   row={selectedRow}
-  onClose={() => setSelectedRow(null)}
+  onClose={() => { setSelectedRow(null); setSelectedRowId(null) }}
   />
             </div>
           )}

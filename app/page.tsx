@@ -110,22 +110,32 @@ export default function InvoiceDashboard() {
     minWidth: 320,
     maxWidthPct: 50,
   })
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(() => savedUI?.panelOpen ?? false)
   const [status, setStatus] = useState<Status>("idle")
   const [logs, setLogs] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [globalFilter, setGlobalFilter] = useState("")
+  const [globalFilter, setGlobalFilter] = useState(() => savedUI?.globalFilter ?? "")
   const [rowCount, setRowCount] = useState(0)
   const [selectedRow, setSelectedRow] = useState<InvoiceRow | null>(null)
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(() => savedUI?.selectedRowId ?? null)
 
   // Supabase user state
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [role, setRole] = useState<string | null>(null)
 
-  // Persist invoice data to survive page navigation
+  // Persist invoice data and UI state to survive page navigation
   const INVOICE_DATA_KEY = "invoice_data_cache"
+  const INVOICE_UI_KEY = "invoice_ui_state"
+  
+  // Restore UI state from localStorage
+  const savedUI = typeof window !== "undefined" ? (() => {
+    try {
+      const saved = localStorage.getItem(INVOICE_UI_KEY)
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })() : null
   
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
@@ -193,8 +203,31 @@ export default function InvoiceDashboard() {
     }
   }, [rows, isEnriched, selectedInvoice])
 
-  // Bottom simulation panel state
-  const [simPanelOpen, setSimPanelOpen] = useState(false)
+  // Persist UI state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(INVOICE_UI_KEY, JSON.stringify({
+        selectedRowId: selectedRow?.id ?? selectedRowId,
+        globalFilter,
+        panelOpen,
+        simPanelOpen,
+        timestamp: Date.now()
+      }))
+    } catch { /* ignore */ }
+  }, [selectedRow, selectedRowId, globalFilter, panelOpen, simPanelOpen])
+
+  // Restore selectedRow from rows when rows change and we have a saved selectedRowId
+  useEffect(() => {
+    if (selectedRowId && rows.length > 0 && !selectedRow) {
+      const found = rows.find(r => r.id === selectedRowId)
+      if (found) {
+        setSelectedRow(found)
+      }
+    }
+  }, [rows, selectedRowId, selectedRow])
+
+  // Bottom simulation panel state - restore from saved UI
+  const [simPanelOpen, setSimPanelOpen] = useState(() => savedUI?.simPanelOpen ?? false)
   const [simPanelHeight, setSimPanelHeight] = useState(40)
 
   // Load saved height AFTER mount (avoids hydration mismatch)
@@ -375,6 +408,7 @@ export default function InvoiceDashboard() {
     (invoiceId: string) => {
       setSelectedInvoice(invoiceId)
       setSelectedRow(null)
+      setSelectedRowId(null)
       setIsEnriched(false)
       loadInvoice(invoiceId, "raw")
     },
@@ -930,6 +964,7 @@ export default function InvoiceDashboard() {
     setProgress(0)
     setIsProcessing(false)
     setSelectedRow(null)
+    setSelectedRowId(null)
     setDataVersion((v) => v + 1)
 
     setLogs((prev) => [
@@ -1009,7 +1044,11 @@ export default function InvoiceDashboard() {
   }, [])
 
   const handleRowClick = useCallback((row: InvoiceRow) => {
-    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
+    setSelectedRow((prev) => {
+      const newRow = prev?.id === row.id ? null : row
+      setSelectedRowId(newRow?.id ?? null)
+      return newRow
+    })
   }, [])
 
   // Update a single row (used for manual MOOT edits)
@@ -1021,6 +1060,7 @@ export default function InvoiceDashboard() {
 
   const handleCloseAnalytics = useCallback(() => {
     setSelectedRow(null)
+    setSelectedRowId(null)
   }, [])
 
   // Close analytics panel if filter removes the selected row
@@ -1030,7 +1070,7 @@ export default function InvoiceDashboard() {
       const match = Object.values(selectedRow).some((val) =>
         String(val).toLowerCase().includes(lowerFilter)
       )
-      if (!match) setSelectedRow(null)
+      if (!match) { setSelectedRow(null); setSelectedRowId(null) }
     }
   }, [globalFilter, selectedRow])
 
