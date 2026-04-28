@@ -203,6 +203,9 @@ export default function InvoiceDashboard() {
     }
   }, [rows, isEnriched, selectedInvoice])
 
+  // Bottom simulation panel state - restore from saved UI (must be before useEffect that uses it)
+  const [simPanelOpen, setSimPanelOpen] = useState(() => savedUI?.simPanelOpen ?? false)
+
   // Persist UI state to localStorage
   useEffect(() => {
     try {
@@ -225,9 +228,6 @@ export default function InvoiceDashboard() {
       }
     }
   }, [rows, selectedRowId, selectedRow])
-
-  // Bottom simulation panel state - restore from saved UI
-  const [simPanelOpen, setSimPanelOpen] = useState(() => savedUI?.simPanelOpen ?? false)
   const [simPanelHeight, setSimPanelHeight] = useState(40)
 
   // Load saved height AFTER mount (avoids hydration mismatch)
