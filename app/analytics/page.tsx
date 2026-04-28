@@ -487,7 +487,8 @@ const columnLabels: Record<string, string> = {
 const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", "competitorStock", "lastSaleDate"]
 
 // --- Main page ---
-export default function AnalyticsPage() {
+// Export both named and default for flexibility
+export function AnalyticsPageContent({ onSwitchToInvoice }: { onSwitchToInvoice?: () => void } = {}) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 const [mounted, setMounted] = useState(false)
@@ -565,15 +566,6 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
     router.push("/login")
     router.refresh()
   }, [router])
-  
-  // Persist analytics UI state key (defined early for state initialization)
-  const ANALYTICS_UI_KEY = "analytics_ui_state"
-  const savedUI = typeof window !== "undefined" ? (() => {
-    try {
-      const saved = localStorage.getItem(ANALYTICS_UI_KEY)
-      return saved ? JSON.parse(saved) : null
-    } catch { return null }
-  })() : null
 
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "analyticsRightPanelWidth",
@@ -581,13 +573,11 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
     minWidth: 320,
     maxWidthPct: 50,
   })
-  const [globalFilter, setGlobalFilter] = useState(() => savedUI?.globalFilter ?? "")
+  const [globalFilter, setGlobalFilter] = useState("")
   const [sorting, setSorting] = useState<SortingState>([])
   const [mootChanges, setMootChanges] = useState<Record<string, number>>({})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
   const [isHydrated, setIsHydrated] = useState(false)
-
-  
 
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -598,11 +588,11 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined)
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
-  const [supplierFilter, setSupplierFilter] = useState(() => savedUI?.supplierFilter ?? "all")
-  const [pricingGroupFilter, setPricingGroupFilter] = useState(() => savedUI?.pricingGroupFilter ?? "all")
+  const [supplierFilter, setSupplierFilter] = useState("all")
+  const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
-  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(() => savedUI?.detailsPanelEnabled ?? false)
-  const [drawerOpen, setDrawerOpen] = useState(() => savedUI?.drawerOpen ?? false)
+  const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
   const dragStartH = useRef<number>(60)
@@ -718,25 +708,9 @@ const handleHideColumn = useCallback((columnId: string) => {
   const [filterNegativeMargin, setFilterNegativeMargin] = useState(false)
   const [filterCompetitor, setFilterCompetitor] = useState(false)
   const [filterBulk, setFilterBulk] = useState(false)
-
-  // Persist analytics data to survive page navigation
-  const ANALYTICS_DATA_KEY = "analytics_data_cache"
   
   // Data mode: stock (warehouse), invoice, or custom
-  // Persist mode to survive page navigation
-  const [mode, setMode] = useState<ModeType>(() => {
-    if (typeof window === "undefined") return 'stock'
-    try {
-      const saved = localStorage.getItem(ANALYTICS_DATA_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.mode === 'stock' || parsed.mode === 'invoice' || parsed.mode === 'custom') {
-          return parsed.mode
-        }
-      }
-    } catch { /* ignore */ }
-    return 'stock'
-  })
+  const [mode, setMode] = useState<ModeType>('stock')
   
   // Mode-based columns - changes when mode changes
   const columns = useMemo(() => {
@@ -880,55 +854,9 @@ const handleHideColumn = useCallback((columnId: string) => {
   }, [invoices, invoiceSearchQuery])
   
   // Data — manual load only, no auto-fetch
-  const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>(() => {
-    if (typeof window === "undefined") return []
-    try {
-      const saved = localStorage.getItem(ANALYTICS_DATA_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.rows || []
-      }
-    } catch { /* ignore */ }
-    return []
-  })
+  const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>([])
   const [isDataLoading, setIsDataLoading] = useState(false)
-  const [isDataLoaded, setIsDataLoaded] = useState(() => {
-    if (typeof window === "undefined") return false
-    try {
-      const saved = localStorage.getItem(ANALYTICS_DATA_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.isLoaded || false
-      }
-    } catch { /* ignore */ }
-    return false
-  })
-  
-  // Persist analytics data when it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(ANALYTICS_DATA_KEY, JSON.stringify({
-        rows: rawInvoiceRows,
-        isLoaded: isDataLoaded,
-        mode: mode,
-        timestamp: Date.now()
-      }))
-    } catch { /* ignore storage errors */ }
-  }, [rawInvoiceRows, isDataLoaded, mode])
-
-  // Persist UI state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(ANALYTICS_UI_KEY, JSON.stringify({
-        globalFilter,
-        detailsPanelEnabled,
-        drawerOpen,
-        supplierFilter,
-        pricingGroupFilter,
-        timestamp: Date.now()
-      }))
-    } catch { /* ignore */ }
-  }, [globalFilter, detailsPanelEnabled, drawerOpen, supplierFilter, pricingGroupFilter])
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
 
   // Handle mode change - preserve data when switching modes for independent state
   const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
@@ -1338,7 +1266,7 @@ const table = useReactTable({
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => router.push("/")}
+            onClick={() => onSwitchToInvoice ? onSwitchToInvoice() : router.push("/")}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
@@ -2067,4 +1995,9 @@ const table = useReactTable({
       />
     </div>
   )
+}
+
+// Default export for Next.js route
+export default function AnalyticsPage() {
+  return <AnalyticsPageContent />
 }

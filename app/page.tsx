@@ -25,6 +25,7 @@ import { SimulationPanel } from "@/components/dashboard/simulation-panel"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
+import { AnalyticsPageContent } from "@/app/analytics/page"
 
 type Status = "idle" | "processing" | "completed" | "error"
 
@@ -47,10 +48,16 @@ const statusConfig: Record<Status, { label: string; className: string }> = {
   },
 }
 
+// View mode type for switching between Invoice and Analytics
+type ViewMode = "invoice" | "analytics"
+
 export default function InvoiceDashboard() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  
+  // View mode state - controls which view is visible (both stay mounted)
+  const [viewMode, setViewMode] = useState<ViewMode>("invoice")
 
   // Workspace display settings
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
@@ -104,31 +111,19 @@ export default function InvoiceDashboard() {
     router.push("/login")
     router.refresh()
   }, [router])
-  // Persist invoice data and UI state to survive page navigation
-  const INVOICE_DATA_KEY = "invoice_data_cache"
-  const INVOICE_UI_KEY = "invoice_ui_state"
-  
-  // Restore UI state from localStorage (must be defined before useState calls that use it)
-  const savedUI = typeof window !== "undefined" ? (() => {
-    try {
-      const saved = localStorage.getItem(INVOICE_UI_KEY)
-      return saved ? JSON.parse(saved) : null
-    } catch { return null }
-  })() : null
-
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "invoiceRightPanelWidth",
     defaultWidth: 420,
     minWidth: 320,
     maxWidthPct: 50,
   })
-  const [panelOpen, setPanelOpen] = useState(() => savedUI?.panelOpen ?? false)
+  const [panelOpen, setPanelOpen] = useState(false)
   const [status, setStatus] = useState<Status>("idle")
   const [logs, setLogs] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [globalFilter, setGlobalFilter] = useState(() => savedUI?.globalFilter ?? "")
+  const [globalFilter, setGlobalFilter] = useState("")
   const [rowCount, setRowCount] = useState(0)
   const [selectedRow, setSelectedRow] = useState<InvoiceRow | null>(null)
 
@@ -138,17 +133,7 @@ export default function InvoiceDashboard() {
   
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
-  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null
-    try {
-      const saved = localStorage.getItem(INVOICE_DATA_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.selectedInvoice || null
-      }
-    } catch { /* ignore */ }
-    return null
-  })
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
 
   // Shipment selection state (synced from SimulationPanel)
@@ -161,62 +146,15 @@ export default function InvoiceDashboard() {
     )
   }
   
-  const [rows, setRows] = useState<InvoiceRow[]>(() => {
-    if (typeof window === "undefined") return []
-    try {
-      const saved = localStorage.getItem(INVOICE_DATA_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.rows || []
-      }
-    } catch { /* ignore */ }
-    return []
-  })
+  const [rows, setRows] = useState<InvoiceRow[]>([])
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
-  const [isEnriched, setIsEnriched] = useState(() => {
-    if (typeof window === "undefined") return false
-    try {
-      const saved = localStorage.getItem(INVOICE_DATA_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.isEnriched || false
-      }
-    } catch { /* ignore */ }
-    return false
-  })
+  const [isEnriched, setIsEnriched] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
-  
-  // Persist invoice data when it changes
-  useEffect(() => {
-    if (rows.length > 0) {
-      try {
-        localStorage.setItem(INVOICE_DATA_KEY, JSON.stringify({
-          rows: rows,
-          isEnriched: isEnriched,
-          selectedInvoice: selectedInvoice,
-          timestamp: Date.now()
-        }))
-      } catch { /* ignore storage errors */ }
-    }
-  }, [rows, isEnriched, selectedInvoice])
 
-  // Bottom simulation panel state - restore from saved UI (must be before useEffect that uses it)
-  const [simPanelOpen, setSimPanelOpen] = useState(() => savedUI?.simPanelOpen ?? false)
-
-  // Persist UI state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(INVOICE_UI_KEY, JSON.stringify({
-        globalFilter,
-        panelOpen,
-        simPanelOpen,
-        timestamp: Date.now()
-      }))
-    } catch { /* ignore */ }
-  }, [globalFilter, panelOpen, simPanelOpen])
-
+  // Bottom simulation panel state
+  const [simPanelOpen, setSimPanelOpen] = useState(false)
   const [simPanelHeight, setSimPanelHeight] = useState(40)
 
   // Load saved height AFTER mount (avoids hydration mismatch)
@@ -946,8 +884,6 @@ export default function InvoiceDashboard() {
     setSelectedInvoice(null)
     setSelectedInvoices([])
     setIsEnriched(false)
-    // Also clear persisted data
-    try { localStorage.removeItem(INVOICE_DATA_KEY) } catch { /* ignore */ }
     setStatus("idle")
     setProgress(0)
     setIsProcessing(false)
@@ -1104,7 +1040,14 @@ export default function InvoiceDashboard() {
 
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
+    <>
+      {/* Analytics View - kept mounted, hidden with CSS */}
+      <div style={{ display: viewMode === "analytics" ? "block" : "none" }}>
+        <AnalyticsPageContent onSwitchToInvoice={() => setViewMode("invoice")} />
+      </div>
+      
+      {/* Invoice View - kept mounted, hidden with CSS */}
+      <div style={{ display: viewMode === "invoice" ? "flex" : "none" }} className={`h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
       {/* Control Panel Drawer */}
       <ControlPanel
         isOpen={panelOpen}
@@ -1218,7 +1161,7 @@ export default function InvoiceDashboard() {
               variant="ghost"
               size="sm"
               className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => router.push("/analytics")}
+              onClick={() => setViewMode("analytics")}
             >
               <BarChart3 className="h-3.5 w-3.5" />
               <span className="hidden xl:inline">Analytics</span>
@@ -1567,6 +1510,7 @@ export default function InvoiceDashboard() {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </>
   )
 }
