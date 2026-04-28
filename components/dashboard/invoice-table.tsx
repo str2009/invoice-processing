@@ -817,14 +817,34 @@ export function InvoiceTable({
 
   // Row click handler
   const handleRowClick = useCallback((event: React.MouseEvent, row: InvoiceRow, rowId: string) => {
-    // Part Details - ONLY when detailsPanelEnabled
-    if (detailsPanelEnabled) {
-      onRowClick?.(row)
+    // Prevent browser text selection on Shift/Ctrl click
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      event.stopPropagation()
     }
 
     // Shift click = select range from anchor
     if (event.shiftKey && selectionAnchorId) {
-      selectRange(selectionAnchorId, rowId)
+      const rows = table.getRowModel().rows
+
+      const fromIndex = rows.findIndex(r => r.id === selectionAnchorId)
+      const toIndex = rows.findIndex(r => r.id === rowId)
+
+      if (fromIndex === -1 || toIndex === -1) {
+        setRowSelection({ [rowId]: true })
+        setSelectionAnchorId(rowId)
+        return
+      }
+
+      const start = Math.min(fromIndex, toIndex)
+      const end = Math.max(fromIndex, toIndex)
+
+      const next: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        next[rows[i].id] = true
+      }
+
+      setRowSelection(next)
       return
     }
 
@@ -841,7 +861,12 @@ export function InvoiceTable({
     // Normal click = single select
     setRowSelection({ [rowId]: true })
     setSelectionAnchorId(rowId)
-  }, [detailsPanelEnabled, selectionAnchorId, selectRange, onRowClick])
+
+    // Part Details - ONLY when detailsPanelEnabled
+    if (detailsPanelEnabled) {
+      onRowClick?.(row)
+    }
+  }, [detailsPanelEnabled, selectionAnchorId, table, onRowClick])
 
   // Keyboard handler for navigation, selection, and copy
   const handleTableKeyDown = useCallback((event: React.KeyboardEvent) => {
@@ -1123,6 +1148,11 @@ export function InvoiceTable({
                           ? "bg-blue-500/20 border-l-2 border-blue-500"
                           : "bg-background hover:bg-muted/50"
                       }`}
+                      onMouseDown={(e) => {
+                        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                          e.preventDefault()
+                        }
+                      }}
                       onClick={(e) => handleRowClick(e, row.original, row.id)}
                     >
                       <SortableContext

@@ -1196,14 +1196,34 @@ const table = useReactTable({
 
   // Row click handler
   const handleRowClick = useCallback((event: React.MouseEvent, row: AnalyticsRow, rowId: string) => {
-    // Part Details - ONLY when detailsPanelEnabled
-    if (detailsPanelEnabled) {
-      setActiveRow(row)
+    // Prevent browser text selection on Shift/Ctrl click
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      event.stopPropagation()
     }
 
     // Shift click = select range from anchor
     if (event.shiftKey && selectionAnchorId) {
-      selectRange(selectionAnchorId, rowId)
+      const rows = table.getRowModel().rows
+
+      const fromIndex = rows.findIndex(r => r.id === selectionAnchorId)
+      const toIndex = rows.findIndex(r => r.id === rowId)
+
+      if (fromIndex === -1 || toIndex === -1) {
+        setRowSelection({ [rowId]: true })
+        setSelectionAnchorId(rowId)
+        return
+      }
+
+      const start = Math.min(fromIndex, toIndex)
+      const end = Math.max(fromIndex, toIndex)
+
+      const next: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        next[rows[i].id] = true
+      }
+
+      setRowSelection(next)
       return
     }
 
@@ -1220,7 +1240,17 @@ const table = useReactTable({
     // Normal click = single select
     setRowSelection({ [rowId]: true })
     setSelectionAnchorId(rowId)
-  }, [detailsPanelEnabled, selectionAnchorId, selectRange])
+
+    // Part Details toggle - ONLY when detailsPanelEnabled
+    if (detailsPanelEnabled) {
+      const currentId = activeRow?.part_brand_key || activeRow?.id || activeRow?.part_code
+      if (currentId === rowId) {
+        setActiveRow(null) // CLOSE PANEL
+      } else {
+        setActiveRow(row) // OPEN / SWITCH
+      }
+    }
+  }, [detailsPanelEnabled, selectionAnchorId, table, activeRow])
 
   // Keyboard handler for navigation, selection, and copy
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -1992,6 +2022,11 @@ const table = useReactTable({
   ? "bg-blue-500/20 border-l-2 border-blue-500"
   : "bg-background hover:bg-muted/50"
   }`}
+  onMouseDown={(e) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+    }
+  }}
   onClick={(e) => handleRowClick(e, row.original, row.id)}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
