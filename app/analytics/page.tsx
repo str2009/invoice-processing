@@ -591,6 +591,9 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
   const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
+  // Excel-like multi-selection state
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [anchorRowId, setAnchorRowId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -1167,10 +1170,74 @@ const table = useReactTable({
     setTimeout(() => setIsLoadingInvoice(false), 300)
   }, [invoiceList, ts])
 
-  const handleRowClick = useCallback((row: AnalyticsRow) => {
-    if (!detailsPanelEnabled) return // Block panel opening when disabled
-    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-  }, [detailsPanelEnabled])
+  // Excel-like row click handler with multi-select support
+  const handleRowClick = useCallback((e: React.MouseEvent, row: AnalyticsRow) => {
+    const rows = table.getRowModel().rows
+    const idx = rows.findIndex(r => r.id === row.id)
+
+    // SHIFT → range select
+    if (e.shiftKey && anchorRowId) {
+      const anchorIdx = rows.findIndex(r => r.id === anchorRowId)
+      const [start, end] = [anchorIdx, idx].sort((a, b) => a - b)
+
+      const newSelection: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        newSelection[rows[i].id] = true
+      }
+
+      setRowSelection(prev => ({ ...prev, ...newSelection }))
+      return
+    }
+
+    // CTRL / CMD → toggle multi-select
+    if (e.ctrlKey || e.metaKey) {
+      setRowSelection(prev => ({
+        ...prev,
+        [row.id]: !prev[row.id]
+      }))
+      setAnchorRowId(row.id)
+      return
+    }
+
+    // Normal click → single select (also open details panel if enabled)
+    setRowSelection({ [row.id]: true })
+    setAnchorRowId(row.id)
+    
+    // Keep details panel behavior
+    if (detailsPanelEnabled) {
+      setSelectedRow((prev) => (prev?.id === row.id ? null : row))
+    }
+  }, [detailsPanelEnabled, anchorRowId, table])
+
+  // Keyboard copy handler (Ctrl/Cmd + C)
+  useEffect(() => {
+    const handleCopy = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== "c") return
+
+      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+      if (selectedIds.length === 0) return
+
+      const rows = table.getRowModel().rows
+        .filter(r => selectedIds.includes(r.id))
+        .map(r => r.original)
+
+      // Get visible column IDs in order
+      const visibleColumns = table.getAllLeafColumns()
+        .filter(c => c.getIsVisible())
+        .map(c => c.id)
+
+      // Build TSV text
+      const text = rows.map(row =>
+        visibleColumns.map(col => String((row as Record<string, unknown>)[col] ?? "")).join("\t")
+      ).join("\n")
+
+      navigator.clipboard.writeText(text)
+      e.preventDefault()
+    }
+
+    window.addEventListener("keydown", handleCopy)
+    return () => window.removeEventListener("keydown", handleCopy)
+  }, [rowSelection, table])
 
   // Close detail panel when filter hides the selected row
   useEffect(() => {
@@ -1859,16 +1926,16 @@ const table = useReactTable({
 <tbody>
   {table.getRowModel().rows?.length ? (
   table.getRowModel().rows.map((row) => {
-  const isSelected = selectedRow?.id === row.original.id
+  const isRowSelected = rowSelection[row.id] || selectedRow?.id === row.original.id
   return (
 <tr
   key={row.id}
-  className={`h-8 cursor-pointer transition-colors ${
-  isSelected
-  ? "bg-primary/10 hover:bg-primary/15"
+  className={`h-8 cursor-pointer transition-colors select-text ${
+  isRowSelected
+  ? "bg-blue-500/20 border-l-2 border-blue-500"
   : "bg-background hover:bg-muted/50"
   }`}
-  onClick={() => handleRowClick(row.original)}
+  onClick={(e) => handleRowClick(e, row.original)}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {row.getVisibleCells().map((cell) => (
