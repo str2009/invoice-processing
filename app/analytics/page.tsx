@@ -590,8 +590,12 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
-  // Single row selection state (simplified)
+  // Row selection state - two concepts:
+  // activeRow: single row for Part Details panel
+  // rowSelection: map of selected rows for multi-select/copy
+  const [activeRow, setActiveRow] = useState<AnalyticsRow | null>(null)
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -1062,12 +1066,6 @@ const table = useReactTable({
   const filteredRows = table.getFilteredRowModel().rows
   const rowCount = filteredRows.length
 
-  // Compute selected row from rowSelection state (must be after table is defined)
-  const selectedRowId = Object.keys(rowSelection).find(id => rowSelection[id])
-  const selectedRow = selectedRowId 
-    ? table.getRowModel().rows.find(r => r.id === selectedRowId)?.original ?? null
-    : null
-
   // Calculate total table width for proper column resizing
   const totalWidth = table
     .getVisibleLeafColumns()
@@ -1175,16 +1173,103 @@ const table = useReactTable({
     setTimeout(() => setIsLoadingInvoice(false), 300)
   }, [invoiceList, ts])
 
-  // Simple row click handler - single selection only
-  const handleRowClick = useCallback((row: AnalyticsRow) => {
-    if (!detailsPanelEnabled) return
-    // Toggle selection: click same row to deselect, otherwise select new row
-    const rowId = row.part_brand_key || row.id
-    setRowSelection(prev => {
-      const isCurrentlySelected = prev[rowId]
-      return isCurrentlySelected ? {} : { [rowId]: true }
-    })
-  }, [detailsPanelEnabled])
+  // Row click handler with multi-select support
+  const handleRowClick = useCallback((event: React.MouseEvent, row: AnalyticsRow, rowId: string) => {
+    const rows = table.getRowModel().rows
+
+    // Always update active row for Part Details (if panel enabled)
+    if (detailsPanelEnabled) {
+      setActiveRow(row)
+    }
+
+    // Ctrl/Cmd click = toggle one row in multi-selection
+    if (event.ctrlKey || event.metaKey) {
+      setRowSelection(prev => ({
+        ...prev,
+        [rowId]: !prev[rowId],
+      }))
+      setSelectionAnchorId(rowId)
+      return
+    }
+
+    // Shift click = select range
+    if (event.shiftKey && selectionAnchorId) {
+      const anchorIndex = rows.findIndex(r => r.id === selectionAnchorId)
+      const currentIndex = rows.findIndex(r => r.id === rowId)
+
+      if (anchorIndex === -1 || currentIndex === -1) {
+        setRowSelection({ [rowId]: true })
+        setSelectionAnchorId(rowId)
+        return
+      }
+
+      const start = Math.min(anchorIndex, currentIndex)
+      const end = Math.max(anchorIndex, currentIndex)
+
+      const rangeSelection: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        rangeSelection[rows[i].id] = true
+      }
+
+      setRowSelection(prev => ({
+        ...prev,
+        ...rangeSelection,
+      }))
+      return
+    }
+
+    // Normal click = single select
+    setRowSelection({ [rowId]: true })
+    setSelectionAnchorId(rowId)
+  }, [detailsPanelEnabled, selectionAnchorId, table])
+
+  // Keyboard handler for Ctrl+A (select all) and Ctrl+C (copy)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"
+      const isCopy = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c"
+
+      if (isSelectAll) {
+        event.preventDefault()
+        const allVisibleRows = table.getRowModel().rows
+        const nextSelection: Record<string, boolean> = {}
+        allVisibleRows.forEach(row => {
+          nextSelection[row.id] = true
+        })
+        setRowSelection(nextSelection)
+        if (allVisibleRows.length > 0) {
+          setActiveRow(allVisibleRows[0].original)
+          setSelectionAnchorId(allVisibleRows[0].id)
+        }
+        return
+      }
+
+      if (isCopy) {
+        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+        if (selectedIds.length === 0) return
+
+        const selectedRows = table.getRowModel().rows.filter(row => selectedIds.includes(row.id))
+        const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible())
+
+        const text = selectedRows
+          .map(row =>
+            visibleColumns
+              .map(col => {
+                const value = row.getValue(col.id)
+                return value == null ? "" : String(value)
+              })
+              .join("\t")
+          )
+          .join("\n")
+
+        navigator.clipboard.writeText(text)
+        event.preventDefault()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [table, rowSelection])
 
   // DnD
   const sensors = useSensors(
@@ -1792,7 +1877,7 @@ const table = useReactTable({
             onClick={() => {
               const newValue = !detailsPanelEnabled
               setDetailsPanelEnabled(newValue)
-              if (!newValue) { setRowSelection({}) }
+              if (!newValue) { setActiveRow(null); setRowSelection({}) }
             }}
             className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
               detailsPanelEnabled 
@@ -1873,7 +1958,7 @@ const table = useReactTable({
   ? "bg-blue-500/20 border-l-2 border-blue-500"
   : "bg-background hover:bg-muted/50"
   }`}
-  onClick={() => handleRowClick(row.original)}
+  onClick={(e) => handleRowClick(e, row.original, row.id)}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {row.getVisibleCells().map((cell) => (
@@ -1917,11 +2002,11 @@ const table = useReactTable({
         {/* Right detail panel - resizable */}
         <div
           className={`shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${
-            selectedRow ? "" : "w-0"
+            activeRow && detailsPanelEnabled ? "" : "w-0"
           }`}
-          style={selectedRow ? { width: `${rightPanelWidth}px` } : undefined}
+          style={activeRow && detailsPanelEnabled ? { width: `${rightPanelWidth}px` } : undefined}
         >
-          {selectedRow && (
+          {activeRow && detailsPanelEnabled && (
             <div className="relative flex h-full w-full">
               {/* Drag handle */}
               <div
@@ -1932,8 +2017,8 @@ const table = useReactTable({
                 aria-label="Resize detail panel"
               />
 <PartDetailsPanel
-  row={selectedRow}
-  onClose={() => setRowSelection({})}
+  row={activeRow}
+  onClose={() => { setActiveRow(null); setRowSelection({}) }}
   />
             </div>
           )}

@@ -621,8 +621,11 @@ export function InvoiceTable({
   const [isHydrated, setIsHydrated] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
-  // Single row selection state (simplified)
+  // Row selection state - two concepts:
+  // activeRow: single row for Part Details panel (passed via onRowClick)
+  // rowSelection: map of selected rows for multi-select/copy
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Context menu hook
@@ -791,22 +794,103 @@ export function InvoiceTable({
     },
   })
 
-  // Simple row click handler - single selection only
-  const handleRowClick = useCallback((row: InvoiceRow) => {
-    if (!detailsPanelEnabled) return
-    // Toggle selection: click same row to deselect, otherwise select new row
-    const rowId = row.id
-    setRowSelection(prev => {
-      const isCurrentlySelected = prev[rowId]
-      if (isCurrentlySelected) {
-        return {}
-      } else {
-        // Call original callback when selecting
-        onRowClick?.(row)
-        return { [rowId]: true }
+  // Row click handler with multi-select support
+  const handleRowClick = useCallback((event: React.MouseEvent, row: InvoiceRow, rowId: string) => {
+    const rows = table.getRowModel().rows
+
+    // Always update active row for Part Details (via callback)
+    if (detailsPanelEnabled) {
+      onRowClick?.(row)
+    }
+
+    // Ctrl/Cmd click = toggle one row in multi-selection
+    if (event.ctrlKey || event.metaKey) {
+      setRowSelection(prev => ({
+        ...prev,
+        [rowId]: !prev[rowId],
+      }))
+      setSelectionAnchorId(rowId)
+      return
+    }
+
+    // Shift click = select range
+    if (event.shiftKey && selectionAnchorId) {
+      const anchorIndex = rows.findIndex(r => r.id === selectionAnchorId)
+      const currentIndex = rows.findIndex(r => r.id === rowId)
+
+      if (anchorIndex === -1 || currentIndex === -1) {
+        setRowSelection({ [rowId]: true })
+        setSelectionAnchorId(rowId)
+        return
       }
-    })
-  }, [detailsPanelEnabled, onRowClick])
+
+      const start = Math.min(anchorIndex, currentIndex)
+      const end = Math.max(anchorIndex, currentIndex)
+
+      const rangeSelection: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        rangeSelection[rows[i].id] = true
+      }
+
+      setRowSelection(prev => ({
+        ...prev,
+        ...rangeSelection,
+      }))
+      return
+    }
+
+    // Normal click = single select
+    setRowSelection({ [rowId]: true })
+    setSelectionAnchorId(rowId)
+  }, [detailsPanelEnabled, selectionAnchorId, table, onRowClick])
+
+  // Keyboard handler for Ctrl+A (select all) and Ctrl+C (copy)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"
+      const isCopy = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c"
+
+      if (isSelectAll) {
+        event.preventDefault()
+        const allVisibleRows = table.getRowModel().rows
+        const nextSelection: Record<string, boolean> = {}
+        allVisibleRows.forEach(row => {
+          nextSelection[row.id] = true
+        })
+        setRowSelection(nextSelection)
+        if (allVisibleRows.length > 0 && detailsPanelEnabled) {
+          onRowClick?.(allVisibleRows[0].original)
+          setSelectionAnchorId(allVisibleRows[0].id)
+        }
+        return
+      }
+
+      if (isCopy) {
+        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+        if (selectedIds.length === 0) return
+
+        const selectedRows = table.getRowModel().rows.filter(row => selectedIds.includes(row.id))
+        const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible())
+
+        const text = selectedRows
+          .map(row =>
+            visibleColumns
+              .map(col => {
+                const value = row.getValue(col.id)
+                return value == null ? "" : String(value)
+              })
+              .join("\t")
+          )
+          .join("\n")
+
+        navigator.clipboard.writeText(text)
+        event.preventDefault()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [table, rowSelection, detailsPanelEnabled, onRowClick])
 
   // Auto-fit column width to content
   const handleAutoFit = useCallback((columnId: string) => {
@@ -1010,7 +1094,7 @@ export function InvoiceTable({
                           ? "bg-blue-500/20 border-l-2 border-blue-500"
                           : "bg-background hover:bg-muted/50"
                       }`}
-                      onClick={() => handleRowClick(row.original)}
+                      onClick={(e) => handleRowClick(e, row.original, row.id)}
                     >
                       <SortableContext
                         items={columnIds}
