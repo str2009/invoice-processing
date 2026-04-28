@@ -43,6 +43,7 @@ import {
 import { ArrowUp, ArrowDown, Columns3 } from "lucide-react"
 import { REASON_OPTIONS, type InvoiceRow } from "@/lib/mock-data"
 import { ColumnHeaderContextMenu, useColumnContextMenu } from "@/components/ui/column-header-context-menu"
+import { useRowContextMenu } from "@/components/cart/row-context-menu"
 
 // --- localStorage helpers ---
 const STORAGE_KEY = "invoice-table-columns-v1"
@@ -626,8 +627,9 @@ export function InvoiceTable({
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
-  // Context menu hook
+  // Context menu hooks
   const { contextMenu, handleContextMenu, closeContextMenu } = useColumnContextMenu()
+  const { openMenu: openRowContextMenu } = useRowContextMenu()
 
   // Default visibility state (all columns visible)
   const defaultVisibility = useMemo(() => {
@@ -1154,6 +1156,7 @@ export function InvoiceTable({
                         }
                       }}
                       onClick={(e) => handleRowClick(e, row.original, row.id)}
+                      onContextMenu={(e) => openRowContextMenu(e, row.original, "invoice")}
                     >
                       <SortableContext
                         items={columnIds}

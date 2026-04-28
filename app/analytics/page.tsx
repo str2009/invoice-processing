@@ -35,6 +35,9 @@ import { CSS } from "@dnd-kit/utilities"
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
 import { ControlPanel } from "@/components/dashboard/control-panel"
 import { PartDetailsPanel } from "@/components/dashboard/part-details-panel"
+import { useCart } from "@/components/cart/cart-context"
+import { CartPanel } from "@/components/cart/cart-panel"
+import { useRowContextMenu } from "@/components/cart/row-context-menu"
 import { modeConfig, getStockColumns, getInvoiceColumns, getCustomColumns, type StockRow, type InvoiceRow, type ModeType } from "./mode-views"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -87,6 +90,7 @@ import {
   User,
   Check,
   FileText,
+  ShoppingCart,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
@@ -595,6 +599,9 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
+  const [cartPanelOpen, setCartPanelOpen] = useState(false)
+  const { totalItems: cartTotalItems } = useCart()
+  const { openMenu: openContextMenu } = useRowContextMenu()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
   const dragStartY = useRef<number | null>(null)
@@ -1946,6 +1953,24 @@ const table = useReactTable({
             Details Panel
           </button>
 
+          {/* Cart toggle */}
+          <button
+            onClick={() => setCartPanelOpen(prev => !prev)}
+            className={`relative px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none flex items-center gap-1 ${
+              cartPanelOpen 
+                ? "text-green-500 ring-1 ring-green-500/70" 
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShoppingCart className="h-3 w-3" />
+            Cart
+            {cartTotalItems > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-medium text-primary-foreground">
+                {cartTotalItems > 99 ? "99+" : cartTotalItems}
+              </span>
+            )}
+          </button>
+
           {/* Column manager */}
           <Popover>
             <PopoverTrigger asChild>
@@ -2028,6 +2053,7 @@ const table = useReactTable({
     }
   }}
   onClick={(e) => handleRowClick(e, row.original, row.id)}
+  onContextMenu={(e) => openContextMenu(e, row.original, "analytics")}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {row.getVisibleCells().map((cell) => (
@@ -2090,6 +2116,18 @@ const table = useReactTable({
   onClose={() => { setActiveRow(null); setRowSelection({}) }}
   />
             </div>
+          )}
+        </div>
+
+        {/* Cart panel */}
+        <div
+          className={`shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${
+            cartPanelOpen ? "" : "w-0"
+          }`}
+          style={cartPanelOpen ? { width: "320px" } : undefined}
+        >
+          {cartPanelOpen && (
+            <CartPanel onClose={() => setCartPanelOpen(false)} />
           )}
         </div>
       </div>
