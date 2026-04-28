@@ -104,6 +104,18 @@ export default function InvoiceDashboard() {
     router.push("/login")
     router.refresh()
   }, [router])
+  // Persist invoice data and UI state to survive page navigation
+  const INVOICE_DATA_KEY = "invoice_data_cache"
+  const INVOICE_UI_KEY = "invoice_ui_state"
+  
+  // Restore UI state from localStorage (must be defined before useState calls that use it)
+  const savedUI = typeof window !== "undefined" ? (() => {
+    try {
+      const saved = localStorage.getItem(INVOICE_UI_KEY)
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })() : null
+
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "invoiceRightPanelWidth",
     defaultWidth: 420,
@@ -124,18 +136,6 @@ export default function InvoiceDashboard() {
   // Supabase user state
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [role, setRole] = useState<string | null>(null)
-
-  // Persist invoice data and UI state to survive page navigation
-  const INVOICE_DATA_KEY = "invoice_data_cache"
-  const INVOICE_UI_KEY = "invoice_ui_state"
-  
-  // Restore UI state from localStorage
-  const savedUI = typeof window !== "undefined" ? (() => {
-    try {
-      const saved = localStorage.getItem(INVOICE_UI_KEY)
-      return saved ? JSON.parse(saved) : null
-    } catch { return null }
-  })() : null
   
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
