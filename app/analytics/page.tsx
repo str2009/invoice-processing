@@ -710,8 +710,24 @@ const handleHideColumn = useCallback((columnId: string) => {
   const [filterCompetitor, setFilterCompetitor] = useState(false)
   const [filterBulk, setFilterBulk] = useState(false)
 
+  // Persist analytics data to survive page navigation
+  const ANALYTICS_DATA_KEY = "analytics_data_cache"
+  
   // Data mode: stock (warehouse), invoice, or custom
-  const [mode, setMode] = useState<ModeType>('stock')
+  // Persist mode to survive page navigation
+  const [mode, setMode] = useState<ModeType>(() => {
+    if (typeof window === "undefined") return 'stock'
+    try {
+      const saved = localStorage.getItem(ANALYTICS_DATA_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.mode === 'stock' || parsed.mode === 'invoice' || parsed.mode === 'custom') {
+          return parsed.mode
+        }
+      }
+    } catch { /* ignore */ }
+    return 'stock'
+  })
   
   // Mode-based columns - changes when mode changes
   const columns = useMemo(() => {
@@ -855,19 +871,51 @@ const handleHideColumn = useCallback((columnId: string) => {
   }, [invoices, invoiceSearchQuery])
   
   // Data — manual load only, no auto-fetch
-  const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>([])
+  const [rawInvoiceRows, setRawInvoiceRows] = useState<InvoiceRow[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const saved = localStorage.getItem(ANALYTICS_DATA_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.rows || []
+      }
+    } catch { /* ignore */ }
+    return []
+  })
   const [isDataLoading, setIsDataLoading] = useState(false)
-  const [isDataLoaded, setIsDataLoaded] = useState(false)
+  const [isDataLoaded, setIsDataLoaded] = useState(() => {
+    if (typeof window === "undefined") return false
+    try {
+      const saved = localStorage.getItem(ANALYTICS_DATA_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.isLoaded || false
+      }
+    } catch { /* ignore */ }
+    return false
+  })
+  
+  // Persist analytics data when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANALYTICS_DATA_KEY, JSON.stringify({
+        rows: rawInvoiceRows,
+        isLoaded: isDataLoaded,
+        mode: mode,
+        timestamp: Date.now()
+      }))
+    } catch { /* ignore storage errors */ }
+  }, [rawInvoiceRows, isDataLoaded, mode])
 
-  // Handle mode change - reset data when switching modes
+  // Handle mode change - preserve data when switching modes for independent state
   const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
     if (newMode !== mode) {
       setMode(newMode)
-      setRawInvoiceRows([])
-      setIsDataLoaded(false)
+      // NOTE: Do NOT clear data when switching modes - each mode's data should be preserved
+      // Data is only cleared when explicitly reloading or when mode-specific actions require it
       setSelectedInvoiceForAnalysis(null)
       setInvoiceSearchQuery('')
-      // Reset invoices loaded state so they get refetched when switching back to invoice mode
+      // Reset invoices loaded state so they get refetched when switching to invoice mode
       if (newMode !== 'invoice') {
         setInvoicesLoaded(false)
         setInvoices([])
@@ -1902,7 +1950,7 @@ const table = useReactTable({
                           <span className="text-sm text-muted-foreground">Нет данных</span>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Нет результ��тов по текущи�� фильтрам</span>
+                        <span className="text-sm text-muted-foreground">Нет результ��тов по текущи�� фи��ьтрам</span>
                       )}
                     </td>
                   </tr>

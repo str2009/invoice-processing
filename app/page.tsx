@@ -124,9 +124,22 @@ export default function InvoiceDashboard() {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [role, setRole] = useState<string | null>(null)
 
+  // Persist invoice data to survive page navigation
+  const INVOICE_DATA_KEY = "invoice_data_cache"
+  
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
-  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+    try {
+      const saved = localStorage.getItem(INVOICE_DATA_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.selectedInvoice || null
+      }
+    } catch { /* ignore */ }
+    return null
+  })
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
 
   // Shipment selection state (synced from SimulationPanel)
@@ -138,12 +151,47 @@ export default function InvoiceDashboard() {
         : [...prev, id]
     )
   }
-  const [rows, setRows] = useState<InvoiceRow[]>([])
+  
+  const [rows, setRows] = useState<InvoiceRow[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const saved = localStorage.getItem(INVOICE_DATA_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.rows || []
+      }
+    } catch { /* ignore */ }
+    return []
+  })
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
-  const [isEnriched, setIsEnriched] = useState(false)
+  const [isEnriched, setIsEnriched] = useState(() => {
+    if (typeof window === "undefined") return false
+    try {
+      const saved = localStorage.getItem(INVOICE_DATA_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.isEnriched || false
+      }
+    } catch { /* ignore */ }
+    return false
+  })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
+  
+  // Persist invoice data when it changes
+  useEffect(() => {
+    if (rows.length > 0) {
+      try {
+        localStorage.setItem(INVOICE_DATA_KEY, JSON.stringify({
+          rows: rows,
+          isEnriched: isEnriched,
+          selectedInvoice: selectedInvoice,
+          timestamp: Date.now()
+        }))
+      } catch { /* ignore storage errors */ }
+    }
+  }, [rows, isEnriched, selectedInvoice])
 
   // Bottom simulation panel state
   const [simPanelOpen, setSimPanelOpen] = useState(false)
@@ -876,6 +924,8 @@ export default function InvoiceDashboard() {
     setSelectedInvoice(null)
     setSelectedInvoices([])
     setIsEnriched(false)
+    // Also clear persisted data
+    try { localStorage.removeItem(INVOICE_DATA_KEY) } catch { /* ignore */ }
     setStatus("idle")
     setProgress(0)
     setIsProcessing(false)
