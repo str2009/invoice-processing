@@ -621,6 +621,9 @@ export function InvoiceTable({
   const [isHydrated, setIsHydrated] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
+  // Row selection state
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Context menu hook
@@ -772,6 +775,7 @@ export function InvoiceTable({
   const table = useReactTable({
     data,
     columns,
+    getRowId: (row) => row.id,
     state: { sorting, globalFilter, columnOrder, columnSizing, columnVisibility },
     onSortingChange: setSorting,
     onGlobalFilterChange: onGlobalFilterChange,
@@ -787,6 +791,157 @@ export function InvoiceTable({
       onUpdateRow,
     },
   })
+
+  // Helper function for range selection
+  const selectRange = useCallback((fromId: string, toId: string) => {
+    const rows = table.getRowModel().rows
+    const fromIndex = rows.findIndex(r => r.id === fromId)
+    const toIndex = rows.findIndex(r => r.id === toId)
+
+    if (fromIndex === -1 || toIndex === -1) {
+      setRowSelection({ [toId]: true })
+      setSelectionAnchorId(toId)
+      return
+    }
+
+    const start = Math.min(fromIndex, toIndex)
+    const end = Math.max(fromIndex, toIndex)
+
+    const nextSelection: Record<string, boolean> = {}
+    for (let i = start; i <= end; i++) {
+      nextSelection[rows[i].id] = true
+    }
+
+    setRowSelection(nextSelection)
+  }, [table])
+
+  // Row click handler
+  const handleRowClick = useCallback((event: React.MouseEvent, row: InvoiceRow, rowId: string) => {
+    // Prevent browser text selection on Shift/Ctrl click
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    // Shift click = select range from anchor
+    if (event.shiftKey && selectionAnchorId) {
+      const rows = table.getRowModel().rows
+
+      const fromIndex = rows.findIndex(r => r.id === selectionAnchorId)
+      const toIndex = rows.findIndex(r => r.id === rowId)
+
+      if (fromIndex === -1 || toIndex === -1) {
+        setRowSelection({ [rowId]: true })
+        setSelectionAnchorId(rowId)
+        return
+      }
+
+      const start = Math.min(fromIndex, toIndex)
+      const end = Math.max(fromIndex, toIndex)
+
+      const next: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        next[rows[i].id] = true
+      }
+
+      setRowSelection(next)
+      return
+    }
+
+    // Ctrl/Cmd click = toggle one row in multi-selection
+    if (event.ctrlKey || event.metaKey) {
+      setRowSelection(prev => ({
+        ...prev,
+        [rowId]: !prev[rowId],
+      }))
+      setSelectionAnchorId(rowId)
+      return
+    }
+
+    // Normal click = single select
+    setRowSelection({ [rowId]: true })
+    setSelectionAnchorId(rowId)
+
+    // Part Details - ONLY when detailsPanelEnabled
+    if (detailsPanelEnabled) {
+      onRowClick?.(row)
+    }
+  }, [detailsPanelEnabled, selectionAnchorId, table, onRowClick])
+
+  // Keyboard handler for navigation, selection, and copy
+  const handleTableKeyDown = useCallback((event: React.KeyboardEvent) => {
+    const rows = table.getRowModel().rows
+    if (rows.length === 0) return
+
+    const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"
+    const isCopy = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c"
+    const isArrowUp = event.key === "ArrowUp"
+    const isArrowDown = event.key === "ArrowDown"
+
+    // Ctrl+A = select all
+    if (isSelectAll) {
+      event.preventDefault()
+      const nextSelection: Record<string, boolean> = {}
+      rows.forEach(row => { nextSelection[row.id] = true })
+      setRowSelection(nextSelection)
+      setSelectionAnchorId(rows[0]?.id || null)
+      return
+    }
+
+    // Ctrl+C = copy
+    if (isCopy) {
+      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+      if (selectedIds.length === 0) return
+
+      const selectedRows = rows.filter(row => selectedIds.includes(row.id))
+      const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible())
+
+      const text = selectedRows
+        .map(row =>
+          visibleColumns
+            .map(col => {
+              const value = row.getValue(col.id)
+              return value == null ? "" : String(value)
+            })
+            .join("\t")
+        )
+        .join("\n")
+
+      navigator.clipboard.writeText(text)
+      event.preventDefault()
+      return
+    }
+
+    // Arrow navigation
+    if (isArrowUp || isArrowDown) {
+      event.preventDefault()
+      
+      // Find current row from selection
+      const currentId = selectionAnchorId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
+      const currentIndex = rows.findIndex(r => r.id === currentId)
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex
+      
+      const nextIndex = isArrowDown 
+        ? Math.min(safeIndex + 1, rows.length - 1)
+        : Math.max(safeIndex - 1, 0)
+
+      const nextRow = rows[nextIndex]
+      if (!nextRow) return
+
+      // Shift+Arrow = expand selection from anchor
+      if (event.shiftKey && selectionAnchorId) {
+        selectRange(selectionAnchorId, nextRow.id)
+      } else {
+        // Normal arrow = single select and move anchor
+        setRowSelection({ [nextRow.id]: true })
+        setSelectionAnchorId(nextRow.id)
+      }
+
+      // Scroll row into view
+      const rowElement = tableContainerRef.current?.querySelector(`tr[data-row-id="${nextRow.id}"]`)
+      rowElement?.scrollIntoView({ block: "nearest" })
+    }
+  }, [table, rowSelection, selectionAnchorId, selectRange])
 
   // Auto-fit column width to content
   const handleAutoFit = useCallback((columnId: string) => {
@@ -949,7 +1104,9 @@ export function InvoiceTable({
       >
         <div
           ref={tableContainerRef}
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-auto outline-none"
+          tabIndex={0}
+          onKeyDown={handleTableKeyDown}
         >
           <table
             className="border-collapse"
@@ -980,25 +1137,23 @@ export function InvoiceTable({
             </thead>
             <tbody>
               {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row, index) => {
-                  const isSelected = selectedRowId === row.original.id
+                table.getRowModel().rows.map((row) => {
+                  const isRowSelected = rowSelection[row.id]
                   return (
                     <tr
                       key={row.id}
-                      className={`h-8 transition-colors ${detailsPanelEnabled
-                          ? "cursor-pointer"
-                          : "cursor-default"
-                        } ${isSelected
-                          ? "bg-primary/10 hover:bg-primary/15"
-                          : detailsPanelEnabled
-                            ? "bg-background hover:bg-muted/50"
-                            : "bg-background hover:bg-muted/20"
-                        }`}
-                      onClick={() => {
-                        if (detailsPanelEnabled) {
-                          onRowClick?.(row.original)
+                      data-row-id={row.id}
+                      className={`h-8 cursor-pointer transition-colors select-text ${
+                        isRowSelected
+                          ? "bg-blue-500/20 border-l-2 border-blue-500"
+                          : "bg-background hover:bg-muted/50"
+                      }`}
+                      onMouseDown={(e) => {
+                        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                          e.preventDefault()
                         }
                       }}
+                      onClick={(e) => handleRowClick(e, row.original, row.id)}
                     >
                       <SortableContext
                         items={columnIds}

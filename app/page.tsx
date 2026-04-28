@@ -25,6 +25,7 @@ import { SimulationPanel } from "@/components/dashboard/simulation-panel"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
+import { AnalyticsPageContent } from "@/app/analytics/page"
 
 type Status = "idle" | "processing" | "completed" | "error"
 
@@ -47,10 +48,16 @@ const statusConfig: Record<Status, { label: string; className: string }> = {
   },
 }
 
+// View mode type for switching between Invoice and Analytics
+type ViewMode = "invoice" | "analytics"
+
 export default function InvoiceDashboard() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  
+  // View mode state - controls which view is visible (both stay mounted)
+  const [viewMode, setViewMode] = useState<ViewMode>("invoice")
 
   // Workspace display settings
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
@@ -123,7 +130,7 @@ export default function InvoiceDashboard() {
   // Supabase user state
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [role, setRole] = useState<string | null>(null)
-
+  
   // Supabase invoice state
   const [invoiceList, setInvoiceList] = useState<InvoiceListItem[]>([])
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
@@ -138,6 +145,7 @@ export default function InvoiceDashboard() {
         : [...prev, id]
     )
   }
+  
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false)
   const [isEnriching, setIsEnriching] = useState(false)
@@ -980,7 +988,7 @@ export default function InvoiceDashboard() {
       const match = Object.values(selectedRow).some((val) =>
         String(val).toLowerCase().includes(lowerFilter)
       )
-      if (!match) setSelectedRow(null)
+      if (!match) { setSelectedRow(null) }
     }
   }, [globalFilter, selectedRow])
 
@@ -1032,7 +1040,14 @@ export default function InvoiceDashboard() {
 
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
+    <>
+      {/* Analytics View - kept mounted, hidden with CSS */}
+      <div style={{ display: viewMode === "analytics" ? "block" : "none" }}>
+        <AnalyticsPageContent onSwitchToInvoice={() => setViewMode("invoice")} />
+      </div>
+      
+      {/* Invoice View - kept mounted, hidden with CSS */}
+      <div style={{ display: viewMode === "invoice" ? "flex" : "none" }} className={`h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
       {/* Control Panel Drawer */}
       <ControlPanel
         isOpen={panelOpen}
@@ -1146,7 +1161,7 @@ export default function InvoiceDashboard() {
               variant="ghost"
               size="sm"
               className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => router.push("/analytics")}
+              onClick={() => setViewMode("analytics")}
             >
               <BarChart3 className="h-3.5 w-3.5" />
               <span className="hidden xl:inline">Analytics</span>
@@ -1495,6 +1510,7 @@ export default function InvoiceDashboard() {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </>
   )
 }

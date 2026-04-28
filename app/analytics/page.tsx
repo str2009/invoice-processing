@@ -487,7 +487,8 @@ const columnLabels: Record<string, string> = {
 const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", "competitorStock", "lastSaleDate"]
 
 // --- Main page ---
-export default function AnalyticsPage() {
+// Export both named and default for flexibility
+export function AnalyticsPageContent({ onSwitchToInvoice }: { onSwitchToInvoice?: () => void } = {}) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 const [mounted, setMounted] = useState(false)
@@ -565,7 +566,7 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
     router.push("/login")
     router.refresh()
   }, [router])
-  
+
   const { width: rightPanelWidth, handleProps: rightHandleProps } = useResizablePanel({
     storageKey: "analyticsRightPanelWidth",
     defaultWidth: 450,
@@ -578,8 +579,6 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(defaultColumnSizing)
   const [isHydrated, setIsHydrated] = useState(false)
 
-  
-
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     const vis: VisibilityState = {}
@@ -591,7 +590,10 @@ const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "13
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [pricingGroupFilter, setPricingGroupFilter] = useState("all")
-  const [selectedRow, setSelectedRow] = useState<AnalyticsRow | null>(null)
+  // Row selection state
+  const [activeRow, setActiveRow] = useState<AnalyticsRow | null>(null)
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null)
   const [detailsPanelEnabled, setDetailsPanelEnabled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerHeight, setDrawerHeight] = useState(60) // vh
@@ -709,7 +711,7 @@ const handleHideColumn = useCallback((columnId: string) => {
   const [filterNegativeMargin, setFilterNegativeMargin] = useState(false)
   const [filterCompetitor, setFilterCompetitor] = useState(false)
   const [filterBulk, setFilterBulk] = useState(false)
-
+  
   // Data mode: stock (warehouse), invoice, or custom
   const [mode, setMode] = useState<ModeType>('stock')
   
@@ -859,15 +861,15 @@ const handleHideColumn = useCallback((columnId: string) => {
   const [isDataLoading, setIsDataLoading] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
-  // Handle mode change - reset data when switching modes
+  // Handle mode change - preserve data when switching modes for independent state
   const handleModeChange = useCallback((newMode: 'stock' | 'invoice' | 'custom') => {
     if (newMode !== mode) {
       setMode(newMode)
-      setRawInvoiceRows([])
-      setIsDataLoaded(false)
+      // NOTE: Do NOT clear data when switching modes - each mode's data should be preserved
+      // Data is only cleared when explicitly reloading or when mode-specific actions require it
       setSelectedInvoiceForAnalysis(null)
       setInvoiceSearchQuery('')
-      // Reset invoices loaded state so they get refetched when switching back to invoice mode
+      // Reset invoices loaded state so they get refetched when switching to invoice mode
       if (newMode !== 'invoice') {
         setInvoicesLoaded(false)
         setInvoices([])
@@ -975,10 +977,8 @@ const handleHideColumn = useCallback((columnId: string) => {
   }, [])
 
   const analyticsData = useMemo(() => toAnalyticsRows(rawInvoiceRows), [rawInvoiceRows])
-  
 
-
-// Auto-fit column width to content
+  // Auto-fit column width to content
 const handleAutoFit = useCallback((columnId: string) => {
   // Create a temporary element to measure text
   const measureEl = document.createElement("span")
@@ -1047,6 +1047,7 @@ if (filterBulk) d = d.filter((r) => r.bulk === true)
 const table = useReactTable({
   data: filteredData,
   columns,
+  getRowId: (row) => row.part_brand_key || row.id,
   state: { sorting, globalFilter, columnOrder, columnSizing, columnVisibility },
   onSortingChange: setSorting,
   onGlobalFilterChange: setGlobalFilter,
@@ -1170,19 +1171,163 @@ const table = useReactTable({
     setTimeout(() => setIsLoadingInvoice(false), 300)
   }, [invoiceList, ts])
 
-  const handleRowClick = useCallback((row: AnalyticsRow) => {
-    if (!detailsPanelEnabled) return // Block panel opening when disabled
-    setSelectedRow((prev) => (prev?.id === row.id ? null : row))
-  }, [detailsPanelEnabled])
+  // Helper function for range selection
+  const selectRange = useCallback((fromId: string, toId: string) => {
+    const rows = table.getRowModel().rows
+    const fromIndex = rows.findIndex(r => r.id === fromId)
+    const toIndex = rows.findIndex(r => r.id === toId)
 
-  // Close detail panel when filter hides the selected row
-  useEffect(() => {
-    if (selectedRow && globalFilter) {
-      const lf = globalFilter.toLowerCase()
-      const match = Object.values(selectedRow).some((v) => String(v).toLowerCase().includes(lf))
-      if (!match) setSelectedRow(null)
+    if (fromIndex === -1 || toIndex === -1) {
+      setRowSelection({ [toId]: true })
+      setSelectionAnchorId(toId)
+      return
     }
-  }, [globalFilter, selectedRow])
+
+    const start = Math.min(fromIndex, toIndex)
+    const end = Math.max(fromIndex, toIndex)
+
+    const nextSelection: Record<string, boolean> = {}
+    for (let i = start; i <= end; i++) {
+      nextSelection[rows[i].id] = true
+    }
+
+    setRowSelection(nextSelection)
+  }, [table])
+
+  // Row click handler
+  const handleRowClick = useCallback((event: React.MouseEvent, row: AnalyticsRow, rowId: string) => {
+    // Prevent browser text selection on Shift/Ctrl click
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    // Shift click = select range from anchor
+    if (event.shiftKey && selectionAnchorId) {
+      const rows = table.getRowModel().rows
+
+      const fromIndex = rows.findIndex(r => r.id === selectionAnchorId)
+      const toIndex = rows.findIndex(r => r.id === rowId)
+
+      if (fromIndex === -1 || toIndex === -1) {
+        setRowSelection({ [rowId]: true })
+        setSelectionAnchorId(rowId)
+        return
+      }
+
+      const start = Math.min(fromIndex, toIndex)
+      const end = Math.max(fromIndex, toIndex)
+
+      const next: Record<string, boolean> = {}
+      for (let i = start; i <= end; i++) {
+        next[rows[i].id] = true
+      }
+
+      setRowSelection(next)
+      return
+    }
+
+    // Ctrl/Cmd click = toggle one row in multi-selection
+    if (event.ctrlKey || event.metaKey) {
+      setRowSelection(prev => ({
+        ...prev,
+        [rowId]: !prev[rowId],
+      }))
+      setSelectionAnchorId(rowId)
+      return
+    }
+
+    // Normal click = single select
+    setRowSelection({ [rowId]: true })
+    setSelectionAnchorId(rowId)
+
+    // Part Details toggle - ONLY when detailsPanelEnabled
+    if (detailsPanelEnabled) {
+      const currentId = activeRow?.part_brand_key || activeRow?.id || activeRow?.part_code
+      if (currentId === rowId) {
+        setActiveRow(null) // CLOSE PANEL
+      } else {
+        setActiveRow(row) // OPEN / SWITCH
+      }
+    }
+  }, [detailsPanelEnabled, selectionAnchorId, table, activeRow])
+
+  // Keyboard handler for navigation, selection, and copy
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  
+  const handleTableKeyDown = useCallback((event: React.KeyboardEvent) => {
+    const rows = table.getRowModel().rows
+    if (rows.length === 0) return
+
+    const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"
+    const isCopy = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c"
+    const isArrowUp = event.key === "ArrowUp"
+    const isArrowDown = event.key === "ArrowDown"
+
+    // Ctrl+A = select all
+    if (isSelectAll) {
+      event.preventDefault()
+      const nextSelection: Record<string, boolean> = {}
+      rows.forEach(row => { nextSelection[row.id] = true })
+      setRowSelection(nextSelection)
+      setSelectionAnchorId(rows[0]?.id || null)
+      return
+    }
+
+    // Ctrl+C = copy
+    if (isCopy) {
+      const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+      if (selectedIds.length === 0) return
+
+      const selectedRows = rows.filter(row => selectedIds.includes(row.id))
+      const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible())
+
+      const text = selectedRows
+        .map(row =>
+          visibleColumns
+            .map(col => {
+              const value = row.getValue(col.id)
+              return value == null ? "" : String(value)
+            })
+            .join("\t")
+        )
+        .join("\n")
+
+      navigator.clipboard.writeText(text)
+      event.preventDefault()
+      return
+    }
+
+    // Arrow navigation
+    if (isArrowUp || isArrowDown) {
+      event.preventDefault()
+      
+      // Find current row from selection
+      const currentId = selectionAnchorId || Object.keys(rowSelection).find(id => rowSelection[id]) || rows[0].id
+      const currentIndex = rows.findIndex(r => r.id === currentId)
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex
+      
+      const nextIndex = isArrowDown 
+        ? Math.min(safeIndex + 1, rows.length - 1)
+        : Math.max(safeIndex - 1, 0)
+
+      const nextRow = rows[nextIndex]
+      if (!nextRow) return
+
+      // Shift+Arrow = expand selection from anchor
+      if (event.shiftKey && selectionAnchorId) {
+        selectRange(selectionAnchorId, nextRow.id)
+      } else {
+        // Normal arrow = single select and move anchor
+        setRowSelection({ [nextRow.id]: true })
+        setSelectionAnchorId(nextRow.id)
+      }
+
+      // Scroll row into view
+      const rowElement = tableContainerRef.current?.querySelector(`tr[data-row-id="${nextRow.id}"]`)
+      rowElement?.scrollIntoView({ block: "nearest" })
+    }
+  }, [table, rowSelection, selectionAnchorId, selectRange])
 
   // DnD
   const sensors = useSensors(
@@ -1269,7 +1414,7 @@ const table = useReactTable({
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => router.push("/")}
+            onClick={() => onSwitchToInvoice ? onSwitchToInvoice() : router.push("/")}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
@@ -1790,7 +1935,7 @@ const table = useReactTable({
             onClick={() => {
               const newValue = !detailsPanelEnabled
               setDetailsPanelEnabled(newValue)
-              if (!newValue) setSelectedRow(null)
+              if (!newValue) { setActiveRow(null); setRowSelection({}) }
             }}
             className={`px-2 py-0.5 text-[10px] rounded transition-all cursor-pointer select-none ${
               detailsPanelEnabled 
@@ -1846,7 +1991,12 @@ const table = useReactTable({
           modifiers={[restrictToHorizontalAxis]}
           onDragEnd={handleDragEnd}
         >
-<div className="min-w-0 flex-1 overflow-x-auto overflow-y-auto">
+<div 
+  ref={tableContainerRef}
+  className="min-w-0 flex-1 overflow-x-auto overflow-y-auto outline-none"
+  tabIndex={0}
+  onKeyDown={handleTableKeyDown}
+>
   <table className="border-collapse" style={{ width: totalWidth, minWidth: "100%", tableLayout: "fixed" }}>
   <thead className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
   {table.getHeaderGroups().map((headerGroup) => (
@@ -1862,16 +2012,22 @@ const table = useReactTable({
 <tbody>
   {table.getRowModel().rows?.length ? (
   table.getRowModel().rows.map((row) => {
-  const isSelected = selectedRow?.id === row.original.id
+  const isRowSelected = rowSelection[row.id]
   return (
 <tr
   key={row.id}
-  className={`h-8 cursor-pointer transition-colors ${
-  isSelected
-  ? "bg-primary/10 hover:bg-primary/15"
+  data-row-id={row.id}
+  className={`h-8 cursor-pointer transition-colors select-text ${
+  isRowSelected
+  ? "bg-blue-500/20 border-l-2 border-blue-500"
   : "bg-background hover:bg-muted/50"
   }`}
-  onClick={() => handleRowClick(row.original)}
+  onMouseDown={(e) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+    }
+  }}
+  onClick={(e) => handleRowClick(e, row.original, row.id)}
   >
   <SortableContext items={visibleColumnIds} strategy={horizontalListSortingStrategy}>
   {row.getVisibleCells().map((cell) => (
@@ -1902,7 +2058,7 @@ const table = useReactTable({
                           <span className="text-sm text-muted-foreground">Нет данных</span>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Нет результ��тов по текущи�� фильтрам</span>
+                        <span className="text-sm text-muted-foreground">Нет результ��тов по текущи�� фи��ьтрам</span>
                       )}
                     </td>
                   </tr>
@@ -1915,11 +2071,11 @@ const table = useReactTable({
         {/* Right detail panel - resizable */}
         <div
           className={`shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out ${
-            selectedRow ? "" : "w-0"
+            activeRow && detailsPanelEnabled ? "" : "w-0"
           }`}
-          style={selectedRow ? { width: `${rightPanelWidth}px` } : undefined}
+          style={activeRow && detailsPanelEnabled ? { width: `${rightPanelWidth}px` } : undefined}
         >
-          {selectedRow && (
+          {activeRow && detailsPanelEnabled && (
             <div className="relative flex h-full w-full">
               {/* Drag handle */}
               <div
@@ -1930,8 +2086,8 @@ const table = useReactTable({
                 aria-label="Resize detail panel"
               />
 <PartDetailsPanel
-  row={selectedRow}
-  onClose={() => setSelectedRow(null)}
+  row={activeRow}
+  onClose={() => { setActiveRow(null); setRowSelection({}) }}
   />
             </div>
           )}
@@ -1998,4 +2154,9 @@ const table = useReactTable({
       />
     </div>
   )
+}
+
+// Default export for Next.js route
+export default function AnalyticsPage() {
+  return <AnalyticsPageContent />
 }
