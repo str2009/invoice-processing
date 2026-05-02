@@ -504,6 +504,7 @@ export default function VinSearchPage() {
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <DndContext
+          id="vin-table-dnd"
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}

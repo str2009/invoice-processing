@@ -1097,6 +1097,7 @@ export function InvoiceTable({
 
       {/* Table container */}
       <DndContext
+        id="invoice-table-dnd"
         sensors={sensors}
         collisionDetection={closestCenter}
         modifiers={[restrictToHorizontalAxis]}

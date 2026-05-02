@@ -1525,7 +1525,7 @@ export function SimulationPanel({
   ])
   // ─── Pricing rules actions & calculations ──────────────────────────────────
 
-  // добавить н��вое правило
+  // добавить н����вое правило
   const addRule = useCallback(() => {
     setScenarioRules((prev) => [
       ...prev,
@@ -2382,6 +2382,7 @@ export function SimulationPanel({
             {/* Main Grid Area - no global scroll, each panel scrolls independently */}
             <div className="flex-1 min-h-0 p-4 overflow-hidden flex flex-col">
               <DndContext
+                id="simulation-panels-dnd"
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handlePanelDragEnd}
@@ -2542,6 +2543,7 @@ export function SimulationPanel({
 
                                   {/* Draggable Metric Widgets Grid */}
                                   <DndContext
+                                    id="simulation-metrics-dnd"
                                     sensors={sensors}
                                     collisionDetection={closestCenter}
                                     onDragEnd={handleMetricDragEnd}

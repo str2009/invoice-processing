@@ -1485,6 +1485,7 @@ export function PartDetailsPanel({ row, onClose, onCommentChange }: PartDetailsP
         
         <div className="flex flex-col gap-4 p-4">
           <DndContext
+            id="part-details-dnd"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
