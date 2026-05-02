@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
+import { createClient } from "@/lib/supabase/client"
 import {
   FileText,
   BarChart3,
@@ -28,10 +29,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// Mock user data
-const user = {
-  email: "suzo@list.ru",
-  role: "admin",
+// Permission to nav link mapping
+const permissionToNavLink: Record<string, string> = {
+  view_dashboard: "/",
+  view_invoice: "/invoice",
+  view_vin: "/vin",
+  view_tasks: "/tasks",
+  view_analytics: "/analytics",
+  view_chat: "/chat",
 }
 
 // Warehouse options
@@ -57,9 +62,42 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
+  const [permissions, setPermissions] = useState<string[]>([])
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null)
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    async function loadPermissions() {
+      const supabase = createClient()
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) return
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userData.user.id)
+        .single()
+
+      if (!profile) return
+
+      setUser({
+        email: userData.user.email || "",
+        role: profile.role,
+      })
+
+      const { data: perms } = await supabase
+        .from("permissions")
+        .select("permission")
+        .eq("role", profile.role)
+        .eq("allowed", true)
+
+      setPermissions(perms?.map(p => p.permission) ?? [])
+    }
+
+    loadPermissions()
   }, [])
 
   // Check if current path matches or starts with the link href
@@ -69,6 +107,14 @@ export function Header() {
     }
     return pathname === href || pathname.startsWith(href + "/")
   }
+
+  // Filter nav links based on permissions
+  const filteredNavLinks = navLinks.filter((link) => {
+    const permissionKey = Object.entries(permissionToNavLink).find(
+      ([, href]) => href === link.href
+    )?.[0]
+    return permissionKey ? permissions.includes(permissionKey) : false
+  })
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
@@ -86,7 +132,7 @@ export function Header() {
 
       {/* Center - Navigation */}
       <nav className="flex items-center gap-1">
-        {navLinks.map((link) => {
+        {filteredNavLinks.map((link) => {
           const Icon = link.icon
           const active = isActive(link.href)
           return (
@@ -222,37 +268,39 @@ export function Header() {
         <span className="h-5 w-px bg-border" aria-hidden="true" />
 
         {/* User dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <User className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline max-w-[120px] truncate">
+        {user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <User className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline max-w-[120px] truncate">
+                  {user.email}
+                </span>
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[180px]">
+              <DropdownMenuLabel className="font-medium">
                 {user.email}
-              </span>
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[180px]">
-            <DropdownMenuLabel className="font-medium">
-              {user.email}
-            </DropdownMenuLabel>
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground -mt-1">
-              Role: {user.role}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => router.push("/")}
-              className="gap-2 text-xs text-destructive focus:text-destructive"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground -mt-1">
+                Role: {user.role}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => router.push("/login")}
+                className="gap-2 text-xs text-destructive focus:text-destructive"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </header>
   )
