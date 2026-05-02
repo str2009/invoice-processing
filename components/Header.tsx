@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
-import { createClient } from "@/lib/supabase/client"
+import { usePermissions } from "@/components/PermissionsContext"
 import {
   FileText,
   BarChart3,
@@ -62,50 +62,10 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
-  const [permissions, setPermissions] = useState<string[]>([])
-  const [permissionsLoaded, setPermissionsLoaded] = useState(false)
-  const [user, setUser] = useState<{ email: string; role: string } | null>(null)
+  const { permissions, permissionsLoaded, user } = usePermissions()
 
   useEffect(() => {
     setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    async function loadPermissions() {
-      const supabase = createClient()
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        setPermissionsLoaded(true)
-        return
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userData.user.id)
-        .single()
-
-      if (!profile) {
-        setPermissionsLoaded(true)
-        return
-      }
-
-      setUser({
-        email: userData.user.email || "",
-        role: profile.role,
-      })
-
-      const { data: perms } = await supabase
-        .from("permissions")
-        .select("permission")
-        .eq("role", profile.role)
-        .eq("allowed", true)
-
-      setPermissions(perms?.map(p => p.permission) ?? [])
-      setPermissionsLoaded(true)
-    }
-
-    loadPermissions()
   }, [])
 
   // Check if current path matches or starts with the link href
