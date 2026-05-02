@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { FileText, Car, BarChart3, MessageSquare, ArrowRight } from "lucide-react"
+import { FileText, Car, BarChart3, MessageSquare, ArrowRight, CheckSquare } from "lucide-react"
 
 const sections = [
   {
@@ -21,6 +21,12 @@ const sections = [
     icon: BarChart3,
     title: "Analytics",
     description: "Аналитика по запчастям и поставщикам",
+  },
+  {
+    href: "/tasks",
+    icon: CheckSquare,
+    title: "Tasks",
+    description: "Управление задачами и контроль выполнения",
   },
   {
     href: "/chat",
