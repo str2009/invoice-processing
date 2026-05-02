@@ -116,17 +116,15 @@ export function Header() {
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  // Don't render until permissions are loaded
-  if (!permissionsLoaded) {
-    return null
-  }
-
-  // Filter nav links based on permissions
+  // Filter nav links based on permissions (show all while loading)
   const filteredNavLinks = navLinks.filter((link) => {
     const permissionKey = Object.entries(permissionToNavLink).find(
       ([, href]) => href === link.href
     )?.[0]
-    return permissionKey ? permissions.includes(permissionKey) : false
+    // Show all if permissions not loaded yet, otherwise check permission
+    return permissionKey 
+      ? permissions.length === 0 || permissions.includes(permissionKey) 
+      : false
   })
 
   return (
