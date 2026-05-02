@@ -63,6 +63,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
   const [permissions, setPermissions] = useState<string[]>([])
+  const [loadingPermissions, setLoadingPermissions] = useState(true)
   const [user, setUser] = useState<{ email: string; role: string } | null>(null)
 
   useEffect(() => {
@@ -95,6 +96,7 @@ export function Header() {
         .eq("allowed", true)
 
       setPermissions(perms?.map(p => p.permission) ?? [])
+      setLoadingPermissions(false)
     }
 
     loadPermissions()
@@ -108,8 +110,11 @@ export function Header() {
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  // Filter nav links based on permissions
+  // Filter nav links based on permissions (show all while loading)
   const filteredNavLinks = navLinks.filter((link) => {
+    // While loading, show all navigation links
+    if (loadingPermissions) return true
+    
     const permissionKey = Object.entries(permissionToNavLink).find(
       ([, href]) => href === link.href
     )?.[0]
