@@ -43,6 +43,7 @@ const warehouses = [
 // Navigation links
 const navLinks = [
   { href: "/", label: "Dashboard", icon: FileText },
+  { href: "/invoice", label: "Invoice", icon: FileText },
   { href: "/vin", label: "VIN", icon: Car },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/chat", label: "Chat", icon: MessageSquare },
