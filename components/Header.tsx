@@ -77,7 +77,7 @@ export function Header() {
             <FileText className="h-4 w-4" />
           </div>
           <span className="text-sm font-semibold text-foreground hidden sm:inline">
-            Max24
+            Max24 (в процессе разработки)
           </span>
         </Link>
       </div>
