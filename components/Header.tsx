@@ -16,6 +16,7 @@ import {
   LogOut,
   ChevronDown,
   Warehouse,
+  CheckSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -45,6 +46,7 @@ const navLinks = [
   { href: "/", label: "Dashboard", icon: FileText },
   { href: "/invoice", label: "Invoice", icon: FileText },
   { href: "/vin", label: "VIN", icon: Car },
+  { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/chat", label: "Chat", icon: MessageSquare },
 ]
