@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useMemo, useRef, type CSSProperties } from "react"
-import { useRouter, usePathname } from "next/navigation"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,26 +41,8 @@ import {
   Search,
   ChevronsUpDown,
   GripHorizontal,
-  Car,
-  BarChart3,
-  FileText,
-  MessageSquare,
-  Sun,
-  Moon,
-  Monitor,
-  User,
-  LogOut,
   Loader2,
 } from "lucide-react"
-import { useTheme } from "next-themes"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 // VIN row type - flexible to accept any fields from webhook
 interface VinRow {
@@ -237,17 +218,6 @@ function SortableDataCell({
 
 export default function VinSearchPage() {
   const router = useRouter()
-  const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  // Mount effect for theme
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Mock user data (in production, this would come from auth context)
-  const user = { email: "suzo@list.ru" }
 
   // Search mode and data state
   const [searchMode, setSearchMode] = useState<SearchMode>("manual")
@@ -461,173 +431,7 @@ export default function VinSearchPage() {
   }, [])
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3">
-        {/* Left side - Navigation */}
-        <nav className="flex items-center gap-1">
-          <Link
-            href="/"
-            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
-              pathname === "/" 
-                ? "text-foreground font-medium bg-accent" 
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Invoice Processing</span>
-          </Link>
-          <Link
-            href="/analytics"
-            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
-              pathname === "/analytics" 
-                ? "text-foreground font-medium bg-accent" 
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Analytics</span>
-          </Link>
-          <Link
-            href="/chat"
-            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
-              pathname === "/chat" 
-                ? "text-foreground font-medium bg-accent" 
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Chat</span>
-          </Link>
-          <Link
-            href="/vin"
-            className={`inline-flex items-center h-7 gap-1.5 px-2 text-xs rounded-md transition-colors ${
-              pathname === "/vin" 
-                ? "text-foreground font-medium bg-accent" 
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <Car className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">VIN Search</span>
-          </Link>
-        </nav>
-
-        {/* Right side - Theme and User */}
-        <div className="flex items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 shrink-0 p-0"
-                aria-label="Change theme"
-              >
-                {mounted && (
-                  theme === "light" ? (
-                    <Sun className="h-3.5 w-3.5" />
-                  ) : theme === "soft" ? (
-                    <Sun className="h-3.5 w-3.5 text-amber-400" />
-                  ) : theme === "mellow" ? (
-                    <Sun className="h-3.5 w-3.5 text-stone-500" />
-                  ) : theme === "graphite" ? (
-                    <Monitor className="h-3.5 w-3.5" />
-                  ) : theme === "warm-dark" ? (
-                    <Moon className="h-3.5 w-3.5 text-amber-500" />
-                  ) : (
-                    <Moon className="h-3.5 w-3.5" />
-                  )
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[160px]">
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                Theme
-              </DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => setTheme("light")}
-                onSelect={(e) => e.preventDefault()}
-                className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
-              >
-                <Sun className="h-3.5 w-3.5" />
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("soft")}
-                onSelect={(e) => e.preventDefault()}
-                className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
-              >
-                <Sun className="h-3.5 w-3.5 text-amber-400" />
-                Soft
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("mellow")}
-                onSelect={(e) => e.preventDefault()}
-                className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}
-              >
-                <Sun className="h-3.5 w-3.5 text-stone-500" />
-                Mellow
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("dark")}
-                onSelect={(e) => e.preventDefault()}
-                className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
-              >
-                <Moon className="h-3.5 w-3.5" />
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("warm-dark")}
-                onSelect={(e) => e.preventDefault()}
-                className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}
-              >
-                <Moon className="h-3.5 w-3.5 text-amber-500" />
-                Warm Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("graphite")}
-                onSelect={(e) => e.preventDefault()}
-                className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}
-              >
-                <Monitor className="h-3.5 w-3.5" />
-                Graphite
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* User menu */}
-          {user && (
-            <>
-              <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    <span className="hidden xl:inline max-w-[120px] truncate">{user.email}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[160px]">
-                  <DropdownMenuLabel className="text-xs font-normal truncate">
-                    {user.email}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => router.push("/")}
-                    className="gap-2 text-xs text-destructive focus:text-destructive"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
-        </div>
-      </header>
-
+    <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Filter bar */}
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-1.5">
         <Input

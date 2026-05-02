@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { CartProvider } from '@/components/cart/cart-context'
 import { RowContextMenuProvider } from '@/components/cart/row-context-menu'
+import { LayoutWrapper } from '@/components/LayoutWrapper'
 import { Toaster } from 'sonner'
 
 import './globals.css'
@@ -42,7 +43,9 @@ export default function RootLayout({
         >
           <CartProvider>
             <RowContextMenuProvider>
-              {children}
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
             </RowContextMenuProvider>
           </CartProvider>
           <Toaster position="top-right" richColors />
