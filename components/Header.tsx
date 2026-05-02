@@ -63,7 +63,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
   const [permissions, setPermissions] = useState<string[]>([])
-  const [loadingPermissions, setLoadingPermissions] = useState(true)
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false)
   const [user, setUser] = useState<{ email: string; role: string } | null>(null)
 
   useEffect(() => {
@@ -74,7 +74,10 @@ export function Header() {
     async function loadPermissions() {
       const supabase = createClient()
       const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) return
+      if (!userData.user) {
+        setPermissionsLoaded(true)
+        return
+      }
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -82,7 +85,10 @@ export function Header() {
         .eq("id", userData.user.id)
         .single()
 
-      if (!profile) return
+      if (!profile) {
+        setPermissionsLoaded(true)
+        return
+      }
 
       setUser({
         email: userData.user.email || "",
@@ -96,7 +102,7 @@ export function Header() {
         .eq("allowed", true)
 
       setPermissions(perms?.map(p => p.permission) ?? [])
-      setLoadingPermissions(false)
+      setPermissionsLoaded(true)
     }
 
     loadPermissions()
@@ -110,11 +116,13 @@ export function Header() {
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  // Filter nav links based on permissions (show all while loading)
+  // Don't render until permissions are loaded
+  if (!permissionsLoaded) {
+    return null
+  }
+
+  // Filter nav links based on permissions
   const filteredNavLinks = navLinks.filter((link) => {
-    // While loading, show all navigation links
-    if (loadingPermissions) return true
-    
     const permissionKey = Object.entries(permissionToNavLink).find(
       ([, href]) => href === link.href
     )?.[0]
