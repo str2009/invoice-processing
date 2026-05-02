@@ -116,35 +116,18 @@ export function Header() {
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  // Don't render navigation until permissions are loaded
-  if (!permissionsLoaded) {
-    return (
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <FileText className="h-4 w-4" />
-            </div>
-            <span className="text-sm font-semibold text-foreground hidden sm:inline">
-              Max24 (в процессе разработки)
-            </span>
-          </Link>
-        </div>
-        <nav className="flex items-center gap-1">
-          {/* Loading placeholder */}
-        </nav>
-        <div className="flex items-center gap-2" />
-      </header>
-    )
+  // Permission check helper - returns true while loading, then checks actual permissions
+  const can = (perm: string) => {
+    if (!permissionsLoaded) return true
+    return permissions.includes(perm)
   }
 
-  // Filter nav links based on permissions (strict check after load)
+  // Filter nav links based on permissions
   const filteredNavLinks = navLinks.filter((link) => {
     const permissionKey = Object.entries(permissionToNavLink).find(
       ([, href]) => href === link.href
     )?.[0]
-    // Strict permission check - only show if permission exists
-    return permissionKey ? permissions.includes(permissionKey) : false
+    return permissionKey ? can(permissionKey) : false
   })
 
   return (
