@@ -196,39 +196,98 @@ export function Header() {
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-[220px]">
+          <DropdownMenuContent align="end" className="w-[240px] p-2">
 
-            <DropdownMenuLabel>Theme</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("soft")}>Soft</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("mellow")}>Mellow</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("warm-dark")}>Warm Dark</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("graphite")}>Graphite</DropdownMenuItem>
+  {/* THEME */}
+  <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground px-2">
+    Theme
+  </DropdownMenuLabel>
 
-            <DropdownMenuSeparator />
+  {[
+    ["light", "Light", Sun],
+    ["soft", "Soft", Sun],
+    ["mellow", "Mellow", Sun],
+    ["dark", "Dark", Moon],
+    ["warm-dark", "Warm Dark", Moon],
+    ["graphite", "Graphite", Monitor],
+  ].map(([key, label, Icon]: any) => (
+    <DropdownMenuItem
+      key={key}
+      onClick={() => setTheme(key)}
+      className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+        theme === key ? "bg-accent text-foreground" : ""
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </DropdownMenuItem>
+  ))}
 
-            <DropdownMenuLabel>Density</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setDensity("comfortable")}>Comfortable</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDensity("compact")}>Compact</DropdownMenuItem>
+  <DropdownMenuSeparator />
 
-            <DropdownMenuSeparator />
+  {/* DENSITY */}
+  <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground px-2">
+    Density
+  </DropdownMenuLabel>
 
-            <DropdownMenuLabel>UI Scale</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setScale("90")}>90%</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setScale("100")}>100%</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setScale("110")}>110%</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setScale("120")}>120%</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setScale("130")}>130%</DropdownMenuItem>
+  {[
+    ["comfortable", "Comfortable"],
+    ["compact", "Compact"],
+  ].map(([key, label]) => (
+    <DropdownMenuItem
+      key={key}
+      onClick={() => setDensity(key as any)}
+      className={`text-xs rounded px-2 py-1 ${
+        density === key ? "bg-accent" : ""
+      }`}
+    >
+      {label}
+    </DropdownMenuItem>
+  ))}
 
-            <DropdownMenuSeparator />
+  <DropdownMenuSeparator />
 
-            <DropdownMenuLabel>Text Intensity</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setTextIntensity("normal")}>Normal</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTextIntensity("medium")}>Medium</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTextIntensity("high")}>High</DropdownMenuItem>
+  {/* SCALE */}
+  <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground px-2">
+    UI Scale
+  </DropdownMenuLabel>
 
-          </DropdownMenuContent>
+  {["90", "100", "110", "120", "130"].map((s) => (
+    <DropdownMenuItem
+      key={s}
+      onClick={() => setScale(s as any)}
+      className={`text-xs rounded px-2 py-1 ${
+        scale === s ? "bg-accent" : ""
+      }`}
+    >
+      {s}%
+    </DropdownMenuItem>
+  ))}
+
+  <DropdownMenuSeparator />
+
+  {/* TEXT */}
+  <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground px-2">
+    Text Intensity
+  </DropdownMenuLabel>
+
+  {[
+    ["normal", "N Normal"],
+    ["medium", "M Medium"],
+    ["high", "H High"],
+  ].map(([key, label]) => (
+    <DropdownMenuItem
+      key={key}
+      onClick={() => setTextIntensity(key as any)}
+      className={`text-xs rounded px-2 py-1 ${
+        textIntensity === key ? "bg-accent" : ""
+      }`}
+    >
+      {label}
+    </DropdownMenuItem>
+  ))}
+
+</DropdownMenuContent>
         </DropdownMenu>
 
         {/* USER */}
