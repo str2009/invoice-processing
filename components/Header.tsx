@@ -76,13 +76,13 @@ export function Header() {
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  // Permission check helper - returns true while loading, then checks actual permissions
+  // Permission check helper - returns false while loading, then checks actual permissions
   const can = (perm: string) => {
-    if (!permissionsLoaded) return true
+    if (!permissionsLoaded) return false
     return permissions.includes(perm)
   }
 
-  // Filter nav links based on permissions
+  // Filter nav links based on permissions (only after loaded)
   const filteredNavLinks = navLinks.filter((link) => {
     const permissionKey = Object.entries(permissionToNavLink).find(
       ([, href]) => href === link.href
@@ -104,9 +104,9 @@ export function Header() {
         </Link>
       </div>
 
-      {/* Center - Navigation */}
+      {/* Center - Navigation (only render after permissions loaded) */}
       <nav className="flex items-center gap-1">
-        {filteredNavLinks.map((link) => {
+        {!permissionsLoaded ? null : filteredNavLinks.map((link) => {
           const Icon = link.icon
           const active = isActive(link.href)
           return (
