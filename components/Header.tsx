@@ -61,6 +61,12 @@ export function Header() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const { permissions, permissionsLoaded, user } = usePermissions()
+  const supabase = createClient()
+
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+  router.replace("/login")
+}
 
   console.log("ROLE:", user?.role)
 console.log("PERMISSIONS:", permissions)
@@ -187,7 +193,7 @@ console.log("LOADED:", permissionsLoaded)
                 Role: {user.role}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push("/login")}>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="h-3.5 w-3.5 mr-2" />
                 Logout
               </DropdownMenuItem>
