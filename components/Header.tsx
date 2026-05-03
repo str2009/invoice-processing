@@ -61,6 +61,10 @@ export function Header() {
   const { theme, setTheme } = useTheme()
   const { permissions, permissionsLoaded, user } = usePermissions()
 
+  console.log("ROLE:", user?.role)
+console.log("PERMISSIONS:", permissions)
+console.log("LOADED:", permissionsLoaded)
+
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
 
