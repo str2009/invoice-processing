@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { usePermissions } from "@/components/PermissionsContext"
+import { createClient } from "@/lib/supabase/client"
 import {
   FileText,
   BarChart3,
