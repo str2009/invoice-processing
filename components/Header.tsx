@@ -24,9 +24,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
 // Permission to nav link mapping
@@ -39,13 +39,6 @@ const permissionToNavLink: Record<string, string> = {
   view_chat: "/chat",
 }
 
-// Warehouse options
-const warehouses = [
-  { id: "salut", name: "Салют" },
-  { id: "koms18", name: "Комс 18" },
-  { id: "talnah", name: "Талнах" },
-]
-
 // Navigation links
 const navLinks = [
   { href: "/", label: "Dashboard", icon: FileText },
@@ -56,59 +49,63 @@ const navLinks = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
 ]
 
+const warehouses = [
+  { id: "salut", name: "Салют" },
+  { id: "koms18", name: "Комс 18" },
+  { id: "talnah", name: "Талнах" },
+]
+
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const { permissions, permissionsLoaded, user } = usePermissions()
+
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
-  const { permissions, permissionsLoaded, user } = usePermissions()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Check if current path matches or starts with the link href
   const isActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/"
-    }
+    if (href === "/") return pathname === "/"
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  // Permission check helper - returns false while loading, then checks actual permissions
+  // ✅ КЛЮЧЕВОЙ ФИКС
   const can = (perm: string) => {
-    if (!permissionsLoaded) return false
+    if (!permissionsLoaded) return true
     return permissions.includes(perm)
   }
 
-  // Filter nav links based on permissions (only after loaded)
-  const filteredNavLinks = navLinks.filter((link) => {
-    const permissionKey = Object.entries(permissionToNavLink).find(
-      ([, href]) => href === link.href
-    )?.[0]
-    return permissionKey ? can(permissionKey) : false
-  })
-
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
-      {/* Left - App title */}
+      
+      {/* LEFT */}
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <FileText className="h-4 w-4" />
           </div>
-          <span className="text-sm font-semibold text-foreground hidden sm:inline">
+          <span className="text-sm font-semibold hidden sm:inline">
             Max24 (в процессе разработки)
           </span>
         </Link>
       </div>
 
-      {/* Center - Navigation (only render after permissions loaded) */}
+      {/* CENTER NAV */}
       <nav className="flex items-center gap-1">
-        {!permissionsLoaded ? null : filteredNavLinks.map((link) => {
+        {navLinks.map((link) => {
+          const permissionKey = Object.entries(permissionToNavLink).find(
+            ([, href]) => href === link.href
+          )?.[0]
+
+          if (permissionKey && !can(permissionKey)) return null
+
           const Icon = link.icon
           const active = isActive(link.href)
+
           return (
             <Link
               key={link.href}
@@ -126,150 +123,67 @@ export function Header() {
         })}
       </nav>
 
-      {/* Right - Theme, Warehouse, User */}
+      {/* RIGHT */}
       <div className="flex items-center gap-2">
-        {/* Theme toggle */}
+
+        {/* Theme */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 shrink-0 p-0"
-              aria-label="Change theme"
-            >
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               {mounted && (
-                theme === "light" ? (
-                  <Sun className="h-4 w-4" />
-                ) : theme === "soft" ? (
-                  <Sun className="h-4 w-4 text-amber-400" />
-                ) : theme === "mellow" ? (
-                  <Sun className="h-4 w-4 text-stone-500" />
-                ) : theme === "graphite" ? (
-                  <Monitor className="h-4 w-4" />
-                ) : theme === "warm-dark" ? (
-                  <Moon className="h-4 w-4 text-amber-500" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )
+                theme === "light" ? <Sun className="h-4 w-4" /> :
+                theme === "graphite" ? <Monitor className="h-4 w-4" /> :
+                <Moon className="h-4 w-4" />
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[140px]">
-            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-              Theme
-            </DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => setTheme("light")}
-              className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
-            >
-              <Sun className="h-3.5 w-3.5" />
-              Light
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("soft")}
-              className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
-            >
-              <Sun className="h-3.5 w-3.5 text-amber-400" />
-              Soft
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("mellow")}
-              className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}
-            >
-              <Sun className="h-3.5 w-3.5 text-stone-500" />
-              Mellow
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("dark")}
-              className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
-            >
-              <Moon className="h-3.5 w-3.5" />
-              Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("warm-dark")}
-              className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}
-            >
-              <Moon className="h-3.5 w-3.5 text-amber-500" />
-              Warm Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("graphite")}
-              className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}
-            >
-              <Monitor className="h-3.5 w-3.5" />
-              Graphite
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("graphite")}>Graphite</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <span className="h-5 w-px bg-border" aria-hidden="true" />
+        <span className="h-5 w-px bg-border" />
 
-        {/* Warehouse selector */}
+        {/* Warehouse */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-            >
+            <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
               <Warehouse className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline max-w-[80px] truncate">
-                {selectedWarehouse.name}
-              </span>
-              <ChevronDown className="h-3 w-3 opacity-50" />
+              {selectedWarehouse.name}
+              <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[140px]">
-            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-              Warehouse
-            </DropdownMenuLabel>
-            {warehouses.map((warehouse) => (
-              <DropdownMenuItem
-                key={warehouse.id}
-                onClick={() => setSelectedWarehouse(warehouse)}
-                className={`gap-2 text-xs ${
-                  selectedWarehouse.id === warehouse.id ? "bg-accent" : ""
-                }`}
-              >
-                <Warehouse className="h-3.5 w-3.5" />
-                {warehouse.name}
+          <DropdownMenuContent>
+            {warehouses.map((w) => (
+              <DropdownMenuItem key={w.id} onClick={() => setSelectedWarehouse(w)}>
+                {w.name}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <span className="h-5 w-px bg-border" aria-hidden="true" />
+        <span className="h-5 w-px bg-border" />
 
-        {/* User dropdown */}
+        {/* USER */}
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
+              <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
                 <User className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline max-w-[120px] truncate">
-                  {user.email}
-                </span>
-                <ChevronDown className="h-3 w-3 opacity-50" />
+                {user.email}
+                <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[180px]">
-              <DropdownMenuLabel className="font-medium">
-                {user.email}
-              </DropdownMenuLabel>
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground -mt-1">
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
                 Role: {user.role}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => router.push("/login")}
-                className="gap-2 text-xs text-destructive focus:text-destructive"
-              >
-                <LogOut className="h-3.5 w-3.5" />
+              <DropdownMenuItem onClick={() => router.push("/login")}>
+                <LogOut className="h-3.5 w-3.5 mr-2" />
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>

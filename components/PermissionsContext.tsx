@@ -12,12 +12,14 @@ interface PermissionsContextType {
   permissions: string[]
   permissionsLoaded: boolean
   user: User | null
+  can: (perm: string) => boolean
 }
 
 const PermissionsContext = createContext<PermissionsContextType>({
   permissions: [],
   permissionsLoaded: false,
   user: null,
+  can: () => true,
 })
 
 export function usePermissions() {
@@ -36,8 +38,11 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
   useEffect(() => {
     async function loadPermissions() {
       const supabase = createClient()
+
       const { data: userData } = await supabase.auth.getUser()
+
       if (!userData.user) {
+        setPermissions([])
         setPermissionsLoaded(true)
         return
       }
@@ -49,6 +54,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
         .single()
 
       if (!profile) {
+        setPermissions([])
         setPermissionsLoaded(true)
         return
       }
@@ -71,8 +77,24 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     loadPermissions()
   }, [])
 
+  // 🔥 КЛЮЧЕВОЙ helper (фикс всей проблемы)
+  const can = (perm: string) => {
+    // пока грузится — показываем всё (НЕ ломаем UI)
+    if (!permissionsLoaded) return true
+
+    // после загрузки — строгая проверка
+    return permissions.includes(perm)
+  }
+
   return (
-    <PermissionsContext.Provider value={{ permissions, permissionsLoaded, user }}>
+    <PermissionsContext.Provider
+      value={{
+        permissions,
+        permissionsLoaded,
+        user,
+        can,
+      }}
+    >
       {children}
     </PermissionsContext.Provider>
   )
