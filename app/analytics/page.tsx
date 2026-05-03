@@ -2041,6 +2041,7 @@ const table = useReactTable({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Table */}
         <DndContext
+          id="analytics-table-dnd"
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToHorizontalAxis]}

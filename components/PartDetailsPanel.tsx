@@ -1437,6 +1437,7 @@ case "analogs":
         
         <div className="flex flex-col gap-4 p-4">
           <DndContext
+            id="part-details-panel-dnd"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
