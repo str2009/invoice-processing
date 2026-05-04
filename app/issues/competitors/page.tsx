@@ -99,7 +99,7 @@ export default function CompetitorsPage() {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("products")
-  const [selectedDate, setSelectedDate] = useState("last_call")
+  const [selectedDate, setSelectedDate] = useState("all")
   
   // Modal states
   const [addDataModalOpen, setAddDataModalOpen] = useState(false)
@@ -153,24 +153,37 @@ export default function CompetitorsPage() {
 
   // Filter by selected date
   function filterByDate(rows: WebhookRow[]): WebhookRow[] {
-    if (selectedDate === "all") return rows
-
-    if (selectedDate === "last_call") {
-      if (rows.length === 0) return rows
-      const latest = rows.reduce(
-        (max, r) => (new Date(r.date) > new Date(max) ? r.date : max),
-        rows[0].date
-      )
-      const latestNorm = normalizeDate(latest)
-      return rows.filter((r) => normalizeDate(r.date) === latestNorm)
+    // "Все даты" - return everything unfiltered
+    if (!selectedDate || selectedDate === "all") {
+      return rows
     }
 
-    return rows.filter((r) => normalizeDate(r.date) === selectedDate)
+    // "Последний прозвон" - only the latest date
+    if (selectedDate === "last_call") {
+      if (rows.length === 0) return rows
+      
+      const latestTime = rows.reduce((max, r) => {
+        const t = new Date(r.date).getTime()
+        return t > max ? t : max
+      }, 0)
+      
+      return rows.filter((r) => new Date(r.date).getTime() === latestTime)
+    }
+
+    // Specific date - match exactly
+    return rows.filter((r) => {
+      const a = new Date(r.date).toISOString().slice(0, 10)
+      const b = new Date(selectedDate).toISOString().slice(0, 10)
+      return a === b
+    })
   }
 
   // Apply date filter and transform
   const filteredRaw = filterByDate(rawData)
   const transformedData = transformData(filteredRaw)
+  
+  // Debug
+  console.log("[v0] RAW:", rawData.length, "FILTERED:", filteredRaw.length, "MODE:", selectedDate)
 
   // Extract unique competitors from all data
   const competitors = Array.from(
