@@ -5,6 +5,7 @@ import { CartProvider } from '@/components/cart/cart-context'
 import { RowContextMenuProvider } from '@/components/cart/row-context-menu'
 import { LayoutWrapper } from '@/components/LayoutWrapper'
 import { PermissionsProvider } from '@/components/PermissionsContext'
+import { UISettingsProvider } from '@/components/UISettingsContext'
 import { Toaster } from 'sonner'
 
 import './globals.css'
@@ -42,15 +43,17 @@ export default function RootLayout({
           themes={["light", "soft", "mellow", "dark", "warm-dark", "graphite"]}
           disableTransitionOnChange
         >
-          <PermissionsProvider>
-            <CartProvider>
-              <RowContextMenuProvider>
-                <LayoutWrapper>
-                  {children}
-                </LayoutWrapper>
-              </RowContextMenuProvider>
-            </CartProvider>
-          </PermissionsProvider>
+          <UISettingsProvider>
+            <PermissionsProvider>
+              <CartProvider>
+                <RowContextMenuProvider>
+                  <LayoutWrapper>
+                    {children}
+                  </LayoutWrapper>
+                </RowContextMenuProvider>
+              </CartProvider>
+            </PermissionsProvider>
+          </UISettingsProvider>
           <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>

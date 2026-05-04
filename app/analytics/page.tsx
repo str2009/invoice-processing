@@ -95,7 +95,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
-import { useTheme } from "next-themes"
+import { useUISettings } from "@/components/UISettingsContext"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -495,31 +495,15 @@ const defaultHidden: string[] = ["supplier", "deltaAbs", "incoming", "sales3m", 
 // Export both named and default for flexibility
 export function AnalyticsPageContent({ onSwitchToInvoice }: { onSwitchToInvoice?: () => void } = {}) {
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
 const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [role, setRole] = useState<string | null>(null)
   
-  // Workspace display settings
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
-  const [uiScale, setUiScale] = useState<"90" | "100" | "110" | "120" | "130">("100")
-  const [textIntensity, setTextIntensity] = useState<"normal" | "medium" | "high">("normal")
+  // Workspace display settings (from global context)
+  const { theme, setTheme, density, setDensity, uiScale, setUIScale, textIntensity, setTextIntensity } = useUISettings()
   
   useEffect(() => {
   setMounted(true)
-  // Load workspace settings from localStorage
-  const savedDensity = localStorage.getItem("workspace_density")
-  const savedScale = localStorage.getItem("workspace_ui_scale")
-  const savedTextIntensity = localStorage.getItem("workspace_text_intensity")
-  if (savedDensity === "comfortable" || savedDensity === "compact") {
-  setDensity(savedDensity)
-  }
-  if (savedScale === "90" || savedScale === "100" || savedScale === "110" || savedScale === "120" || savedScale === "130") {
-  setUiScale(savedScale)
-  }
-  if (savedTextIntensity === "normal" || savedTextIntensity === "medium" || savedTextIntensity === "high") {
-  setTextIntensity(savedTextIntensity)
-  }
   
   // Fetch current user and role
   const supabase = createClient()
@@ -540,30 +524,7 @@ const [mounted, setMounted] = useState(false)
   loadUserAndRole()
   }, [])
 
-  // Persist workspace settings
-  const handleDensityChange = useCallback((value: "comfortable" | "compact") => {
-    setDensity(value)
-    localStorage.setItem("workspace_density", value)
-  }, [])
-
-const handleScaleChange = useCallback((value: "90" | "100" | "110" | "120" | "130") => {
-  setUiScale(value)
-  localStorage.setItem("workspace_ui_scale", value)
-  }, [])
-
-  const handleTextIntensityChange = useCallback((value: "normal" | "medium" | "high") => {
-    setTextIntensity(value)
-    localStorage.setItem("workspace_text_intensity", value)
-    // Apply to html element for CSS variable cascade
-    document.documentElement.classList.remove("text-intensity-normal", "text-intensity-medium", "text-intensity-high")
-    document.documentElement.classList.add(`text-intensity-${value}`)
-  }, [])
-
-  // Apply text intensity class to html element on mount and when it changes
-  useEffect(() => {
-    document.documentElement.classList.remove("text-intensity-normal", "text-intensity-medium", "text-intensity-high")
-    document.documentElement.classList.add(`text-intensity-${textIntensity}`)
-  }, [textIntensity])
+  
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient()
@@ -1842,7 +1803,7 @@ const table = useReactTable({
       Density
     </DropdownMenuLabel>
     <DropdownMenuItem
-      onClick={() => handleDensityChange("comfortable")}
+      onClick={() => setDensity("comfortable")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}
     >
@@ -1850,7 +1811,7 @@ const table = useReactTable({
       Comfortable
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleDensityChange("compact")}
+      onClick={() => setDensity("compact")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}
     >
@@ -1864,7 +1825,7 @@ const table = useReactTable({
       UI Scale
     </DropdownMenuLabel>
     <DropdownMenuItem
-      onClick={() => handleScaleChange("90")}
+      onClick={() => setUIScale("90")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}
     >
@@ -1872,7 +1833,7 @@ const table = useReactTable({
       90%
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleScaleChange("100")}
+      onClick={() => setUIScale("100")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}
     >
@@ -1880,7 +1841,7 @@ const table = useReactTable({
       100%
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleScaleChange("110")}
+      onClick={() => setUIScale("110")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}
     >
@@ -1888,7 +1849,7 @@ const table = useReactTable({
       110%
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleScaleChange("120")}
+      onClick={() => setUIScale("120")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "120" ? "bg-accent" : ""}`}
     >
@@ -1896,7 +1857,7 @@ const table = useReactTable({
       120%
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleScaleChange("130")}
+      onClick={() => setUIScale("130")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${uiScale === "130" ? "bg-accent" : ""}`}
     >
@@ -1910,7 +1871,7 @@ const table = useReactTable({
       Text Intensity
     </DropdownMenuLabel>
     <DropdownMenuItem
-      onClick={() => handleTextIntensityChange("normal")}
+      onClick={() => setTextIntensity("normal")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${textIntensity === "normal" ? "bg-accent" : ""}`}
     >
@@ -1918,7 +1879,7 @@ const table = useReactTable({
       Normal
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleTextIntensityChange("medium")}
+      onClick={() => setTextIntensity("medium")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${textIntensity === "medium" ? "bg-accent" : ""}`}
     >
@@ -1926,7 +1887,7 @@ const table = useReactTable({
       Medium
     </DropdownMenuItem>
     <DropdownMenuItem
-      onClick={() => handleTextIntensityChange("high")}
+      onClick={() => setTextIntensity("high")}
       onSelect={(e) => e.preventDefault()}
       className={`gap-2 text-xs ${textIntensity === "high" ? "bg-accent" : ""}`}
     >

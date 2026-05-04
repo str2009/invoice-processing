@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
 import { usePermissions } from "@/components/PermissionsContext"
+import { useUISettings } from "@/components/UISettingsContext"
 import { createClient } from "@/lib/supabase/client"
 
 import {
@@ -65,59 +65,16 @@ const warehouses = [
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
   const { permissions, permissionsLoaded, user } = usePermissions()
+  const { theme, setTheme, density, setDensity, uiScale, setUIScale, textIntensity, setTextIntensity } = useUISettings()
   const supabase = createClient()
-
-  // =======================
-  // SETTINGS STATE
-  // =======================
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
-  const [scale, setScale] = useState<"90" | "100" | "110" | "120" | "130">("100")
-  const [textIntensity, setTextIntensity] = useState<"normal" | "medium" | "high">("normal")
 
   const [mounted, setMounted] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouses[0])
 
-  // =======================
-  // INIT
-  // =======================
   useEffect(() => {
     setMounted(true)
-
-    // load from localStorage
-    const savedDensity = localStorage.getItem("density")
-    const savedScale = localStorage.getItem("scale")
-    const savedText = localStorage.getItem("text")
-
-    if (savedDensity) setDensity(savedDensity as any)
-    if (savedScale) setScale(savedScale as any)
-    if (savedText) setTextIntensity(savedText as any)
   }, [])
-
-  // =======================
-  // APPLY SETTINGS
-  // =======================
-  useEffect(() => {
-    // SCALE
-    document.documentElement.style.fontSize =
-      scale === "90" ? "90%" :
-      scale === "110" ? "110%" :
-      scale === "120" ? "120%" :
-      scale === "130" ? "130%" : "100%"
-
-    // DENSITY
-    document.documentElement.dataset.density = density
-
-    // TEXT INTENSITY
-    document.documentElement.dataset.text = textIntensity
-
-    // SAVE
-    localStorage.setItem("density", density)
-    localStorage.setItem("scale", scale)
-    localStorage.setItem("text", textIntensity)
-
-  }, [density, scale, textIntensity])
 
   // =======================
   // LOGOUT
@@ -255,9 +212,9 @@ export function Header() {
   {["90", "100", "110", "120", "130"].map((s) => (
     <DropdownMenuItem
       key={s}
-      onClick={() => setScale(s as any)}
+      onClick={() => setUIScale(s as "90" | "100" | "110" | "120" | "130")}
       className={`text-xs rounded px-2 py-1 ${
-        scale === s ? "bg-accent" : ""
+        uiScale === s ? "bg-accent" : ""
       }`}
     >
       {s}%
