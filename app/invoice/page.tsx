@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockLogs } from "@/lib/mock-data"
 import { Input } from "@/components/ui/input"
-import { PanelLeft, FileText, Search, Sun, Moon, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Monitor, Palette, Maximize2, Minimize2, Settings2, LogOut, User, Car } from "lucide-react"
+import { PanelLeft, FileText, Search, BarChart3, MessageSquare, SlidersHorizontal, ChevronUp, ChevronDown, Settings2, LogOut, User, Car } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 import {
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SimulationPanel } from "@/components/dashboard/simulation-panel"
 import { useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
+
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { AnalyticsPageContent } from "@/app/analytics/page"
 
@@ -53,27 +53,13 @@ type ViewMode = "invoice" | "analytics"
 
 export default function InvoiceDashboard() {
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   
   // View mode state - controls which view is visible (both stay mounted)
   const [viewMode, setViewMode] = useState<ViewMode>("invoice")
 
-  // Workspace display settings
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable")
-  const [uiScale, setUiScale] = useState<"90" | "100" | "110">("100")
-
   useEffect(() => {
     setMounted(true)
-    // Load workspace settings from localStorage
-    const savedDensity = localStorage.getItem("workspace_density")
-    const savedScale = localStorage.getItem("workspace_ui_scale")
-    if (savedDensity === "comfortable" || savedDensity === "compact") {
-      setDensity(savedDensity)
-    }
-    if (savedScale === "90" || savedScale === "100" || savedScale === "110") {
-      setUiScale(savedScale)
-    }
 
     // Fetch current user and role
     const supabase = createClient()
@@ -92,17 +78,6 @@ export default function InvoiceDashboard() {
       }
     }
     loadUserAndRole()
-  }, [])
-
-  // Persist workspace settings
-  const handleDensityChange = useCallback((value: "comfortable" | "compact") => {
-    setDensity(value)
-    localStorage.setItem("workspace_density", value)
-  }, [])
-
-  const handleScaleChange = useCallback((value: "90" | "100" | "110") => {
-    setUiScale(value)
-    localStorage.setItem("workspace_ui_scale", value)
   }, [])
 
   const handleLogout = useCallback(async () => {
@@ -1047,7 +1022,7 @@ export default function InvoiceDashboard() {
       </div>
       
       {/* Invoice View - kept mounted, hidden with CSS */}
-      <div style={{ display: viewMode === "invoice" ? "flex" : "none" }} className={`h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
+      <div style={{ display: viewMode === "invoice" ? "flex" : "none" }} className="h-full overflow-hidden bg-background">
       {/* Control Panel Drawer */}
       <ControlPanel
         isOpen={panelOpen}
@@ -1197,138 +1172,6 @@ export default function InvoiceDashboard() {
             </div>
 
             <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 shrink-0 p-0"
-                  aria-label="Change theme"
-                >
-                  {mounted && (
-                    theme === "light" ? (
-                      <Sun className="h-3.5 w-3.5" />
-                    ) : theme === "soft" ? (
-                      <Sun className="h-3.5 w-3.5 text-amber-400" />
-                    ) : theme === "mellow" ? (
-                      <Sun className="h-3.5 w-3.5 text-stone-500" />
-                    ) : theme === "graphite" ? (
-                      <Monitor className="h-3.5 w-3.5" />
-                    ) : theme === "warm-dark" ? (
-                      <Moon className="h-3.5 w-3.5 text-amber-500" />
-                    ) : (
-                      <Moon className="h-3.5 w-3.5" />
-                    )
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[160px]">
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                  Theme
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => setTheme("light")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
-                >
-                  <Sun className="h-3.5 w-3.5" />
-                  Light
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme("soft")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
-                >
-                  <Sun className="h-3.5 w-3.5 text-amber-400" />
-                  Soft
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme("mellow")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}
-                >
-                  <Sun className="h-3.5 w-3.5 text-stone-500" />
-                  Mellow
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme("dark")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
-                >
-                  <Moon className="h-3.5 w-3.5" />
-                  Dark
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme("warm-dark")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}
-                >
-                  <Moon className="h-3.5 w-3.5 text-amber-500" />
-                  Warm Dark
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme("graphite")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}
-                >
-                  <Monitor className="h-3.5 w-3.5" />
-                  Graphite
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                  Density
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => handleDensityChange("comfortable")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  Comfortable
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleDensityChange("compact")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}
-                >
-                  <Minimize2 className="h-3.5 w-3.5" />
-                  Compact
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                  UI Scale
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => handleScaleChange("90")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}
-                >
-                  <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span>
-                  90%
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleScaleChange("100")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}
-                >
-                  <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span>
-                  100%
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleScaleChange("110")}
-                  onSelect={(e) => e.preventDefault()}
-                  className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}
-                >
-                  <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
-                  110%
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             {/* User menu */}
             {user && (

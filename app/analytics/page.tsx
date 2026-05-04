@@ -81,11 +81,6 @@ import {
   Columns3,
   CalendarDays,
   Loader2,
-  Sun,
-  Moon,
-  Monitor,
-  Maximize2,
-  Minimize2,
   LogOut,
   User,
   Check,
@@ -95,7 +90,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
-import { useUISettings } from "@/components/UISettingsContext"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -499,8 +494,7 @@ const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [role, setRole] = useState<string | null>(null)
   
-  // Workspace display settings (from global context)
-  const { theme, setTheme, density, setDensity, uiScale, setUIScale, textIntensity, setTextIntensity } = useUISettings()
+  
   
   useEffect(() => {
   setMounted(true)
@@ -1718,185 +1712,6 @@ const table = useReactTable({
     </span>
   )}
   </Button>
-  <span className="h-4 w-px bg-border" aria-hidden="true" />
-  <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-7 w-7 shrink-0 p-0"
-      aria-label="Change theme"
-    >
-      {mounted && (
-        theme === "light" ? (
-          <Sun className="h-3.5 w-3.5" />
-        ) : theme === "soft" ? (
-          <Sun className="h-3.5 w-3.5 text-amber-400" />
-        ) : theme === "mellow" ? (
-          <Sun className="h-3.5 w-3.5 text-stone-500" />
-        ) : theme === "graphite" ? (
-          <Monitor className="h-3.5 w-3.5" />
-        ) : theme === "warm-dark" ? (
-          <Moon className="h-3.5 w-3.5 text-amber-500" />
-        ) : (
-          <Moon className="h-3.5 w-3.5" />
-        )
-      )}
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end" className="min-w-[160px]">
-    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-      Theme
-    </DropdownMenuLabel>
-    <DropdownMenuItem
-      onClick={() => setTheme("light")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${theme === "light" ? "bg-accent" : ""}`}
-    >
-      <Sun className="h-3.5 w-3.5" />
-      Light
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTheme("soft")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${theme === "soft" ? "bg-accent" : ""}`}
-    >
-      <Sun className="h-3.5 w-3.5 text-amber-400" />
-      Soft
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTheme("mellow")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${theme === "mellow" ? "bg-accent" : ""}`}
-    >
-      <Sun className="h-3.5 w-3.5 text-stone-500" />
-      Mellow
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTheme("dark")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${theme === "dark" ? "bg-accent" : ""}`}
-    >
-      <Moon className="h-3.5 w-3.5" />
-      Dark
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTheme("warm-dark")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${theme === "warm-dark" ? "bg-accent" : ""}`}
-    >
-      <Moon className="h-3.5 w-3.5 text-amber-500" />
-      Warm Dark
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTheme("graphite")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${theme === "graphite" ? "bg-accent" : ""}`}
-    >
-      <Monitor className="h-3.5 w-3.5" />
-      Graphite
-    </DropdownMenuItem>
-
-    <DropdownMenuSeparator />
-    
-    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-      Density
-    </DropdownMenuLabel>
-    <DropdownMenuItem
-      onClick={() => setDensity("comfortable")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${density === "comfortable" ? "bg-accent" : ""}`}
-    >
-      <Maximize2 className="h-3.5 w-3.5" />
-      Comfortable
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setDensity("compact")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${density === "compact" ? "bg-accent" : ""}`}
-    >
-      <Minimize2 className="h-3.5 w-3.5" />
-      Compact
-    </DropdownMenuItem>
-
-    <DropdownMenuSeparator />
-
-    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-      UI Scale
-    </DropdownMenuLabel>
-    <DropdownMenuItem
-      onClick={() => setUIScale("90")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${uiScale === "90" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">90</span>
-      90%
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setUIScale("100")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${uiScale === "100" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">100</span>
-      100%
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setUIScale("110")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${uiScale === "110" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">110</span>
-      110%
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setUIScale("120")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${uiScale === "120" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">120</span>
-      120%
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setUIScale("130")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${uiScale === "130" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-mono">130</span>
-      130%
-    </DropdownMenuItem>
-    
-    <DropdownMenuSeparator />
-    
-    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-      Text Intensity
-    </DropdownMenuLabel>
-    <DropdownMenuItem
-      onClick={() => setTextIntensity("normal")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${textIntensity === "normal" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">N</span>
-      Normal
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTextIntensity("medium")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${textIntensity === "medium" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">M</span>
-      Medium
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={() => setTextIntensity("high")}
-      onSelect={(e) => e.preventDefault()}
-      className={`gap-2 text-xs ${textIntensity === "high" ? "bg-accent" : ""}`}
-    >
-      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px]">H</span>
-      High
-    </DropdownMenuItem>
-</DropdownMenuContent>
-  </DropdownMenu>
-
   {/* User menu */}
   {user && (
     <>
