@@ -20,6 +20,8 @@ import {
   ChevronDown,
   Warehouse,
   CheckSquare,
+  Maximize2,
+  Minimize2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -187,20 +189,24 @@ export function Header() {
     Density
   </DropdownMenuLabel>
 
-  {[
-    ["comfortable", "Comfortable"],
-    ["compact", "Compact"],
-  ].map(([key, label]) => (
-    <DropdownMenuItem
-      key={key}
-      onClick={() => setDensity(key as any)}
-      className={`text-xs rounded px-2 py-1 ${
-        density === key ? "bg-accent" : ""
-      }`}
-    >
-      {label}
-    </DropdownMenuItem>
-  ))}
+  <DropdownMenuItem
+    onClick={() => setDensity("comfortable")}
+    className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+      density === "comfortable" ? "bg-accent text-foreground" : ""
+    }`}
+  >
+    <Maximize2 className="h-3.5 w-3.5" />
+    Comfortable
+  </DropdownMenuItem>
+  <DropdownMenuItem
+    onClick={() => setDensity("compact")}
+    className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+      density === "compact" ? "bg-accent text-foreground" : ""
+    }`}
+  >
+    <Minimize2 className="h-3.5 w-3.5" />
+    Compact
+  </DropdownMenuItem>
 
   <DropdownMenuSeparator />
 
@@ -213,10 +219,11 @@ export function Header() {
     <DropdownMenuItem
       key={s}
       onClick={() => setUIScale(s as "90" | "100" | "110" | "120" | "130")}
-      className={`text-xs rounded px-2 py-1 ${
-        uiScale === s ? "bg-accent" : ""
+      className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+        uiScale === s ? "bg-accent text-foreground" : ""
       }`}
     >
+      <span className="w-6 font-mono text-[10px]">{s}</span>
       {s}%
     </DropdownMenuItem>
   ))}
@@ -228,21 +235,33 @@ export function Header() {
     Text Intensity
   </DropdownMenuLabel>
 
-  {[
-    ["normal", "N Normal"],
-    ["medium", "M Medium"],
-    ["high", "H High"],
-  ].map(([key, label]) => (
-    <DropdownMenuItem
-      key={key}
-      onClick={() => setTextIntensity(key as any)}
-      className={`text-xs rounded px-2 py-1 ${
-        textIntensity === key ? "bg-accent" : ""
-      }`}
-    >
-      {label}
-    </DropdownMenuItem>
-  ))}
+  <DropdownMenuItem
+    onClick={() => setTextIntensity("normal")}
+    className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+      textIntensity === "normal" ? "bg-accent text-foreground" : ""
+    }`}
+  >
+    <span className="w-4 font-medium text-[10px]">N</span>
+    Normal
+  </DropdownMenuItem>
+  <DropdownMenuItem
+    onClick={() => setTextIntensity("medium")}
+    className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+      textIntensity === "medium" ? "bg-accent text-foreground" : ""
+    }`}
+  >
+    <span className="w-4 font-medium text-[10px]">M</span>
+    Medium
+  </DropdownMenuItem>
+  <DropdownMenuItem
+    onClick={() => setTextIntensity("high")}
+    className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${
+      textIntensity === "high" ? "bg-accent text-foreground" : ""
+    }`}
+  >
+    <span className="w-4 font-medium text-[10px]">H</span>
+    High
+  </DropdownMenuItem>
 
 </DropdownMenuContent>
         </DropdownMenu>
