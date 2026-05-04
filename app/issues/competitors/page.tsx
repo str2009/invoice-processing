@@ -21,6 +21,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+// Date helpers
+function formatDateRu(dateString: string): string {
+  const d = new Date(dateString)
+  const day = String(d.getDate()).padStart(2, "0")
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const year = d.getFullYear()
+  return `${day}.${month}.${year}`
+}
+
+function normalizeDate(d: string): string {
+  return new Date(d).toISOString().slice(0, 10)
+}
+
 // Types for API response
 interface WebhookRow {
   date: string
@@ -80,13 +93,13 @@ interface CallEntry {
 
 export default function CompetitorsPage() {
   // Data loading state
-  const [data, setData] = useState<TransformedRow[]>([])
+  const [rawData, setRawData] = useState<WebhookRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("products")
-  const [dateFilter, setDateFilter] = useState("last")
+  const [selectedDate, setSelectedDate] = useState("last_call")
   
   // Modal states
   const [addDataModalOpen, setAddDataModalOpen] = useState(false)
@@ -111,8 +124,7 @@ export default function CompetitorsPage() {
           return
         }
         
-        const transformed = transformData(json)
-        setData(transformed)
+        setRawData(json)
       } catch (e) {
         console.error("Load error:", e)
         setError("Ошибка загрузки данных")
@@ -123,6 +135,42 @@ export default function CompetitorsPage() {
 
     loadData()
   }, [])
+
+  // Build unique dates for dropdown (sorted descending)
+  const uniqueDates = Array.from(
+    new Set(rawData.map((r) => normalizeDate(r.date)))
+  ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+
+  // Date dropdown options
+  const dateOptions = [
+    { value: "last_call", label: "Последний прозвон" },
+    { value: "all", label: "Все даты" },
+    ...uniqueDates.map((d) => ({
+      value: d,
+      label: formatDateRu(d),
+    })),
+  ]
+
+  // Filter by selected date
+  function filterByDate(rows: WebhookRow[]): WebhookRow[] {
+    if (selectedDate === "all") return rows
+
+    if (selectedDate === "last_call") {
+      if (rows.length === 0) return rows
+      const latest = rows.reduce(
+        (max, r) => (new Date(r.date) > new Date(max) ? r.date : max),
+        rows[0].date
+      )
+      const latestNorm = normalizeDate(latest)
+      return rows.filter((r) => normalizeDate(r.date) === latestNorm)
+    }
+
+    return rows.filter((r) => normalizeDate(r.date) === selectedDate)
+  }
+
+  // Apply filter and transform
+  const filteredRaw = filterByDate(rawData)
+  const data = transformData(filteredRaw)
 
   // Extract unique competitors from data
   const competitors = Array.from(
@@ -194,15 +242,16 @@ export default function CompetitorsPage() {
 
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>Дата:</span>
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="h-7 w-[160px] text-xs">
+            <Select value={selectedDate} onValueChange={setSelectedDate}>
+              <SelectTrigger className="h-7 w-[180px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="last" className="text-xs">Последний прозвон</SelectItem>
-                <SelectItem value="week" className="text-xs">За неделю</SelectItem>
-                <SelectItem value="month" className="text-xs">За месяц</SelectItem>
-                <SelectItem value="all" className="text-xs">Все время</SelectItem>
+                {dateOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                    {opt.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -265,7 +314,7 @@ export default function CompetitorsPage() {
                   className={`border-b border-border hover:bg-muted/30 ${idx % 2 === 0 ? "bg-background" : "bg-muted/10"}`}
                 >
                   <td className="sticky left-0 z-10 bg-inherit px-3 py-2 text-muted-foreground">
-                    {row.date?.slice(0, 10) || "-"}
+                    {row.date ? formatDateRu(row.date) : "-"}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {row.manager || "-"}
