@@ -1,68 +1,50 @@
 "use client"
 
 import Link from "next/link"
-import { FileText, Car, BarChart3, MessageSquare, ArrowRight, CheckSquare, AlertTriangle } from "lucide-react"
+import { Truck, Phone, Archive, PauseCircle, AlertTriangle, Copy, ArrowRight } from "lucide-react"
 import { usePermissions } from "@/components/PermissionsContext"
 
 const sections = [
   {
-    href: "/invoice",
-    icon: FileText,
-    title: "Invoice Processing",
-    description: "Загрузка и обработка счетов, обогащение данных",
+    href: "/issues/mxu-transfer",
+    icon: Truck,
+    title: "Перенести на МХУ",
+    description: "Показать детали не перемещенные на МХУ",
   },
   {
-    href: "/vin",
-    icon: Car,
-    title: "VIN Search",
-    description: "Поиск запчастей по VIN-коду автомобиля",
+    href: "/issues/competitors",
+    icon: Phone,
+    title: "Конкуренты",
+    description: "История прозвона конкурентов",
   },
   {
-    href: "/analytics",
-    icon: BarChart3,
-    title: "Analytics",
-    description: "Аналитика по запчастям и поставщикам",
+    href: "/issues/old-stock",
+    icon: Archive,
+    title: "Старые остатки",
+    description: "Показать остатки старше 30 дней",
   },
   {
-    href: "/tasks",
-    icon: CheckSquare,
-    title: "Tasks",
-    description: "Управление задачами и контроль выполнения",
+    href: "/issues/no-movement",
+    icon: PauseCircle,
+    title: "Без движения",
+    description: "Показать нулевые приходы",
   },
   {
-    href: "/issues",
+    href: "/issues/discrepancies",
     icon: AlertTriangle,
-    title: "Issues",
-    description: "Работа с проблемами и операционными задачами",
+    title: "Расхождения",
+    description: "Показать расхождения остатков",
   },
   {
-    href: "/chat",
-    icon: MessageSquare,
-    title: "Chat",
-    description: "AI-ассистент для работы с данными",
+    href: "/issues/duplicates",
+    icon: Copy,
+    title: "Дубли",
+    description: "Показать дублирующиеся позиции",
   },
 ]
 
-// mapping route → permission
-const permissionMap: Record<string, string> = {
-  "/invoice": "view_invoice",
-  "/vin": "view_vin",
-  "/analytics": "view_analytics",
-  "/tasks": "view_tasks",
-  "/issues": "view_issues",
-  "/chat": "view_chat",
-}
-
-export default function DashboardPage() {
-  const { can, permissionsLoaded } = usePermissions()
-
-  // фильтрация секций
-  const filteredSections = permissionsLoaded
-    ? sections.filter((section) => {
-        const perm = permissionMap[section.href]
-        return perm ? can(perm) : false
-      })
-    : []
+export default function IssuesPage() {
+  const { permissionsLoaded } = usePermissions()
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -71,16 +53,16 @@ export default function DashboardPage() {
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Issues</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Выберите раздел для работы
+              Работа с проблемами и операционными задачами
             </p>
           </div>
 
           {/* Section cards */}
           <div className="grid gap-4 sm:grid-cols-2">
             {permissionsLoaded &&
-              filteredSections.map((section) => {
+              sections.map((section) => {
                 const Icon = section.icon
                 return (
                   <Link

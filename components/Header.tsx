@@ -22,6 +22,7 @@ import {
   CheckSquare,
   Maximize2,
   Minimize2,
+  AlertTriangle,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ const permissionToNavLink: Record<string, string> = {
   view_invoice: "/invoice",
   view_vin: "/vin",
   view_tasks: "/tasks",
+  view_issues: "/issues",
   view_analytics: "/analytics",
   view_chat: "/chat",
 }
@@ -51,6 +53,7 @@ const navLinks = [
   { href: "/invoice", label: "Invoice", icon: FileText },
   { href: "/vin", label: "VIN", icon: Car },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
+  { href: "/issues", label: "Issues", icon: AlertTriangle },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/chat", label: "Chat", icon: MessageSquare },
 ]
