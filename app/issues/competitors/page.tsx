@@ -191,21 +191,25 @@ export default function CompetitorsPage() {
   )
 
   // Apply search filter (product name, code, competitor names)
-  const data = transformedData.filter((row) => {
-    if (!searchQuery.trim()) return true
-    
-    const q = searchQuery.toLowerCase().trim()
-    
-    // Check product name and code
-    if (row.product_name?.toLowerCase().includes(q)) return true
-    if (row.part_code?.toLowerCase().includes(q)) return true
-    
-    // Check competitor names
-    const competitorNames = Object.keys(row.prices)
-    if (competitorNames.some((name) => name.toLowerCase().includes(q))) return true
-    
-    return false
-  })
+  console.log("[v0] searchQuery:", JSON.stringify(searchQuery), "len:", searchQuery.length)
+  
+  const data = searchQuery.trim() 
+    ? transformedData.filter((row) => {
+        const q = searchQuery.toLowerCase().trim()
+        
+        // Check product name and code
+        if (row.product_name?.toLowerCase().includes(q)) return true
+        if (row.part_code?.toLowerCase().includes(q)) return true
+        
+        // Check competitor names
+        const competitorNames = Object.keys(row.prices)
+        if (competitorNames.some((name) => name.toLowerCase().includes(q))) return true
+        
+        return false
+      })
+    : transformedData
+  
+  console.log("[v0] filtered:", data.length, "of", transformedData.length)
 
   const updateCallEntry = (productId: string, competitorId: string, field: "price" | "status", value: string) => {
     setCallEntries(prev => {
