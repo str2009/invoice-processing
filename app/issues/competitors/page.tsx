@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Plus, Search, Package, Users, UserCircle, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,50 +21,50 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-// Mock competitors
-const competitors = [
-  { id: "1", name: "Максимум", phone: null },
-  { id: "2", name: "Молод 19", phone: null },
-  { id: "3", name: "Авто Хаус", phone: "908-030-50-52" },
-  { id: "4", name: "Автодело", phone: "38-41-41" },
-  { id: "5", name: "Автоман", phone: "902-948-03-03" },
-  { id: "6", name: "Все запчасти", phone: "33-88-88" },
-  { id: "7", name: "Круглое озеро", phone: "48-33-21" },
-  { id: "8", name: "Серега (сосед)", phone: null },
-  { id: "9", name: "Pit Stop", phone: "908-033-44-70" },
-  { id: "10", name: "SYSTEM", phone: null },
-]
+// Types for API response
+interface WebhookRow {
+  date: string
+  manager: string
+  part_code: string
+  product_name: string
+  competitor_name: string
+  competitor_price: string
+  status: "price" | "no" | "no_answer"
+}
 
-// Mock products
-const products = [
-  { id: "1", name: "антифриз AGA 5л желтый", code: "AGA043Z", maxPrice: 2400, molodPrice: 2350 },
-  { id: "2", name: "антифриз AGA,1л (красный)", code: "AGA001Z", maxPrice: 550, molodPrice: 500 },
-  { id: "3", name: "антифриз AGA,5л (красный)", code: "AGA002Z", maxPrice: 2200, molodPrice: 2200 },
-  { id: "4", name: "антифриз TOTACHI 1л зеленый", code: "41701", maxPrice: 500, molodPrice: 580 },
-  { id: "5", name: "антифриз TOTACHI 5л красный", code: "41905", maxPrice: 2200, molodPrice: 2200 },
-  { id: "6", name: "антифриз TOTACHI SUPER LONG LIFE 10л красный", code: "41910", maxPrice: 3900, molodPrice: 3750 },
-  { id: "7", name: "масло HYUNDAI/KIA Turbo SYN Gasoline,5w30,4л", code: "05100-00441", maxPrice: 7050, molodPrice: 5800 },
-]
+interface TransformedRow {
+  date: string
+  manager: string
+  part_code: string
+  product_name: string
+  prices: Record<string, { price: string; status: string }>
+}
 
-// Mock call data
-const mockCallData = [
-  {
-    id: "1",
-    date: "04.05.2026",
-    manager: "Стас",
-    product: "антифриз AGA 5л желтый",
-    code: "AGA043Z",
-    prices: { "Максимум": 2400, "Молод 19": 2350 },
-  },
-  {
-    id: "2",
-    date: "04.05.2026",
-    manager: "Стас",
-    product: "антифриз AGA,1л (красный)",
-    code: "AGA001Z",
-    prices: { "Максимум": 550, "Молод 19": 500 },
-  },
-]
+// Transform flat webhook rows into grouped product rows
+function transformData(rows: WebhookRow[]): TransformedRow[] {
+  const map: Record<string, TransformedRow> = {}
+
+  rows.forEach((r) => {
+    const key = r.part_code
+
+    if (!map[key]) {
+      map[key] = {
+        date: r.date,
+        manager: r.manager,
+        part_code: r.part_code,
+        product_name: r.product_name,
+        prices: {},
+      }
+    }
+
+    map[key].prices[r.competitor_name] = {
+      price: r.competitor_price,
+      status: r.status,
+    }
+  })
+
+  return Object.values(map)
+}
 
 // Managers
 const managers = ["Стас", "Алексей", "Мария", "Дмитрий"]
@@ -79,6 +79,11 @@ interface CallEntry {
 }
 
 export default function CompetitorsPage() {
+  // Data loading state
+  const [data, setData] = useState<TransformedRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("products")
   const [dateFilter, setDateFilter] = useState("last")
@@ -93,6 +98,36 @@ export default function CompetitorsPage() {
   const [callDate] = useState(new Date().toLocaleDateString("ru-RU"))
   const [callManager, setCallManager] = useState("")
   const [callEntries, setCallEntries] = useState<CallEntry[]>([])
+
+  // Fetch data on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await fetch("/api/competitors")
+        const json = await res.json()
+        
+        if (json.error) {
+          setError(json.error)
+          return
+        }
+        
+        const transformed = transformData(json)
+        setData(transformed)
+      } catch (e) {
+        console.error("Load error:", e)
+        setError("Ошибка загрузки данных")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  // Extract unique competitors from data
+  const competitors = Array.from(
+    new Set(data.flatMap((row) => Object.keys(row.prices)))
+  )
 
   const updateCallEntry = (productId: string, competitorId: string, field: "price" | "status", value: string) => {
     setCallEntries(prev => {
@@ -184,57 +219,82 @@ export default function CompetitorsPage() {
             />
           </div>
           <span className="text-xs text-muted-foreground">
-            {mockCallData.length} записей × {competitors.length} конкурентов
+            {data.length} записей × {competitors.length} конкурентов
           </span>
         </div>
       </div>
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
-            <tr className="border-b border-border">
-              <th className="sticky left-0 z-20 bg-muted/95 px-3 py-2 text-left font-medium text-muted-foreground">
-                Товар
-              </th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                Максимум
-              </th>
-              {competitors.map((competitor) => (
-                <th key={competitor.id} className="px-3 py-2 text-center font-medium text-muted-foreground min-w-[100px]">
-                  <div>{competitor.name}</div>
-                  {competitor.phone && (
-                    <div className="text-[10px] font-normal text-muted-foreground/70">{competitor.phone}</div>
-                  )}
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-sm text-muted-foreground">Загрузка данных...</div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-sm text-destructive">{error}</div>
+          </div>
+        ) : data.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-sm text-muted-foreground">Нет данных</div>
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+              <tr className="border-b border-border">
+                <th className="sticky left-0 z-20 bg-muted/95 px-3 py-2 text-left font-medium text-muted-foreground">
+                  Дата
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product, idx) => (
-              <tr 
-                key={product.id} 
-                className={`border-b border-border hover:bg-muted/30 ${idx % 2 === 0 ? "bg-background" : "bg-muted/10"}`}
-              >
-                <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
-                  <div className="font-medium text-foreground">{product.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{product.code}</div>
-                </td>
-                <td className="px-3 py-2 text-right font-medium text-foreground">
-                  {product.maxPrice.toLocaleString("ru-RU")} ₽
-                </td>
-                {competitors.map((competitor) => {
-                  const price = competitor.name === "Молод 19" ? product.molodPrice : null
-                  return (
-                    <td key={competitor.id} className="px-3 py-2 text-center text-muted-foreground">
-                      {price ? `${price.toLocaleString("ru-RU")} ₽` : "-"}
-                    </td>
-                  )
-                })}
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                  Менеджер
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                  Товар
+                </th>
+                {competitors.map((competitor) => (
+                  <th key={competitor} className="px-3 py-2 text-center font-medium text-muted-foreground min-w-[100px]">
+                    <div>{competitor}</div>
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.map((row, idx) => (
+                <tr 
+                  key={row.part_code} 
+                  className={`border-b border-border hover:bg-muted/30 ${idx % 2 === 0 ? "bg-background" : "bg-muted/10"}`}
+                >
+                  <td className="sticky left-0 z-10 bg-inherit px-3 py-2 text-muted-foreground">
+                    {row.date?.slice(0, 10) || "-"}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {row.manager || "-"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-foreground">{row.product_name}</div>
+                    <div className="text-[10px] text-muted-foreground">{row.part_code}</div>
+                  </td>
+                  {competitors.map((competitor) => {
+                    const item = row.prices[competitor]
+                    if (!item) return <td key={competitor} className="px-3 py-2 text-center text-muted-foreground">-</td>
+                    
+                    return (
+                      <td key={competitor} className="px-3 py-2 text-center text-muted-foreground">
+                        {item.status === "price" && item.price
+                          ? `${Number(item.price).toLocaleString("ru-RU")} ₽`
+                          : item.status === "no"
+                          ? "Нет"
+                          : item.status === "no_answer"
+                          ? "Не отв."
+                          : "-"}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Add Data Modal */}
@@ -370,43 +430,40 @@ export default function CompetitorsPage() {
                   <th className="px-3 py-2 text-right font-medium text-muted-foreground min-w-[80px]">
                     Максимум
                   </th>
-                  {competitors.slice(1).map((competitor) => (
-                    <th key={competitor.id} className="px-2 py-2 text-center font-medium text-muted-foreground min-w-[120px]">
-                      <div>{competitor.name}</div>
-                      {competitor.phone && (
-                        <div className="text-[10px] font-normal text-muted-foreground/70">{competitor.phone}</div>
-                      )}
+                  {competitors.map((competitor) => (
+                    <th key={competitor} className="px-2 py-2 text-center font-medium text-muted-foreground min-w-[120px]">
+                      <div>{competitor}</div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {products.map((product, idx) => (
+                {data.map((row, idx) => (
                   <tr 
-                    key={product.id} 
+                    key={row.part_code} 
                     className={`border-b border-border ${idx % 2 === 0 ? "bg-background" : "bg-muted/10"}`}
                   >
                     <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
-                      <div className="font-medium text-foreground">{product.name}</div>
-                      <div className="text-[10px] text-muted-foreground">{product.code}</div>
+                      <div className="font-medium text-foreground">{row.product_name}</div>
+                      <div className="text-[10px] text-muted-foreground">{row.part_code}</div>
                     </td>
                     <td className="px-3 py-2 text-right font-medium text-foreground">
-                      {product.maxPrice.toLocaleString("ru-RU")} ₽
+                      -
                     </td>
-                    {competitors.slice(1).map((competitor) => {
-                      const entry = getCallEntry(product.id, competitor.id)
+                    {competitors.map((competitor) => {
+                      const entry = getCallEntry(row.part_code, competitor)
                       return (
-                        <td key={competitor.id} className="px-1 py-1">
+                        <td key={competitor} className="px-1 py-1">
                           <div className="flex flex-col gap-1">
                             <Input
                               placeholder="Цена"
                               value={entry?.price || ""}
-                              onChange={(e) => updateCallEntry(product.id, competitor.id, "price", e.target.value)}
+                              onChange={(e) => updateCallEntry(row.part_code, competitor, "price", e.target.value)}
                               className="h-7 text-xs text-center"
                             />
                             <Select 
                               value={entry?.status || ""} 
-                              onValueChange={(v) => updateCallEntry(product.id, competitor.id, "status", v)}
+                              onValueChange={(v) => updateCallEntry(row.part_code, competitor, "status", v)}
                             >
                               <SelectTrigger className="h-7 text-[10px]">
                                 <SelectValue placeholder="Есть цена" />
