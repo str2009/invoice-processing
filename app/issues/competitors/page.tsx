@@ -168,14 +168,31 @@ export default function CompetitorsPage() {
     return rows.filter((r) => normalizeDate(r.date) === selectedDate)
   }
 
-  // Apply filter and transform
+  // Apply date filter and transform
   const filteredRaw = filterByDate(rawData)
-  const data = transformData(filteredRaw)
+  const transformedData = transformData(filteredRaw)
 
-  // Extract unique competitors from data
+  // Extract unique competitors from all data
   const competitors = Array.from(
-    new Set(data.flatMap((row) => Object.keys(row.prices)))
+    new Set(transformedData.flatMap((row) => Object.keys(row.prices)))
   )
+
+  // Apply search filter (product name, code, competitor names)
+  const data = transformedData.filter((row) => {
+    if (!searchQuery.trim()) return true
+    
+    const q = searchQuery.toLowerCase().trim()
+    
+    // Check product name and code
+    if (row.product_name?.toLowerCase().includes(q)) return true
+    if (row.part_code?.toLowerCase().includes(q)) return true
+    
+    // Check competitor names
+    const competitorNames = Object.keys(row.prices)
+    if (competitorNames.some((name) => name.toLowerCase().includes(q))) return true
+    
+    return false
+  })
 
   const updateCallEntry = (productId: string, competitorId: string, field: "price" | "status", value: string) => {
     setCallEntries(prev => {
@@ -233,6 +250,26 @@ export default function CompetitorsPage() {
       {/* Filters row */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
+          {/* Search input with clear button */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Поиск..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-[240px] pl-8 pr-8 text-xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="h-8">
               <TabsTrigger value="products" className="h-7 px-3 text-xs">Товары</TabsTrigger>
@@ -243,7 +280,7 @@ export default function CompetitorsPage() {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>Дата:</span>
             <Select value={selectedDate} onValueChange={setSelectedDate}>
-              <SelectTrigger className="h-7 w-[180px] text-xs">
+              <SelectTrigger className="h-7 w-[140px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -257,20 +294,9 @@ export default function CompetitorsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Поиск по товару, коду, конкуренту..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-[280px] pl-8 text-xs"
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {data.length} записей × {competitors.length} конкурентов
-          </span>
-        </div>
+        <span className="text-xs text-muted-foreground">
+          {data.length} записей × {competitors.length} конкурентов
+        </span>
       </div>
 
       {/* Table */}
@@ -429,7 +455,7 @@ export default function CompetitorsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddDataModalOpen(false)}>
-              Закрыть
+              Зак��ыть
             </Button>
           </DialogFooter>
         </DialogContent>
