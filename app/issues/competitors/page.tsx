@@ -364,7 +364,9 @@ export default function CompetitorsPage() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="font-medium text-foreground">{row.product_name}</div>
-                    <div className="text-[10px] text-muted-foreground">{row.part_code}</div>
+                    <div className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-mono rounded bg-muted text-foreground/80">
+  {row.part_code}
+</div>
                   </td>
                   {competitors.map((competitor) => {
                     const item = row.prices[competitor]
