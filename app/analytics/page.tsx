@@ -1350,7 +1350,7 @@ const table = useReactTable({
 }
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background workspace-scaled density-${density} scale-${uiScale}`}>
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Control Panel */}
       <ControlPanel
         mode="analytics"
