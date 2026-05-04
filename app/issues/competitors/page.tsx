@@ -54,11 +54,14 @@ interface TransformedRow {
 }
 
 // Transform flat webhook rows into grouped product rows
+// Key = date + part_code so each call session per product is a separate row
 function transformData(rows: WebhookRow[]): TransformedRow[] {
   const map: Record<string, TransformedRow> = {}
 
   rows.forEach((r) => {
-    const key = r.part_code
+    // Group by date + part_code to preserve each call date as separate row
+    const dateKey = new Date(r.date).toISOString().slice(0, 10)
+    const key = `${dateKey}__${r.part_code}`
 
     if (!map[key]) {
       map[key] = {
@@ -181,9 +184,6 @@ export default function CompetitorsPage() {
   // Apply date filter and transform
   const filteredRaw = filterByDate(rawData)
   const transformedData = transformData(filteredRaw)
-  
-  // Debug
-  console.log("[v0] RAW:", rawData.length, "FILTERED:", filteredRaw.length, "MODE:", selectedDate)
 
   // Extract unique competitors from all data
   const competitors = Array.from(
@@ -349,7 +349,7 @@ export default function CompetitorsPage() {
             <tbody>
               {data.map((row, idx) => (
                 <tr 
-                  key={row.part_code} 
+                  key={`${row.date}__${row.part_code}`} 
                   className={`border-b border-border hover:bg-muted/30 ${idx % 2 === 0 ? "bg-background" : "bg-muted/10"}`}
                 >
                   <td className="sticky left-0 z-10 bg-inherit px-3 py-2 text-muted-foreground">
